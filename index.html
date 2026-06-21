@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Korea PCI Market Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Coronary PCI Commercial Excellence</p>
+          <h1>한국 PCI 시장 지도</h1>
+          <p class="page-copy">지역별 시장 규모와 자사 점유율, TG 타겟, HIRA 병원을 한 화면에서 봅니다.</p>
+        </div>
+        <div class="top-actions">
+          <div class="period-control">
+            <label for="period">조회연도</label>
+            <select id="period">
+              <option value="2023">2023</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+            </select>
+          </div>
+          <label class="file-button primary" for="workbookFile">Excel 업로드</label>
+          <input id="workbookFile" class="file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+          <span id="workbookFileName" class="file-name">기본 TG 데이터</span>
+        </div>
+      </header>
+
+      <section class="connection-strip" aria-label="api connection status">
+        <article>
+          <span class="status-dot" id="marketApiDot"></span>
+          <div>
+            <strong>HIRA 진료행위정보서비스</strong>
+            <small id="marketApiStatus">새로고침 시 자동 연결 대기</small>
+          </div>
+        </article>
+        <article>
+          <span class="status-dot" id="hospitalApiDot"></span>
+          <div>
+            <strong>HIRA 병원정보서비스</strong>
+            <small id="hospitalApiTopStatus">새로고침 시 선택 지역 자동 조회</small>
+          </div>
+        </article>
+        <article>
+          <span class="status-dot ready"></span>
+          <div>
+            <strong>데이터 모드</strong>
+            <small id="dataModeStatus">Sample data loaded</small>
+          </div>
+        </article>
+      </section>
+
+      <section class="summary-strip" aria-label="market summary">
+        <article>
+          <span>전국 시장 케파</span>
+          <strong id="totalMarket">-</strong>
+          <small id="marketSourceLabel">Source: sample</small>
+        </article>
+        <article>
+          <span>우리 실적</span>
+          <strong id="totalOurUnits">-</strong>
+          <small>업로드 전 sample</small>
+        </article>
+        <article>
+          <span>전국 점유율</span>
+          <strong id="nationalShare">-</strong>
+          <small>our units / market</small>
+        </article>
+        <article>
+          <span>목표 Gap</span>
+          <strong id="openGap">-</strong>
+          <small>target MS 22%</small>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <section class="map-panel" aria-label="Korea regional market map">
+          <div class="panel-head">
+            <div>
+              <h2>대한민국 지역별 PCI 시장사이즈</h2>
+              <p>지도는 시도, 아래 드릴다운은 시군구. 시장 케파와 우리 실적을 분리해서 봅니다.</p>
+            </div>
+            <div class="legend">
+              <span><i class="heat-low"></i>Low</span>
+              <span><i class="heat-mid"></i>Mid</span>
+              <span><i class="heat-high"></i>High</span>
+            </div>
+          </div>
+          <div id="koreaMap" class="korea-map" role="img" aria-label="대한민국 지역별 PCI 시장사이즈 지도"></div>
+          <div class="map-insights">
+            <div class="map-insights-head">
+              <div>
+                <span>상위 시군구</span>
+                <strong>시장 케파 하이라이트</strong>
+              </div>
+              <small id="highlightMeta">클릭해서 상세 보기</small>
+            </div>
+            <div id="regionHighlights" class="region-highlights"></div>
+          </div>
+        </section>
+
+        <aside class="detail-panel" aria-live="polite">
+          <div class="detail-title">
+            <span id="selectedTerritory">Capital</span>
+            <h2 id="selectedRegion">Seoul</h2>
+            <small id="selectedDistrict">시군구 전체</small>
+          </div>
+          <div class="metric-stack">
+            <div class="metric-card market">
+              <span>시장 케파</span>
+              <strong id="regionMarket">-</strong>
+            </div>
+            <div class="metric-card actual">
+              <span>우리 실적</span>
+              <strong id="regionOurUnits">-</strong>
+            </div>
+            <div class="metric-card">
+              <span>우리 점유율</span>
+              <strong id="regionShare">-</strong>
+            </div>
+            <div class="metric-card">
+              <span>목표 Gap</span>
+              <strong id="regionGap">-</strong>
+            </div>
+          </div>
+          <div class="bar-block">
+            <div class="bar-label">
+              <span>MS vs Target 22%</span>
+              <strong id="barShareLabel">-</strong>
+            </div>
+            <div class="bar-track">
+              <span id="shareBar"></span>
+              <i></i>
+            </div>
+          </div>
+          <div class="action-box">
+            <span>상세 코멘트</span>
+            <p id="commercialRead">-</p>
+          </div>
+          <div class="target-box">
+            <div class="target-head">
+              <div>
+                <span>우리 실적</span>
+                <strong>선택 지역 계정</strong>
+              </div>
+              <small id="targetPeriod">-</small>
+            </div>
+            <p id="targetStatus">업로드된 TG workbook 기준으로 실적 계정이 표시됩니다.</p>
+            <div id="targetList" class="target-list"></div>
+          </div>
+          <div class="hospital-box">
+            <div class="hospital-head">
+              <div>
+                <span>병원 Master</span>
+                <strong>선택 지역 병원</strong>
+              </div>
+              <button id="fetchHospitals" type="button">조회</button>
+            </div>
+            <p id="hospitalStatus">Service Key는 이 브라우저에만 저장됩니다. 선택 지역 병원을 불러올 수 있습니다.</p>
+            <div id="hospitalList" class="hospital-list"></div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="table-panel">
+        <div class="panel-head compact">
+          <div>
+            <h2>지역별 요약</h2>
+            <p>시장 케파, 우리 실적, 점유율, Gap 순으로 정렬됩니다.</p>
+          </div>
+          <button id="downloadCsv" type="button">CSV 다운로드</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>지역</th>
+                <th>권역</th>
+                <th>시장 케파</th>
+                <th>우리 실적</th>
+                <th>점유율</th>
+                <th>Gap</th>
+                <th>Priority</th>
+              </tr>
+            </thead>
+            <tbody id="regionTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="hidden-controls" aria-hidden="true">
+        <button id="clearWorkbookData" type="button">Clear uploaded data</button>
+        <input id="csvFile" type="file" accept=".csv,text/csv" />
+        <span id="csvFileName">CSV 미선택</span>
+        <button id="applyCsv" type="button">Apply pasted CSV</button>
+        <button id="resetData" type="button">Reset sample</button>
+        <textarea id="csvInput" spellcheck="false">region,our_units,revenue
+Seoul,5200,4940000000
+Gyeonggi,3100,2945000000
+Busan,1400,1330000000
+Daegu,950,902500000
+Incheon,890,845500000</textarea>
+
+        <input id="hiraKey" type="password" autocomplete="off" />
+        <input id="hiraYear" type="text" value="2023" />
+        <input id="hiraCode" type="text" />
+        <button id="fetchHira" type="button">Fetch HIRA market</button>
+        <button id="autoRefreshNow" type="button">Refresh APIs now</button>
+        <p id="hiraStatus">PCI 행위코드는 수가기준정보조회서비스에서 확정 후 입력하세요.</p>
+        <p id="workbookStatus">기본 TG 데이터 사용 중</p>
+      </section>
+    </main>
+    <script src="./config.local.js"></script>
+    <script src="./tg-data.local.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
