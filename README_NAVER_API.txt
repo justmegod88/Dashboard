@@ -11,8 +11,3 @@ Secret:
 
 중요:
 네이버 개발자센터 앱에서 '검색' API 사용 권한이 켜져 있어야 합니다.
-
-AI 리포트 사용:
-- GitHub Secrets에 OPENAI_API_KEY를 넣으면 ai_report_generator.py가 output/ai_report.json을 생성합니다.
-- 대시보드는 output/ai_report.json을 읽어 전체 인사이트와 경쟁사 GPT 주간 리포트에 반영합니다.
-- 키가 없으면 규칙 기반 fallback 리포트를 생성합니다.
