@@ -1,0 +1,52 @@
+name: Competitor Monitor + AI Report
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 23 * * 0"
+
+permissions:
+  contents: write
+
+jobs:
+  crawl-and-ai:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 openai
+
+      - name: Run Naver API crawler
+        env:
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        run: |
+          python competitor_watch_crawler.py
+          echo "---- Competitor_Activity.csv head ----"
+          head -10 output/Competitor_Activity.csv || true
+
+      - name: Generate AI report
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-4o-mini
+        run: |
+          python ai_report_generator.py
+          echo "---- ai_report.json head ----"
+          head -30 output/ai_report.json || true
+
+      - name: Commit output
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add output/Competitor_Activity.csv output/ai_report.json
+          git commit -m "Update competitor activity and AI report" || echo "No changes"
+          git push
