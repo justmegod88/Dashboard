@@ -1,8 +1,15 @@
 {
-  "summary": "샘플 AI 리포트입니다. GitHub Actions에 OPENAI_API_KEY를 Secret으로 넣고 워크플로우를 실행하면 실제 크롤링 결과 기반 AI 리포트로 교체됩니다.",
+  "summary": "총 0건의 경쟁사/안경원 현장 활동이 수집되었습니다. 주요 브랜드는 []이며, 지역별 분포는 []입니다.",
   "actions": [
-    "GitHub Secrets에 OPENAI_API_KEY를 추가하세요.",
-    "Actions에서 Competitor Monitor + AI Report를 수동 실행하세요.",
-    "생성된 output/ai_report.json이 대시보드에 표시되는지 확인하세요."
-  ]
+    "경쟁사 활동이 많은 지역은 MAX/ASD/멀티포컬 콘텐츠를 우선 배포하세요.",
+    "프로모션 게시글이 많은 경우 소비자 상담용 차별화 메시지를 강화하세요.",
+    "교육/세미나 활동이 많은 경우 안경사 대상 전문성 콘텐츠로 대응하세요."
+  ],
+  "raw": {
+    "total_posts": 0,
+    "brand_counts": {},
+    "region_counts": {},
+    "type_counts": {},
+    "reason": "OpenAI call failed: Connection error."
+  }
 }
