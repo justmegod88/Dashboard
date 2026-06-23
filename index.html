@@ -1,220 +1,56 @@
 <!doctype html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Korea PCI Market Dashboard</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <main class="shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Coronary PCI Commercial Excellence</p>
-          <h1>한국 PCI 시장 지도</h1>
-          <p class="page-copy">지역별 시장 규모와 자사 점유율, TG 타겟, HIRA 병원을 한 화면에서 봅니다.</p>
-        </div>
-        <div class="top-actions">
-          <div class="period-control">
-            <label for="period">조회연도</label>
-            <select id="period">
-              <option value="2023">2023</option>
-              <option value="2024">2024</option>
-              <option value="2025">2025</option>
-            </select>
-          </div>
-          <label class="file-button primary" for="workbookFile">Excel 업로드</label>
-          <input id="workbookFile" class="file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
-          <span id="workbookFileName" class="file-name">기본 TG 데이터</span>
-        </div>
-      </header>
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ACUVUE Professional Intelligence Dashboard V4</title>
+<link rel="stylesheet" href="./styles.css"/>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<main class="shell">
+<header class="topbar">
+<div><p class="eyebrow">ACUVUE PROFESSIONAL INTELLIGENCE</p><h1>교육 · 활용 · 인식 · 성과 · 경쟁사 AI 대시보드</h1><p class="sub">GitHub Actions 크롤링 + OpenAI Secret 기반 AI 리포트 + 실시간 GPT 연결 준비 버전</p></div>
+<div class="actions"><label class="btn primary" for="fileInput">Excel/CSV 업로드</label><input id="fileInput" class="file" type="file" accept=".xlsx,.xls,.csv"/><button class="btn" id="downloadTemplate">CSV 템플릿</button><button class="btn" id="downloadRecommended">추천 대상 CSV</button><button class="btn" id="resetBtn">샘플 복원</button></div>
+</header>
 
-      <section class="connection-strip" aria-label="api connection status">
-        <article>
-          <span class="status-dot" id="marketApiDot"></span>
-          <div>
-            <strong>HIRA 진료행위정보서비스</strong>
-            <small id="marketApiStatus">새로고침 시 자동 연결 대기</small>
-          </div>
-        </article>
-        <article>
-          <span class="status-dot" id="hospitalApiDot"></span>
-          <div>
-            <strong>HIRA 병원정보서비스</strong>
-            <small id="hospitalApiTopStatus">새로고침 시 선택 지역 자동 조회</small>
-          </div>
-        </article>
-        <article>
-          <span class="status-dot ready"></span>
-          <div>
-            <strong>데이터 모드</strong>
-            <small id="dataModeStatus">Sample data loaded</small>
-          </div>
-        </article>
-      </section>
+<section class="filters">
+<div class="field search"><label>통합 검색</label><input id="searchBox" placeholder="안경사명 / 안경원명 / 안경원코드 입력"/></div>
+<div class="field"><label>지역</label><select id="regionFilter"><option value="all">전체</option></select></div>
+<div class="field"><label>채널</label><select id="channelFilter"><option value="all">전체</option></select></div>
+<div class="field"><label>연차</label><select id="yearFilter"><option value="all">전체</option><option>0~3년</option><option>4~7년</option><option>8~15년</option><option>15년+</option></select></div>
+<button class="btn" id="clearBtn">초기화</button>
+</section>
 
-      <section class="summary-strip" aria-label="market summary">
-        <article>
-          <span>전국 시장 케파</span>
-          <strong id="totalMarket">-</strong>
-          <small id="marketSourceLabel">Source: sample</small>
-        </article>
-        <article>
-          <span>우리 실적</span>
-          <strong id="totalOurUnits">-</strong>
-          <small>업로드 전 sample</small>
-        </article>
-        <article>
-          <span>전국 점유율</span>
-          <strong id="nationalShare">-</strong>
-          <small>our units / market</small>
-        </article>
-        <article>
-          <span>목표 Gap</span>
-          <strong id="openGap">-</strong>
-          <small>target MS 22%</small>
-        </article>
-      </section>
+<section class="kpis">
+<article class="kpi"><span>대상 안경원</span><strong id="kpiStores">-</strong><small id="fileStatus">샘플 데이터</small></article>
+<article class="kpi"><span>교육 참여도</span><div><strong id="kpiEducation">-</strong><i id="lightEducation" class="light"></i></div><small>온라인/온디맨드/오프라인</small></article>
+<article class="kpi"><span>피팅 프로그램</span><div><strong id="kpiUsage">-</strong><i id="lightUsage" class="light"></i></div><small>스마트피팅/AI/시뮬레이터</small></article>
+<article class="kpi"><span>안경사 인식</span><div><strong id="kpiPerception">-</strong><i id="lightPerception" class="light"></i></div><small>5개 인식 항목 평균</small></article>
+<article class="kpi"><span>기능성렌즈 성과</span><div><strong id="kpiPerformance">-</strong><i id="lightPerformance" class="light"></i></div><small>난시/MF/MAX 비중</small></article>
+<article class="kpi"><span>경쟁사 활동</span><div><strong id="kpiCompetitor">-</strong><i id="lightCompetitor" class="light"></i></div><small>지역 단위 크롤링</small></article>
+</section>
 
-      <section class="workspace">
-        <section class="map-panel" aria-label="Korea regional market map">
-          <div class="panel-head">
-            <div>
-              <h2>대한민국 지역별 PCI 시장사이즈</h2>
-              <p>지도는 시도, 아래 드릴다운은 시군구. 시장 케파와 우리 실적을 분리해서 봅니다.</p>
-            </div>
-            <div class="legend">
-              <span><i class="heat-low"></i>Low</span>
-              <span><i class="heat-mid"></i>Mid</span>
-              <span><i class="heat-high"></i>High</span>
-            </div>
-          </div>
-          <div id="koreaMap" class="korea-map" role="img" aria-label="대한민국 지역별 PCI 시장사이즈 지도"></div>
-          <div class="map-insights">
-            <div class="map-insights-head">
-              <div>
-                <span>상위 시군구</span>
-                <strong>시장 케파 하이라이트</strong>
-              </div>
-              <small id="highlightMeta">클릭해서 상세 보기</small>
-            </div>
-            <div id="regionHighlights" class="region-highlights"></div>
-          </div>
-        </section>
+<section class="panel detail-panel">
+<div class="panel-head"><div><h2>세부 지표</h2><p>상단 KPI와 동일한 순서로 세부 항목을 확인합니다.</p></div></div>
+<div class="tabs" id="detailTabs"><button class="tab active" data-tab="education">교육 참여도</button><button class="tab" data-tab="usage">피팅 프로그램</button><button class="tab" data-tab="perception">안경사 인식</button><button class="tab" data-tab="performance">기능성렌즈 성과</button><button class="tab" data-tab="competitor">경쟁사 활동</button></div>
+<div id="detailView" class="detail-view"></div>
+</section>
 
-        <aside class="detail-panel" aria-live="polite">
-          <div class="detail-title">
-            <span id="selectedTerritory">Capital</span>
-            <h2 id="selectedRegion">Seoul</h2>
-            <small id="selectedDistrict">시군구 전체</small>
-          </div>
-          <div class="metric-stack">
-            <div class="metric-card market">
-              <span>시장 케파</span>
-              <strong id="regionMarket">-</strong>
-            </div>
-            <div class="metric-card actual">
-              <span>우리 실적</span>
-              <strong id="regionOurUnits">-</strong>
-            </div>
-            <div class="metric-card">
-              <span>우리 점유율</span>
-              <strong id="regionShare">-</strong>
-            </div>
-            <div class="metric-card">
-              <span>목표 Gap</span>
-              <strong id="regionGap">-</strong>
-            </div>
-          </div>
-          <div class="bar-block">
-            <div class="bar-label">
-              <span>MS vs Target 22%</span>
-              <strong id="barShareLabel">-</strong>
-            </div>
-            <div class="bar-track">
-              <span id="shareBar"></span>
-              <i></i>
-            </div>
-          </div>
-          <div class="action-box">
-            <span>상세 코멘트</span>
-            <p id="commercialRead">-</p>
-          </div>
-          <div class="target-box">
-            <div class="target-head">
-              <div>
-                <span>우리 실적</span>
-                <strong>선택 지역 계정</strong>
-              </div>
-              <small id="targetPeriod">-</small>
-            </div>
-            <p id="targetStatus">업로드된 TG workbook 기준으로 실적 계정이 표시됩니다.</p>
-            <div id="targetList" class="target-list"></div>
-          </div>
-          <div class="hospital-box">
-            <div class="hospital-head">
-              <div>
-                <span>병원 Master</span>
-                <strong>선택 지역 병원</strong>
-              </div>
-              <button id="fetchHospitals" type="button">조회</button>
-            </div>
-            <p id="hospitalStatus">Service Key는 이 브라우저에만 저장됩니다. 선택 지역 병원을 불러올 수 있습니다.</p>
-            <div id="hospitalList" class="hospital-list"></div>
-          </div>
-        </aside>
-      </section>
+<section class="main-grid">
+<section class="panel insight-panel"><div class="panel-head"><div><h2>전체 인사이트</h2><p id="insightSub">현재 필터 기준 자동 해석</p></div><span id="insightBadge" class="status watch">관찰/선택 성장</span></div><div class="insight-body" id="mainInsight"></div><div class="ai-report" id="weeklyAiReport"></div><div class="ai-actions"><button class="btn primary" id="runRealtimeAi">실시간 AI 분석</button><span class="muted">Render/Cloudflare 연결 시 작동</span></div><div id="realtimeAiBox" class="ai-box"></div></section>
+<section class="panel"><div class="panel-head"><div><h2>교육 추천 엔진</h2><p>부족 지표를 기준으로 추천 교육을 자동 산출합니다.</p></div></div><div id="educationNeed" class="education-need"></div></section>
+</section>
 
-      <section class="table-panel">
-        <div class="panel-head compact">
-          <div>
-            <h2>지역별 요약</h2>
-            <p>시장 케파, 우리 실적, 점유율, Gap 순으로 정렬됩니다.</p>
-          </div>
-          <button id="downloadCsv" type="button">CSV 다운로드</button>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>지역</th>
-                <th>권역</th>
-                <th>시장 케파</th>
-                <th>우리 실적</th>
-                <th>점유율</th>
-                <th>Gap</th>
-                <th>Priority</th>
-              </tr>
-            </thead>
-            <tbody id="regionTable"></tbody>
-          </table>
-        </div>
-      </section>
+<section class="analysis-grid">
+<article class="panel"><div class="panel-head"><div><h2>성장 가능성 / 이탈 위험</h2><p>교육, 활용, 인식, 성과, 경쟁사 압력을 종합 점수화합니다.</p></div></div><div id="riskGrowthView" class="score-grid"></div></article>
+<article class="panel"><div class="panel-head"><div><h2>경쟁사 크롤링 리스트</h2><p>행을 클릭하면 수집 내용 상세를 확인합니다.</p></div></div><div id="competitorList" class="competitor-list"></div></article>
+</section>
 
-      <section class="hidden-controls" aria-hidden="true">
-        <button id="clearWorkbookData" type="button">Clear uploaded data</button>
-        <input id="csvFile" type="file" accept=".csv,text/csv" />
-        <span id="csvFileName">CSV 미선택</span>
-        <button id="applyCsv" type="button">Apply pasted CSV</button>
-        <button id="resetData" type="button">Reset sample</button>
-        <textarea id="csvInput" spellcheck="false">region,our_units,revenue
-Seoul,5200,4940000000
-Gyeonggi,3100,2945000000
-Busan,1400,1330000000
-Daegu,950,902500000
-Incheon,890,845500000</textarea>
+<section class="panel copilot-panel"><div class="panel-head"><div><h2>AI Copilot</h2><p>예: “MAX 교육 누구 보내야 해?”, “멀티포컬 잘하는 곳”, “ASD 인식 낮은 사람”</p></div></div><div class="copilot-box"><input id="copilotInput" placeholder="질문을 입력하세요"/><button class="btn primary" id="askCopilot">질문</button></div><div id="copilotAnswer" class="copilot-answer"></div></section>
 
-        <input id="hiraKey" type="password" autocomplete="off" />
-        <input id="hiraYear" type="text" value="2023" />
-        <input id="hiraCode" type="text" />
-        <button id="fetchHira" type="button">Fetch HIRA market</button>
-        <button id="autoRefreshNow" type="button">Refresh APIs now</button>
-        <p id="hiraStatus">PCI 행위코드는 수가기준정보조회서비스에서 확정 후 입력하세요.</p>
-        <p id="workbookStatus">기본 TG 데이터 사용 중</p>
-      </section>
-    </main>
-    <script src="./config.local.js"></script>
-    <script src="./tg-data.local.js"></script>
-    <script src="./app.js"></script>
-  </body>
+<section class="panel table-panel"><div class="panel-head"><div><h2>안경원 / 안경사 Follow-up 리스트</h2><p>추천 교육 사유와 우선순위를 확인합니다.</p></div><button class="btn" id="exportFiltered">현재 결과 CSV</button></div><div class="table-wrap"><table><thead><tr><th>안경원코드</th><th>안경원명</th><th>안경사명</th><th>지역</th><th>채널</th><th>연차</th><th>교육</th><th>활용</th><th>인식</th><th>성과</th><th>추천교육</th><th>위험</th><th>성장</th></tr></thead><tbody id="storeTable"></tbody></table></div></section>
+</main>
+<div class="modal" id="crawlModal"><div class="modal-card"><button class="modal-close" id="modalClose">×</button><p class="eyebrow">COMPETITOR ACTIVITY DETAIL</p><h2 id="modalTitle">-</h2><p class="modal-meta" id="modalMeta">-</p><p id="modalSummary">-</p><a id="modalLink" class="btn primary" target="_blank" rel="noopener">원문 열기</a></div></div>
+<script src="./app.js"></script>
+</body>
 </html>

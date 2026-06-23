@@ -1,33 +1,30 @@
-# Korea PCI Market Dashboard
+# Pro-dashboard V4 AI Ready
 
-GitHub Pages에 바로 올릴 수 있도록 정리한 정적 웹 대시보드입니다.
+## 핵심
+- API 없이 GitHub Actions로 경쟁사/안경원 게시글 크롤링
+- GitHub Secret의 OpenAI API Key로 AI 리포트 자동 생성
+- 대시보드가 `output/Competitor_Activity.csv`와 `output/ai_report.json` 자동 읽기
+- 실시간 ChatGPT/Copilot 연결용 Render 서버 예제 포함
 
-## 업로드 파일 구조
+## GitHub Secret 설정
+1. GitHub repo 접속
+2. Settings
+3. Secrets and variables
+4. Actions
+5. New repository secret
+6. Name: `OPENAI_API_KEY`
+7. Secret: 본인 OpenAI API Key 붙여넣기
+8. Add secret
 
-```text
-index.html
-styles.css
-app.js
-config.local.js
-tg-data.local.js
-assets/
-  korea-region-reference.jpeg
-```
+## GitHub Actions 실행
+1. Actions 탭
+2. Competitor Monitor + AI Report 선택
+3. Run workflow
+4. 성공 후 `output/Competitor_Activity.csv`, `output/ai_report.json` 생성 확인
 
-## GitHub Pages 배포 방법
+## 실시간 GPT 연결
+정적 GitHub Pages에서는 API Key를 숨길 수 없으므로 Render/Cloudflare 같은 중간 서버가 필요합니다.
+`ai_realtime_server/server.py`를 Render에 배포하고, app.js의 `AI_ENDPOINT`에 Render 주소 + `/insight`를 넣으세요.
 
-1. 새 GitHub repository 생성
-2. 위 파일들을 repository root에 업로드
-3. Settings > Pages 이동
-4. Branch를 `main`, Folder를 `/root`로 선택
-5. 저장 후 제공되는 GitHub Pages URL 접속
-
-## 주의
-
-- `config.local.js`에는 실제 HIRA API serviceKey를 넣지 않은 상태입니다. 공개 repo에 API key를 넣으면 외부에 노출됩니다.
-- `tg-data.local.js`도 공개용으로 비워두었습니다. 내부 TG 실적 데이터는 공개 repo에 올리면 병원명/실적 정보가 노출될 수 있습니다.
-- 실제 실적은 화면 우측 상단의 Excel 업로드 버튼으로 업로드해서 사용할 수 있습니다.
-
-## API 자동연동을 테스트하려면
-
-비공개 저장소 또는 로컬 환경에서만 `config.local.js`의 serviceKey 값을 입력하세요.
+예:
+const AI_ENDPOINT = "https://your-render-service.onrender.com/insight";
