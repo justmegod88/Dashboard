@@ -12,19 +12,48 @@ jobs:
   crawl-and-ai:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install requests beautifulsoup4 openai
+          fi
+
       - name: Run competitor crawler
-        run: python competitor_watch_crawler.py
+        run: |
+          python competitor_watch_crawler.py
+          echo "Crawler finished"
+          ls -la output || true
+
       - name: Generate AI report
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-4.1-mini
-        run: python ai_report_generator.py
+        run: |
+          python ai_report_generator.py
+          echo "AI report finished"
+          ls -la output || true
+
+      - name: Ensure output files exist
+        run: |
+          mkdir -p output
+          if [ ! -f output/Competitor_Activity.csv ]; then
+            echo "월,지역,브랜드,활동유형,제목,요약,URL,출처,검색어,알콘,쿠퍼,바슈롬" > output/Competitor_Activity.csv
+          fi
+          if [ ! -f output/ai_report.json ]; then
+            echo '{"summary":"AI 리포트 파일이 생성되지 않아 기본 메시지를 표시합니다.","actions":["Actions 로그를 확인하세요."]}' > output/ai_report.json
+          fi
+
       - name: Commit output
         run: |
           git config user.name "github-actions"
