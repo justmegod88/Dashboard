@@ -1,0 +1,34 @@
+name: Competitor Monitor + AI Report
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 23 * * 0"
+
+permissions:
+  contents: write
+
+jobs:
+  crawl-and-ai:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run competitor crawler
+        run: python competitor_watch_crawler.py
+      - name: Generate AI report
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-4.1-mini
+        run: python ai_report_generator.py
+      - name: Commit output
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add output/Competitor_Activity.csv output/ai_report.json
+          git commit -m "Update competitor activity and AI report" || echo "No changes"
+          git push
