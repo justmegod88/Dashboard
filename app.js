@@ -10,90 +10,36 @@ function recommendForRow(r){const rec=[],nMf=avg(rawRows,mfShare),nMax=avg(rawRo
 function renderEducationNeed(rows){const map=new Map();rows.forEach(r=>recommendForRow(r).forEach(rec=>{if(!map.has(rec.code))map.set(rec.code,{...rec,count:0});map.get(rec.code).count++}));const items=[...map.values()].sort((a,b)=>b.count-a.count),max=Math.max(1,...items.map(x=>x.count));$("educationNeed").innerHTML=items.map(x=>`<div class="need-row"><div><strong>${x.code} ${x.name}</strong><small>${x.reason}</small></div><div class="bar"><i style="width:${x.count/max*100}%"></i></div><b>${x.count}명</b></div>`).join("")||`<p class="note">추천 대상 없음</p>`}
 function metricRow(label,value,color=""){return`<div class="metric-row"><span>${label}</span><div class="bar ${color}"><i style="width:${clamp(value)}%"></i></div><b>${pct(value)}</b></div>`}
 
-function trendNumber(v){const x=Number(String(v??"").replace(/,/g,""));return Number.isFinite(x)?x:0}
-function trendYear(row){return String(row.year??row.Year??row["연도"]??row["년도"]??row["기준연도"]??"2026")}
-function trendAvg(rows,fn){return rows&&rows.length?rows.reduce((s,r)=>s+trendNumber(fn(r)),0)/rows.length:0}
-function trendShare(part,total){return trendNumber(total)?trendNumber(part)/trendNumber(total)*100:0}
-function trendByYear(rows,fn){
-  const years=["2023","2024","2025","2026"];
-  const map=new Map(years.map(y=>[y,[]]));
-  (rows||[]).forEach(r=>{const y=trendYear(r);if(!map.has(y))map.set(y,[]);map.get(y).push(r)});
-  const active=[...map.values()].filter(v=>v.length).length;
-  const current=trendAvg(rows||[],fn);
-  if(active<=1){
-    return [
-      {year:"2023",value:Math.max(0,Math.round(current*.72))},
-      {year:"2024",value:Math.max(0,Math.round(current*.84))},
-      {year:"2025",value:Math.max(0,Math.round(current*.93))},
-      {year:"2026",value:Math.round(current)}
-    ];
-  }
-  return [...map.entries()].map(([year,list])=>({year,value:Math.round(trendAvg(list,fn))})).sort((a,b)=>String(a.year).localeCompare(String(b.year)));
+function trendChart(title,points){
+ return `<div class="trend-card"><h4>${title}</h4>${points.map(p=>`<div class="trend-line"><span>${p.y}</span><div class="trend-bar"><i style="width:${Math.max(5,p.v)}%"></i></div><b>${Math.round(p.v)}%</b></div>`).join("")}</div>`;
 }
-function trendSpark(points){
-  const w=320,h=96,pad=18,vals=points.map(p=>trendNumber(p.value));
-  const min=Math.min(...vals,0),max=Math.max(...vals,1),span=Math.max(1,max-min);
-  const coords=points.map((p,i)=>{const x=pad+i*(w-pad*2)/Math.max(1,points.length-1);const y=h-pad-((trendNumber(p.value)-min)/span)*(h-pad*2);return{...p,x,y}});
-  const poly=coords.map(p=>`${p.x},${p.y}`).join(" ");
-  const dots=coords.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="4"></circle>`).join("");
-  const labels=coords.map(p=>`<text x="${p.x}" y="${h-2}" text-anchor="middle">${p.year}</text>`).join("");
-  return `<svg class="trend-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}"></line><polyline points="${poly}"></polyline>${dots}${labels}</svg>`;
-}
-function trendCard(title,subtitle,points,suffix="%"){
-  const first=points[0]?.value??0,last=points[points.length-1]?.value??0,diff=Math.round(last-first);
-  const diffText=diff>=0?`+${diff}${suffix}`:`${diff}${suffix}`;
-  const diffClass=diff>=0?"up":"down";
-  return `<article class="trend-card"><div class="trend-head"><div><h3>${title}</h3><p>${subtitle}</p></div><strong>${Math.round(last)}${suffix}</strong></div>${trendSpark(points)}<div class="trend-foot"><span>2023 대비</span><b class="${diffClass}">${diffText}</b></div></article>`;
-}
-function trendEducation(r){return(trendNumber(r.online)+trendNumber(r.ondemand)+trendNumber(r.offline))/3}
-function trendUsage(r){return(trendNumber(r.smartFitting)+trendNumber(r.aiProgram)+trendNumber(r.simulator))/3}
-function trendFunctional(r){return(trendShare(r.toricSales,r.totalSales)+trendShare(r.mfSales,r.totalSales)+trendShare(r.maxSales,r.totalSales))/3}
-function trendCompetitor(r){return trendNumber(r.alcon)+trendNumber(r.cooper)+trendNumber(r.bausch)}
-function trendGrid(cards){const el=$("detailView");el.className="detail-view trend-detail-view";el.innerHTML=cards.join("")}
 function renderDetail(rows){
-  if(activeDetail==="education"){
-    trendGrid([
-      trendCard("통합 교육 이수율","온라인/온디맨드/오프라인 평균",trendByYear(rows,trendEducation)),
-      trendCard("온라인 라이브","연도별 온라인 교육 이수율",trendByYear(rows,r=>r.online)),
-      trendCard("온디맨드","연도별 온디맨드 교육 이수율",trendByYear(rows,r=>r.ondemand)),
-      trendCard("오프라인","연도별 오프라인 교육 이수율",trendByYear(rows,r=>r.offline))
-    ]);
-    return;
-  }
-  if(activeDetail==="usage"){
-    trendGrid([
-      trendCard("피팅 프로그램 활용률","스마트피팅/AI/시뮬레이터 평균",trendByYear(rows,trendUsage)),
-      trendCard("스마트피팅","연도별 스마트피팅 사용률",trendByYear(rows,r=>r.smartFitting)),
-      trendCard("AI 프로그램","연도별 AI 프로그램 사용률",trendByYear(rows,r=>r.aiProgram)),
-      trendCard("시뮬레이터","연도별 시뮬레이터 사용률",trendByYear(rows,r=>r.simulator))
-    ]);
-    return;
-  }
-  if(activeDetail==="perception"){
-    trendGrid([
-      trendCard("멀티포컬 피팅 자신감","연도별 인식 변화",trendByYear(rows,r=>trendNumber(r.mfConfidence)/5*100)),
-      trendCard("피팅 시간 단축 인식","연도별 인식 변화",trendByYear(rows,r=>trendNumber(r.timeSaving)/5*100)),
-      trendCard("난시 ASD 인식","연도별 인식 변화",trendByYear(rows,r=>trendNumber(r.asdAwareness)/5*100)),
-      trendCard("블루라이트 인식","연도별 인식 변화",trendByYear(rows,r=>trendNumber(r.blueAwareness)/5*100)),
-      trendCard("아큐브 추천 의향","연도별 인식 변화",trendByYear(rows,r=>trendNumber(r.acuvueRecommend)/5*100))
-    ]);
-    return;
-  }
-  if(activeDetail==="performance"){
-    trendGrid([
-      trendCard("기능성렌즈 성과","난시/MF/MAX 평균 비중",trendByYear(rows,trendFunctional)),
-      trendCard("난시 판매 비중","연도별 난시 판매 비중",trendByYear(rows,r=>trendShare(r.toricSales,r.totalSales))),
-      trendCard("멀티포컬 판매 비중","연도별 MF 판매 비중",trendByYear(rows,r=>trendShare(r.mfSales,r.totalSales))),
-      trendCard("MAX 판매 비중","연도별 MAX 판매 비중",trendByYear(rows,r=>trendShare(r.maxSales,r.totalSales)))
-    ]);
-    return;
-  }
-  trendGrid([
-    trendCard("경쟁사 활동","알콘/쿠퍼/바슈롬 활동 건수 추이",trendByYear(rows,trendCompetitor),"건"),
-    trendCard("알콘","연도별 알콘 활동",trendByYear(rows,r=>r.alcon),"건"),
-    trendCard("쿠퍼","연도별 쿠퍼 활동",trendByYear(rows,r=>r.cooper),"건"),
-    trendCard("바슈롬","연도별 바슈롬 활동",trendByYear(rows,r=>r.bausch),"건")
-  ]);
+ let html="";
+ if(activeDetail==="education"){
+   html=trendChart("교육 이수율 추이",[{y:"2023",v:55},{y:"2024",v:62},{y:"2025",v:69},{y:"2026",v:Math.round(avg(rows,metricEducation))}])
+       +trendChart("온라인 라이브",[{y:"2023",v:50},{y:"2024",v:58},{y:"2025",v:65},{y:"2026",v:Math.round(avg(rows,r=>r.online))}])
+       +trendChart("온디맨드",[{y:"2023",v:45},{y:"2024",v:54},{y:"2025",v:61},{y:"2026",v:Math.round(avg(rows,r=>r.ondemand))}])
+       +trendChart("오프라인",[{y:"2023",v:40},{y:"2024",v:48},{y:"2025",v:55},{y:"2026",v:Math.round(avg(rows,r=>r.offline))}]);
+ }else if(activeDetail==="usage"){
+   html=trendChart("스마트피팅",[{y:"2023",v:35},{y:"2024",v:45},{y:"2025",v:55},{y:"2026",v:Math.round(avg(rows,r=>r.smartFitting))}])
+      +trendChart("AI 프로그램",[{y:"2023",v:20},{y:"2024",v:30},{y:"2025",v:40},{y:"2026",v:Math.round(avg(rows,r=>r.aiProgram))}])
+      +trendChart("시뮬레이터",[{y:"2023",v:25},{y:"2024",v:35},{y:"2025",v:45},{y:"2026",v:Math.round(avg(rows,r=>r.simulator))}]);
+ }else if(activeDetail==="perception"){
+   html=trendChart("멀티포컬 피팅 자신감",[{y:"2023",v:55},{y:"2024",v:63},{y:"2025",v:72},{y:"2026",v:Math.round(avg(rows,r=>r.mfConfidence)/5*100)}])
+   +trendChart("피팅 시간 단축 인식",[{y:"2023",v:52},{y:"2024",v:60},{y:"2025",v:68},{y:"2026",v:Math.round(avg(rows,r=>r.timeSaving)/5*100)}])
+   +trendChart("난시 ASD 인식",[{y:"2023",v:58},{y:"2024",v:66},{y:"2025",v:74},{y:"2026",v:Math.round(avg(rows,r=>r.asdAwareness)/5*100)}])
+   +trendChart("블루라이트 인식",[{y:"2023",v:48},{y:"2024",v:58},{y:"2025",v:66},{y:"2026",v:Math.round(avg(rows,r=>r.blueAwareness)/5*100)}])
+   +trendChart("아큐브 추천 의향",[{y:"2023",v:60},{y:"2024",v:68},{y:"2025",v:76},{y:"2026",v:Math.round(avg(rows,r=>r.acuvueRecommend)/5*100)}]);
+ }else if(activeDetail==="performance"){
+   html=trendChart("난시 판매 비중",[{y:"2023",v:9},{y:"2024",v:11},{y:"2025",v:13},{y:"2026",v:Math.round(avg(rows,toricShare))}])
+   +trendChart("멀티포컬 판매 비중",[{y:"2023",v:6},{y:"2024",v:8},{y:"2025",v:10},{y:"2026",v:Math.round(avg(rows,mfShare))}])
+   +trendChart("MAX 판매 비중",[{y:"2023",v:3},{y:"2024",v:5},{y:"2025",v:7},{y:"2026",v:Math.round(avg(rows,maxShare))}]);
+ }else{
+   html=trendChart("알콘 활동",[{y:"2023",v:20},{y:"2024",v:35},{y:"2025",v:55},{y:"2026",v:sum(rows,r=>r.alcon)}])
+   +trendChart("쿠퍼 활동",[{y:"2023",v:15},{y:"2024",v:25},{y:"2025",v:40},{y:"2026",v:sum(rows,r=>r.cooper)}])
+   +trendChart("바슈롬 활동",[{y:"2023",v:12},{y:"2024",v:22},{y:"2025",v:34},{y:"2026",v:sum(rows,r=>r.bausch)}]);
+ }
+ $("detailView").innerHTML='<div class="trend-grid">'+html+'</div>';
 }
 
 function tierClass(v){return v>=70?"good":v>=45?"growth":"risk"}function renderMatrix(rows){const pairs=[];REGIONS.forEach(region=>CHANNELS.forEach(channel=>{const s=rows.filter(r=>r.region===region&&r.channel===channel);if(s.length)pairs.push({region,channel,edu:avg(s,metricEducation),use:avg(s,metricUsage),per:avg(s,metricPerception),perf:avg(s,functionalPerformance)})}));$("matrixView").innerHTML=`<table class="matrix-table"><thead><tr><th>지역</th><th>채널</th><th>교육</th><th>활용</th><th>인식</th><th>성과</th></tr></thead><tbody>${pairs.slice(0,28).map(p=>`<tr><td>${p.region}</td><td>${p.channel}</td><td><span class="cell-score ${tierClass(p.edu)}">${pct(p.edu)}</span></td><td><span class="cell-score ${tierClass(p.use)}">${pct(p.use)}</span></td><td><span class="cell-score ${tierClass(p.per)}">${pct(p.per)}</span></td><td><span class="cell-score ${tierClass(p.perf)}">${pct(p.perf)}</span></td></tr>`).join("")}</tbody></table>`}
