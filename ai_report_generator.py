@@ -17,6 +17,8 @@ def count(rows, key):
 
 def rule_report(rows):
     total = len(rows)
+    new_rows = [r for r in rows if str(r.get('신규수집', '0')).strip() == '1']
+    new_total = len(new_rows)
     brand = count(rows, '브랜드')
     region = count(rows, '지역')
     typ = count(rows, '활동유형')
@@ -26,7 +28,7 @@ def rule_report(rows):
     return {
         'generated_at': dt.datetime.now().isoformat(timespec='seconds'),
         'source': 'rules' if not os.environ.get('OPENAI_API_KEY') else 'openai_failed_fallback',
-        'summary': f'총 {total}건의 경쟁사/안경원 현장 활동이 수집되었습니다. 주요 브랜드는 {top_brand}, 주요 지역은 {top_region}, 주요 활동은 {top_type}입니다.',
+        'summary': f'최근 7일 총 {total}건 중 이번 실행 신규 {new_total}건이 확인되었습니다. 주요 브랜드는 {top_brand}, 주요 지역은 {top_region}, 주요 활동은 {top_type}입니다.',
         'overall_interpretation': [
             f'경쟁사 크롤링 기준 주요 브랜드 집중도는 {top_brand}입니다.',
             f'지역 분포는 {top_region} 순으로 높습니다.',
@@ -37,7 +39,7 @@ def rule_report(rows):
             '프로모션/이벤트 게시글이 많은 경우 MAX, ASD, 멀티포컬 차별화 메시지를 먼저 배포하세요.',
             '교육/세미나 활동이 많은 지역은 안경사 대상 전문성 콘텐츠로 대응하세요.'
         ],
-        'weekly_report': f'이번 주/최근 수집 데이터 기준 {total}건이 확인되었습니다. {top_brand} / {top_region} / {top_type} 흐름을 우선 확인하세요.',
+        'weekly_report': f'최근 7일 기준 총 {total}건, 이번 실행 신규 {new_total}건이 확인되었습니다. {top_brand} / {top_region} / {top_type} 흐름을 우선 확인하세요.',
         'competitor_actions': [
             '상위 지역 담당자에게 경쟁사 활동 리스트를 공유하고 대응 콘텐츠 배포 여부를 확인하세요.',
             '반복 노출되는 브랜드/제품 키워드는 다음 교육 콘텐츠 주제에 반영하세요.',
@@ -46,11 +48,13 @@ def rule_report(rows):
     }
 
 def make_prompt(rows):
-    sample = rows[:80]
-    compact = [{k:r.get(k,'') for k in ['게시일','지역','브랜드','활동유형','제목','요약','검색어','블로그명']} for r in sample]
+    new_rows = [r for r in rows if str(r.get('신규수집', '0')).strip() == '1']
+    old_rows = [r for r in rows if str(r.get('신규수집', '0')).strip() != '1']
+    sample = (new_rows + old_rows)[:80]
+    compact = [{k:r.get(k,'') for k in ['게시일','신규수집','지역','브랜드','활동유형','제목','요약','검색어','블로그명']} for r in sample]
     return f'''
 너는 ACUVUE Professional Education 대시보드의 분석 AI다.
-아래 경쟁사/안경원 크롤링 데이터를 보고 한국어 JSON만 반환해라.
+아래 최근 7일 경쟁사/안경원 크롤링 데이터를 보고 한국어 JSON만 반환해라. 신규수집=1인 글을 가장 중요하게 분석하고, 기존 글은 7일 흐름 비교에만 활용해라.
 반드시 다음 키를 포함해라: summary, overall_interpretation, next_actions, weekly_report, competitor_actions.
 - overall_interpretation: 전체 데이터에 대한 해석 3~5개
 - next_actions: 교육팀이 실행할 액션 3~5개

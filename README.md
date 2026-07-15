@@ -28,3 +28,10 @@
 
 예:
 const AI_ENDPOINT = "https://your-render-service.onrender.com/insight";
+
+
+## 경쟁사 모니터링 운영 기준
+- 실행 주기: 매일 오전 8시(KST)
+- 저장 범위: 최근 7일
+- AI 요약: 직전 CSV와 URL을 비교해 `신규수집=1`인 글을 우선 분석
+- OpenAI API Key가 없으면 규칙 기반 요약으로 자동 대체

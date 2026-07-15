@@ -10,13 +10,12 @@ import urllib.parse
 import urllib.request
 from collections import OrderedDict
 
-TODAY = dt.datetime.now().date()
+KST = dt.timezone(dt.timedelta(hours=9))
+NOW = dt.datetime.now(KST)
+TODAY = NOW.date()
 
-# KPI 기준
-# - 최근 7일: 긴급 알림
-# - 최근 30일: 대시보드 경쟁사 KPI
-# - 최근 90일: 추세 관찰
-PERIOD_DAYS = 90
+# 대시보드와 AI 분석에는 최근 7일 데이터만 유지
+PERIOD_DAYS = 7
 
 REGIONS = ["서울","경기","인천","강원","충북","충남","대전","세종","전북","전남","광주","경북","경남","대구","울산","부산","제주"]
 
@@ -130,6 +129,8 @@ def build_row(item, query):
         "출처": "naver_blog_api",
         "검색어": query,
         "블로그명": blogger,
+        "수집일시": NOW.isoformat(timespec="seconds"),
+        "신규수집": 0,
         "알콘": 1 if brand == "알콘" else 0,
         "쿠퍼": 1 if brand == "쿠퍼" else 0,
         "바슈롬": 1 if brand == "바슈롬" else 0,
@@ -149,14 +150,24 @@ def main():
             "바슈롬 안경원 이벤트",
         ]
 
+    # 직전 결과의 URL과 비교해 이번 실행에서 처음 발견된 게시글을 표시
+    previous_path = Path("output/Competitor_Activity.csv")
+    previous_urls = set()
+    if previous_path.exists():
+        try:
+            with previous_path.open(encoding="utf-8-sig", newline="") as f:
+                previous_urls = {r.get("URL", "").strip() for r in csv.DictReader(f) if r.get("URL", "").strip() and r.get("URL") != "#"}
+        except Exception as e:
+            print("Previous CSV read failed:", repr(e))
+
     rows_by_url = OrderedDict()
 
     for q in queries:
         items = naver_search_blog(q, display=50, starts=(1, 51))
         for item in items:
             row = build_row(item, q)
-            # 최근 90일만 대시보드용으로 저장
-            if int(row["최근90일"]) != 1:
+            # 최근 7일만 대시보드와 AI 분석용으로 저장
+            if int(row["최근7일"]) != 1:
                 continue
 
             # 너무 무관한 결과는 제외. 단 검색어 브랜드가 있으면 유지.
@@ -167,6 +178,7 @@ def main():
                 continue
 
             key = row["URL"] or f"{row['제목']}_{row['게시일']}"
+            row["신규수집"] = 1 if row["URL"] and row["URL"] not in previous_urls else 0
             rows_by_url[key] = row
 
     rows = list(rows_by_url.values())
@@ -186,11 +198,13 @@ def main():
                 "브랜드": brand,
                 "활동유형": "검색결과 없음",
                 "제목": f"{q} 검색 결과 없음",
-                "요약": "네이버 검색 API는 호출됐지만 최근 90일 조건에 맞는 결과가 없거나 필터에서 제외되었습니다.",
+                "요약": "네이버 검색 API는 호출됐지만 최근 7일 조건에 맞는 결과가 없거나 필터에서 제외되었습니다.",
                 "URL": "#",
                 "출처": "naver_api_status",
                 "검색어": q,
                 "블로그명": "",
+                "수집일시": NOW.isoformat(timespec="seconds"),
+                "신규수집": 0,
                 "알콘": 1 if brand == "알콘" else 0,
                 "쿠퍼": 1 if brand == "쿠퍼" else 0,
                 "바슈롬": 1 if brand == "바슈롬" else 0,
@@ -201,7 +215,7 @@ def main():
     fieldnames = [
         "월","게시일","경과일","최근7일","최근30일","최근90일",
         "지역","브랜드","활동유형","제목","요약","URL","출처","검색어","블로그명",
-        "알콘","쿠퍼","바슈롬"
+        "수집일시","신규수집","알콘","쿠퍼","바슈롬"
     ]
     with (out / "Competitor_Activity.csv").open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
