@@ -1,1 +1,179 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ACUVUE Professional Experience Dashboard V3</title><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><link rel="stylesheet" href="./styles.css"></head><body><main class="shell"><header class="topbar"><div><p class="eyebrow">ACUVUE PROFESSIONAL EXPERIENCE</p><h1>교육 · 디지털 활용 · 전환 인사이트 대시보드</h1><p class="sub">검색/필터 → KPI 경고등 → 세부 지표 → 전체 해석/Next Action → 경쟁사 크롤링 → Follow-up 리스트</p></div><div class="actions"><label class="btn primary" for="fileInput">Excel/CSV 업로드</label><input id="fileInput" class="file" type="file" accept=".xlsx,.xls,.csv"><button class="btn" id="downloadTemplate">CSV 템플릿</button><button class="btn" id="downloadRecommended">추천 대상 CSV</button><button class="btn" id="resetBtn">샘플 복원</button></div></header><section class="filters"><div class="field search"><label>통합 검색</label><input id="searchBox" placeholder="안경사명, 안경원명, 안경원코드 입력"></div><div class="field"><label>지역</label><select id="regionFilter"><option value="all">전체</option></select></div><div class="field"><label>채널</label><select id="channelFilter"><option value="all">전체</option></select></div><div class="field"><label>연차</label><select id="yearFilter"><option value="all">전체</option><option>0~3년</option><option>4~7년</option><option>8~15년</option><option>15년+</option></select></div><button class="btn" id="clearBtn">초기화</button></section><section class="kpis"><article class="kpi"><span>대상 안경원</span><strong id="kpiStores">-</strong><small id="fileStatus">샘플 데이터</small></article><article class="kpi clickable active" data-detail="education" role="button" tabindex="0"><span>교육 참여도</span><div><strong id="kpiEducation">-</strong><i id="lightEducation" class="light"></i></div><small>온라인/온디맨드/오프라인</small></article><article class="kpi clickable" data-detail="usage" role="button" tabindex="0"><span>피팅 프로그램</span><div><strong id="kpiUsage">-</strong><i id="lightUsage" class="light"></i></div><small>스마트피팅/AI/시뮬레이터</small></article><article class="kpi clickable" data-detail="perception" role="button" tabindex="0"><span>안경사 인식</span><div><strong id="kpiPerception">-</strong><i id="lightPerception" class="light"></i></div><small>5개 인식 항목 평균</small></article><article class="kpi clickable" data-detail="performance" role="button" tabindex="0"><span>기능성렌즈 성과</span><div><strong id="kpiPerformance">-</strong><i id="lightPerformance" class="light"></i></div><small>난시/MF/MAX 비중</small></article><article class="kpi clickable" data-detail="competitor" role="button" tabindex="0"><span>경쟁사 활동</span><div><strong id="kpiCompetitor">-</strong><i id="lightCompetitor" class="light"></i></div><small>알콘/쿠퍼/바슈롬</small></article></section><section class="panel detail-panel"><div class="panel-head"><div><h2>세부 지표</h2><p>상단 KPI 카드를 클릭하면 선택한 항목의 상세 지표를 확인합니다.</p></div></div><div id="detailView" class="detail-view"></div></section><section class="main-grid"><section class="panel insight-panel"><div class="panel-head"><div><h2>전체 인사이트</h2><p id="insightSub">전체 데이터 기반 해석과 Next Action</p></div><span id="insightBadge" class="status watch">관찰/선택 성장</span></div><div class="insight-body" id="mainInsight"></div></section><section class="panel copilot-panel"><div class="panel-head"><div><h2>GPT 코파일럿</h2><p>현재 검색/필터 결과와 AI 리포트를 기준으로 질문하세요.</p></div><span class="status good">AI + 로직</span></div><div class="copilot-box"><div class="copilot-input-row"><input id="copilotQuestion" placeholder="예: 교육은 많이 듣는데 성과 낮은 안경사 찾아줘 / 성장 가능 안경원 알려줘"><button class="btn primary" id="copilotAsk">질문</button></div><div id="copilotAnswer" class="copilot-answer">질문을 입력하면 현재 필터 데이터 기준으로 분석합니다.</div></div></section></section><section class="analysis-grid"><article class="panel"><div class="panel-head"><div><h2>경쟁사 크롤링 리스트</h2><p>AI 주간 리포트와 경쟁사/안경원 현장 활동을 함께 확인합니다.</p></div></div><div id="crawlReport" class="crawl-report"></div><div id="competitorList" class="competitor-list"></div></article></section><section class="panel table-panel"><div class="panel-head"><div><h2>안경원 / 안경사 Follow-up 리스트</h2><p>추천 교육 사유와 우선순위를 확인합니다.</p></div><button class="btn" id="exportFiltered">현재 결과 CSV</button></div><div class="table-wrap"><table><thead><tr><th>안경원코드</th><th>안경원명</th><th>안경사</th><th>지역</th><th>채널</th><th>연차</th><th>교육</th><th>활용</th><th>인식</th><th>성과</th><th>추천교육</th><th>판정</th></tr></thead><tbody id="storeTable"></tbody></table></div></section></main><div class="modal" id="crawlModal"><div class="modal-card"><button class="modal-close" id="modalClose">×</button><p class="eyebrow">COMPETITOR ACTIVITY DETAIL</p><h2 id="modalTitle">-</h2><p class="modal-meta" id="modalMeta">-</p><p id="modalSummary">-</p><a id="modalLink" class="btn primary" target="_blank" rel="noopener">원문 열기</a></div></div><script src="./app.js"></script></body></html>
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ACUVUE Professional Experience Dashboard V3</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">ACUVUE PROFESSIONAL EXPERIENCE</p>
+        <h1>교육 · 디지털 활용 · 전환 인사이트 대시보드</h1>
+        <p class="sub">안경사ID 기반 엑셀 업로드 → KPI 경고등 → 세부 지표 → 교육 추천/Follow-up 리스트</p>
+      </div>
+      <div class="actions">
+        <label class="btn primary" for="fileInput">Excel/CSV 업로드</label>
+        <input id="fileInput" class="file" type="file" accept=".xlsx,.xls,.csv">
+        <button class="btn" id="downloadTemplate">플랫폼 템플릿 CSV</button>
+        <button class="btn" id="downloadRecommended">추천 대상 CSV</button>
+        <button class="btn" id="resetBtn">샘플 복원</button>
+      </div>
+    </header>
+
+    <section class="filters">
+      <div class="field search">
+        <label>통합 검색</label>
+        <input id="searchBox" placeholder="안경사ID, 안경사명, 안경원명, 안경원코드 입력">
+      </div>
+      <div class="field">
+        <label>지역</label>
+        <select id="regionFilter"><option value="all">전체</option></select>
+      </div>
+      <div class="field">
+        <label>채널</label>
+        <select id="channelFilter"><option value="all">전체</option></select>
+      </div>
+      <div class="field">
+        <label>연차/연령대</label>
+        <select id="yearFilter"><option value="all">전체</option></select>
+      </div>
+      <button class="btn" id="clearBtn">초기화</button>
+    </section>
+
+    <section class="kpis">
+      <article class="kpi">
+        <span>대상 안경사</span>
+        <strong id="kpiStores">-</strong>
+        <small id="fileStatus">샘플 데이터</small>
+      </article>
+      <article class="kpi clickable active" data-detail="education" role="button" tabindex="0">
+        <span>교육 참여도</span>
+        <div><strong id="kpiEducation">-</strong><i id="lightEducation" class="light"></i></div>
+        <small>온라인/온디맨드/오프라인</small>
+      </article>
+      <article class="kpi clickable" data-detail="usage" role="button" tabindex="0">
+        <span>디지털 활용</span>
+        <div><strong id="kpiUsage">-</strong><i id="lightUsage" class="light"></i></div>
+        <small>스마트피팅/AI/시뮬레이터</small>
+      </article>
+      <article class="kpi clickable" data-detail="perception" role="button" tabindex="0">
+        <span>안경사 인식</span>
+        <div><strong id="kpiPerception">-</strong><i id="lightPerception" class="light"></i></div>
+        <small>5개 인식 항목 평균</small>
+      </article>
+      <article class="kpi clickable" data-detail="performance" role="button" tabindex="0">
+        <span>기능성렌즈 성과</span>
+        <div><strong id="kpiPerformance">-</strong><i id="lightPerformance" class="light"></i></div>
+        <small>난시/MF/MAX 비중</small>
+      </article>
+      <article class="kpi clickable" data-detail="competitor" role="button" tabindex="0">
+        <span>경쟁사 활동</span>
+        <div><strong id="kpiCompetitor">-</strong><i id="lightCompetitor" class="light"></i></div>
+        <small>알콘/쿠퍼/바슈롬</small>
+      </article>
+    </section>
+
+    <section class="panel detail-panel">
+      <div class="panel-head">
+        <div>
+          <h2>세부 지표</h2>
+          <p>상단 KPI 카드를 클릭하면 선택한 항목의 상세 지표를 확인합니다.</p>
+        </div>
+      </div>
+      <div id="detailView" class="detail-view"></div>
+    </section>
+
+    <section class="main-grid">
+      <section class="panel insight-panel">
+        <div class="panel-head">
+          <div>
+            <h2>전체 인사이트</h2>
+            <p id="insightSub">전체 데이터 기반 해석과 Next Action</p>
+          </div>
+          <span id="insightBadge" class="status watch">관찰/선택 성장</span>
+        </div>
+        <div class="insight-body" id="mainInsight"></div>
+      </section>
+
+      <section class="panel copilot-panel">
+        <div class="panel-head">
+          <div>
+            <h2>GPT 코파일럿</h2>
+            <p>현재 검색/필터 결과와 AI 리포트를 기준으로 질문하세요.</p>
+          </div>
+          <span class="status good">AI + 로직</span>
+        </div>
+        <div class="copilot-box">
+          <div class="copilot-input-row">
+            <input id="copilotQuestion" placeholder="예: 교육은 많이 듣는데 성과 낮은 안경사 찾아줘 / 성장 가능 안경원 알려줘">
+            <button class="btn primary" id="copilotAsk">질문</button>
+          </div>
+          <div id="copilotAnswer" class="copilot-answer">질문을 입력하면 현재 필터 데이터 기준으로 분석합니다.</div>
+        </div>
+      </section>
+    </section>
+
+    <section class="analysis-grid">
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>경쟁사 크롤링 리스트</h2>
+            <p>AI 주간 리포트와 경쟁사/안경원 현장 활동을 함께 확인합니다.</p>
+          </div>
+        </div>
+        <div id="crawlReport" class="crawl-report"></div>
+        <div id="competitorList" class="competitor-list"></div>
+      </article>
+    </section>
+
+    <section class="panel table-panel">
+      <div class="panel-head">
+        <div>
+          <h2>안경원 / 안경사 Follow-up 리스트</h2>
+          <p>추천 교육 사유와 우선순위를 확인합니다.</p>
+        </div>
+        <button class="btn" id="exportFiltered">현재 결과 CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>안경사ID</th>
+              <th>안경원코드</th>
+              <th>안경원명</th>
+              <th>안경사</th>
+              <th>지역</th>
+              <th>채널</th>
+              <th>연차/연령대</th>
+              <th>교육</th>
+              <th>활용</th>
+              <th>인식</th>
+              <th>성과</th>
+              <th>추천교육</th>
+              <th>판정</th>
+            </tr>
+          </thead>
+          <tbody id="storeTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="crawlModal">
+    <div class="modal-card">
+      <button class="modal-close" id="modalClose">×</button>
+      <p class="eyebrow">COMPETITOR ACTIVITY DETAIL</p>
+      <h2 id="modalTitle">-</h2>
+      <p class="modal-meta" id="modalMeta">-</p>
+      <p id="modalSummary">-</p>
+      <a id="modalLink" class="btn primary" target="_blank" rel="noopener">원문 열기</a>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
