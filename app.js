@@ -41,5 +41,40 @@ function buildFilters(){const m={regionFilter:'지역',yearsFilter:'연차',tier
 async function upload(file){if(!window.XLSX){toast('엑셀 라이브러리를 불러오지 못했습니다. 인터넷/CDN 접근을 확인해 주세요.');return}const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});state.name=file.name;state.master=normMaster(sheet(wb,aliases.master));state.content=sheet(wb,aliases.content);state.edu=sheet(wb,aliases.edu);state.qm=normQm(sheet(wb,aliases.qm));state.perceptionRaw=sheet(wb,aliases.perception);state.perception=normPerception(state.perceptionRaw);state.sales=sheet(wb,aliases.sales);state.rec=normRec(sheet(wb,aliases.rec));state.delivery=sheet(wb,aliases.delivery);state.impact=sheet(wb,aliases.impact);buildFilters();render();$('uploadStatus').textContent=file.name;toast(`업로드 완료: 안경사 ${state.master.length}명, 인식 응답 ${state.perception.length}건`)}
 function download(){const rows=(state.filtered.length?state.filtered:filtered()).map(p=>{const m=person(p.안경사ID);return{안경사ID:p.안경사ID,안경사명:p.안경사명,안경원명:p.안경원명,지역:p.지역,연차:p.연차,Tier:p.Tier,채널:p.채널,담당영업사원:p.담당영업사원,교육수료율:m.eduRate,인식평균:m.pAvg,아큐브판매비중:m.acuvue,추천교육:m.topRec?(m.topRec.추천교육명||contentName(m.topRec.교육ID)):'',추천사유:m.topRec?.추천사유요약||'',우선순위:m.topRec?.우선순위||''}});const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'검색결과');XLSX.writeFile(wb,'ACUVUE_교육추천_검색결과.xlsx')}
 function seed(){state.master=normMaster([{안경사ID:'A001',안경사명:'홍길동',안경원명:'A안경원',지역:'서울',연차:'3년차',Tier:'Gold',채널:'I/O',담당영업사원:'김담당'},{안경사ID:'A002',안경사명:'김민지',안경원명:'B안경원',지역:'경기',연차:'5년차',Tier:'Silver',채널:'Top50',담당영업사원:'이담당'}]);state.content=[{교육ID:'E024',교육명:'숫자로 보는 난시'},{교육ID:'E003',교육명:'성공적인 멀티포컬 피팅'}];state.qm=normQm([{문항ID:'Q001',문항:'저난시도 교정해야 한다고 생각한다',인식영역:'난시/저난시',긍정방향:'높을수록 긍정',추천교육ID:'E024'},{문항ID:'Q002',문항:'멀티포컬 렌즈를 성공적으로 피팅할 자신이 있다',인식영역:'멀티포컬',긍정방향:'높을수록 긍정',추천교육ID:'E003'}]);state.perceptionRaw=[{안경사ID:'A001',조사일:'2026-07-01','Q001_저난시도 교정해야 한다고 생각한다':2,'Q002_멀티포컬 렌즈를 성공적으로 피팅할 자신이 있다':3},{안경사ID:'A002',조사일:'2026-07-01','Q001_저난시도 교정해야 한다고 생각한다':4,'Q002_멀티포컬 렌즈를 성공적으로 피팅할 자신이 있다':2}];state.perception=normPerception(state.perceptionRaw);state.rec=normRec([{안경사ID:'A001',추천교육명:'숫자로 보는 난시',추천사유요약:'저난시 인식 보완',우선순위:'높음'}]);buildFilters();render()}
-document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>view(t.dataset.view));$('workbookInput').onchange=e=>upload(e.target.files[0]).catch(err=>{console.error(err);toast('엑셀 업로드 오류')});$('runQuery').onclick=()=>{state.query=$('smartQuery').value;render();$('queryExplanation').textContent=`검색 조건 적용: ${state.query} / 결과 ${state.filtered.length}명`;view('segment')};$('smartQuery').onkeydown=e=>{if(e.key==='Enter')$('runQuery').click()};$('resetFilters').onclick=()=>{['regionFilter','yearsFilter','tierFilter','channelFilter','repFilter'].forEach(id=>$(id).value='');$('smartQuery').value='';state.query='';render()};$('downloadResults').onclick=download;document.querySelectorAll('.examples button').forEach(b=>b.onclick=()=>{$('smartQuery').value=b.dataset.query;state.query=b.dataset.query;render();view('segment')});seed()})
+
+function parseCsv(text){
+ const rows=[];let row=[],cell='',q=false;
+ for(let i=0;i<text.length;i++){
+  const ch=text[i],nx=text[i+1];
+  if(ch==='"'&&q&&nx==='"'){cell+='"';i++;continue}
+  if(ch==='"'){q=!q;continue}
+  if(ch===','&&!q){row.push(cell);cell='';continue}
+  if((ch==='\n'||ch==='\r')&&!q){if(ch==='\r'&&nx==='\n')i++;row.push(cell);if(row.some(v=>clean(v)!==''))rows.push(row);row=[];cell='';continue}
+  cell+=ch;
+ }
+ row.push(cell);if(row.some(v=>clean(v)!==''))rows.push(row);
+ if(!rows.length)return[];
+ const headers=rows.shift().map(h=>clean(h));
+ return rows.map(r=>Object.fromEntries(headers.map((h,i)=>[h,clean(r[i])])));
+}
+function renderExternal(rows,source='output/Competitor_Activity.csv'){
+ const box=$('externalInsight'); if(!box)return;
+ if(!rows||!rows.length){box.className='empty-state';box.innerHTML='경쟁사 크롤링 CSV를 찾지 못했습니다. file://로 열면 브라우저 보안 때문에 자동 fetch가 막힐 수 있으니, CSV 업로드 버튼을 사용하거나 로컬 서버로 열어주세요.';return}
+ const headers=Object.keys(rows[0]).slice(0,8);
+ const dateKey=headers.find(h=>/date|일자|날짜|등록|수집/i.test(h))||headers[0];
+ const titleKey=headers.find(h=>/title|제목|내용|활동|교육|제품|competitor|경쟁/i.test(h))||headers[1]||headers[0];
+ const brandKey=headers.find(h=>/brand|브랜드|competitor|경쟁사|회사/i.test(h));
+ const sample=rows.slice(0,80);
+ const byBrand={}; if(brandKey) rows.forEach(r=>{const b=r[brandKey]||'미분류';byBrand[b]=(byBrand[b]||0)+1});
+ const summary=brandKey?Object.entries(byBrand).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([b,c])=>`<span class="pill neutral">${esc(b)} ${c}건</span>`).join(' '):'';
+ box.className='';
+ box.innerHTML=`<div class="query-explanation"><b>${esc(source)}</b> 연결 완료 · ${rows.length}건 ${summary?'<br>'+summary:''}</div><div class="table-wrap"><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${sample.map(r=>`<tr>${headers.map(h=>`<td>${esc(r[h])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+async function loadCompetitorCsv(){
+ try{const res=await fetch('output/Competitor_Activity.csv',{cache:'no-store'}); if(!res.ok)throw new Error(String(res.status)); const text=await res.text(); renderExternal(parseCsv(text),'output/Competitor_Activity.csv');}
+ catch(e){renderExternal([])}
+}
+async function uploadCompetitorCsv(file){if(!file)return;const text=await file.text();renderExternal(parseCsv(text),file.name);toast('경쟁사 CSV 업로드 완료')}
+
+document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>view(t.dataset.view));$('workbookInput').onchange=e=>upload(e.target.files[0]).catch(err=>{console.error(err);toast('엑셀 업로드 오류')});$('runQuery').onclick=()=>{state.query=$('smartQuery').value;render();$('queryExplanation').textContent=`검색 조건 적용: ${state.query} / 결과 ${state.filtered.length}명`;view('segment')};$('smartQuery').onkeydown=e=>{if(e.key==='Enter')$('runQuery').click()};$('resetFilters').onclick=()=>{['regionFilter','yearsFilter','tierFilter','channelFilter','repFilter'].forEach(id=>$(id).value='');$('smartQuery').value='';state.query='';render()};$('downloadResults').onclick=download;document.querySelectorAll('.examples button').forEach(b=>b.onclick=()=>{$('smartQuery').value=b.dataset.query;state.query=b.dataset.query;render();view('segment')});if($('competitorInput'))$('competitorInput').onchange=e=>uploadCompetitorCsv(e.target.files[0]);loadCompetitorCsv();seed()})
 })();
