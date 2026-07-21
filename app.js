@@ -57,24 +57,61 @@ function parseCsv(text){
  const headers=rows.shift().map(h=>clean(h));
  return rows.map(r=>Object.fromEntries(headers.map((h,i)=>[h,clean(r[i])])));
 }
+function pickExternalColumns(headers){
+ return {
+  date:headers.find(h=>/date|일자|날짜|등록|수집|게시/i.test(h))||'',
+  title:headers.find(h=>/title|제목|headline|활동|교육|제품|내용|subject/i.test(h))||headers[1]||headers[0]||'',
+  brand:headers.find(h=>/brand|브랜드|competitor|경쟁사|회사|업체/i.test(h))||'',
+  url:headers.find(h=>/url|link|링크|주소|원문/i.test(h))||'',
+  summary:headers.find(h=>/summary|요약|description|desc|본문|내용|text/i.test(h))||''
+ };
+}
+function safeUrl(u){
+ const v=clean(u); if(!v) return '';
+ if(/^https?:\/\//i.test(v)) return v;
+ return '';
+}
 function renderExternal(rows,source='output/Competitor_Activity.csv'){
  const box=$('externalInsight'); if(!box)return;
+ const panel=$('externalDetailPanel'); if(panel) panel.hidden=true;
  if(!rows||!rows.length){box.className='empty-state';box.innerHTML='경쟁사 크롤링 CSV를 찾지 못했습니다. file://로 열면 브라우저 보안 때문에 자동 fetch가 막힐 수 있으니, CSV 업로드 버튼을 사용하거나 로컬 서버로 열어주세요.';return}
- const headers=Object.keys(rows[0]).slice(0,8);
- const dateKey=headers.find(h=>/date|일자|날짜|등록|수집/i.test(h))||headers[0];
- const titleKey=headers.find(h=>/title|제목|내용|활동|교육|제품|competitor|경쟁/i.test(h))||headers[1]||headers[0];
- const brandKey=headers.find(h=>/brand|브랜드|competitor|경쟁사|회사/i.test(h));
- const sample=rows.slice(0,80);
- const byBrand={}; if(brandKey) rows.forEach(r=>{const b=r[brandKey]||'미분류';byBrand[b]=(byBrand[b]||0)+1});
- const summary=brandKey?Object.entries(byBrand).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([b,c])=>`<span class="pill neutral">${esc(b)} ${c}건</span>`).join(' '):'';
+ window.__competitorRows=rows;
+ const headers=Object.keys(rows[0]);
+ const cols=pickExternalColumns(headers);
+ const preferred=[cols.date,cols.brand,cols.title,cols.summary,cols.url].filter(Boolean);
+ const rest=headers.filter(h=>!preferred.includes(h));
+ const showHeaders=[...preferred,...rest].slice(0,8);
+ const byBrand={}; if(cols.brand) rows.forEach(r=>{const b=r[cols.brand]||'미분류';byBrand[b]=(byBrand[b]||0)+1});
+ const summary=cols.brand?Object.entries(byBrand).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([b,c])=>`<span class="pill neutral">${esc(b)} ${c}건</span>`).join(' '):'';
  box.className='';
- box.innerHTML=`<div class="query-explanation"><b>${esc(source)}</b> 연결 완료 · ${rows.length}건 ${summary?'<br>'+summary:''}</div><div class="table-wrap"><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${sample.map(r=>`<tr>${headers.map(h=>`<td>${esc(r[h])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+ box.innerHTML=`<div class="query-explanation"><b>${esc(source)}</b> 연결 완료 · ${rows.length}건<br>행을 클릭하면 상세 내용과 원문 링크를 확인할 수 있습니다.${summary?'<br>'+summary:''}</div><div class="table-wrap"><table><thead><tr>${showHeaders.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.slice(0,200).map((r,idx)=>`<tr data-idx="${idx}">${showHeaders.map(h=>`<td>${formatExternalCell(r[h],h,cols)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+ box.querySelectorAll('tbody tr[data-idx]').forEach(tr=>tr.onclick=()=>showExternalDetail(rows[Number(tr.dataset.idx)], cols, source));
 }
+function formatExternalCell(v,h,cols){
+ const value=clean(v);
+ if(!value) return '';
+ if(h===cols.url && safeUrl(value)) return `<span class="link-pill">원문 링크</span>`;
+ return esc(value.length>140?value.slice(0,140)+'…':value);
+}
+function showExternalDetail(row, cols, source){
+ const panel=$('externalDetailPanel'), box=$('externalDetail'); if(!panel||!box)return;
+ const headers=Object.keys(row);
+ const title=clean(row[cols.title])||'제목 없음';
+ const url=safeUrl(row[cols.url]);
+ const bodyKey=cols.summary||headers.find(h=>/본문|내용|text|description|summary|요약/i.test(h));
+ const body=clean(row[bodyKey])||'';
+ const primary=[cols.date,cols.brand,cols.title].filter(Boolean);
+ const others=headers.filter(h=>!primary.includes(h)&&h!==cols.url&&h!==bodyKey);
+ box.innerHTML=`<div class="detail-title">${esc(title)}</div>${url?`<div><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">원문 열기</a></div>`:''}${body?`<div class="detail-body">${esc(body)}</div>`:''}<div class="detail-grid">${[...primary,...others].filter(Boolean).map(h=>`<div class="detail-item"><small>${esc(h)}</small>${esc(row[h])}</div>`).join('')}</div><div class="query-explanation">출처 파일: ${esc(source)}</div>`;
+ panel.hidden=false;
+ panel.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
 async function loadCompetitorCsv(){
  try{const res=await fetch('output/Competitor_Activity.csv',{cache:'no-store'}); if(!res.ok)throw new Error(String(res.status)); const text=await res.text(); renderExternal(parseCsv(text),'output/Competitor_Activity.csv');}
  catch(e){renderExternal([])}
 }
 async function uploadCompetitorCsv(file){if(!file)return;const text=await file.text();renderExternal(parseCsv(text),file.name);toast('경쟁사 CSV 업로드 완료')}
 
-document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>view(t.dataset.view));$('workbookInput').onchange=e=>upload(e.target.files[0]).catch(err=>{console.error(err);toast('엑셀 업로드 오류')});$('runQuery').onclick=()=>{state.query=$('smartQuery').value;render();$('queryExplanation').textContent=`검색 조건 적용: ${state.query} / 결과 ${state.filtered.length}명`;view('segment')};$('smartQuery').onkeydown=e=>{if(e.key==='Enter')$('runQuery').click()};$('resetFilters').onclick=()=>{['regionFilter','yearsFilter','tierFilter','channelFilter','repFilter'].forEach(id=>$(id).value='');$('smartQuery').value='';state.query='';render()};$('downloadResults').onclick=download;document.querySelectorAll('.examples button').forEach(b=>b.onclick=()=>{$('smartQuery').value=b.dataset.query;state.query=b.dataset.query;render();view('segment')});if($('competitorInput'))$('competitorInput').onchange=e=>uploadCompetitorCsv(e.target.files[0]);loadCompetitorCsv();seed()})
+document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>view(t.dataset.view));$('workbookInput').onchange=e=>upload(e.target.files[0]).catch(err=>{console.error(err);toast('엑셀 업로드 오류')});$('runQuery').onclick=()=>{state.query=$('smartQuery').value;render();$('queryExplanation').textContent=`검색 조건 적용: ${state.query} / 결과 ${state.filtered.length}명`;view('segment')};$('smartQuery').onkeydown=e=>{if(e.key==='Enter')$('runQuery').click()};$('resetFilters').onclick=()=>{['regionFilter','yearsFilter','tierFilter','channelFilter','repFilter'].forEach(id=>$(id).value='');$('smartQuery').value='';state.query='';render()};$('downloadResults').onclick=download;document.querySelectorAll('.examples button').forEach(b=>b.onclick=()=>{$('smartQuery').value=b.dataset.query;state.query=b.dataset.query;render();view('segment')});if($('competitorInput'))$('competitorInput').onchange=e=>uploadCompetitorCsv(e.target.files[0]);if($('closeExternalDetail'))$('closeExternalDetail').onclick=()=>{$('externalDetailPanel').hidden=true};loadCompetitorCsv();seed()})
 })();
