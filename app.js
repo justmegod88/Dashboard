@@ -340,8 +340,8 @@
     const groupDelta = cur != null && group != null ? cur - group : null;
     return kpi(
       PRODUCT_RULES[key].label,
-      `${rate(cur)} (vs PY)`,
-      `<span class="delta ${deltaClass(groupDelta)}">Group ${pp(groupDelta)}</span>`
+      `전년 대비 ${rate(cur)}`,
+      `<span class="delta ${deltaClass(groupDelta)}">전체 대비 ${pp(groupDelta)}</span>`
     );
   }
 
