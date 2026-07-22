@@ -1,88 +1,143 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ACUVUE 교육 추천 대시보드</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-<header class="app-header">
-  <div>
-    <p class="eyebrow">ACUVUE EDUCATION RECOMMENDATION</p>
-    <h1>교육 · 인식문항 · 제품군 성장률 대시보드</h1>
-    <p>교육 완료, 인식 목표 도달, 난시·멀티포컬·MAX 성장률을 한 화면에서 확인합니다.</p>
-  </div>
-  <div class="header-actions">
-    <label class="button primary" for="workbookInput">통합 엑셀 업로드</label>
-    <input id="workbookInput" type="file" accept=".xlsx,.xls" hidden>
-    <button class="button" id="downloadResults">현재 대상 다운로드</button>
-    <span class="upload-status" id="uploadStatus">데모 데이터</span>
-  </div>
-</header>
-<nav class="tabs">
-  <button class="tab active" data-view="overview">대시보드</button>
-  <button class="tab" data-view="segment">안경사 분석</button>
-  <button class="tab" data-view="recommendation">교육 추천 운영</button>
-  <button class="tab" data-view="external">외부 인사이트</button>
-</nav>
-<main>
-  <section class="search-shell">
-    <div class="smart-search">
-      <label for="smartQuery">스마트 검색 / 조건 검색</label>
-      <div class="search-row">
-        <input id="smartQuery" placeholder="예: MAX 멀티포컬 교육이 필요한 안경사 / 3년차 중 난시 인식 Gap / 교육 미완료 고우선순위 대상">
-        <button class="button primary" id="runQuery">찾기</button>
-        <button class="button" id="clearQuery">초기화</button>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">ACUVUE EDUCATION RECOMMENDATION</p>
+      <h1>교육 · 인식문항 · 제품군 성장률 대시보드</h1>
+      <p>교육 완료, 인식 목표 도달, 난시·멀티포컬·MAX 성장률을 한 화면에서 확인합니다.</p>
+    </div>
+    <div class="header-actions">
+      <label class="button primary" for="workbookInput">통합 엑셀 업로드</label>
+      <input id="workbookInput" type="file" accept=".xlsx,.xls" hidden />
+      <button class="button" id="downloadResults">현재 대상 다운로드</button>
+      <span class="upload-status" id="uploadStatus">데모 데이터</span>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-view="overview">대시보드</button>
+    <button class="tab" data-view="segment">안경사 분석</button>
+    <button class="tab" data-view="recommendation">교육 추천 운영</button>
+    <button class="tab" data-view="external">외부 인사이트</button>
+  </nav>
+
+  <main>
+    <section class="search-shell">
+      <div class="smart-search">
+        <label for="smartQuery">스마트 검색 / 조건 검색</label>
+        <div class="search-row">
+          <input id="smartQuery" placeholder="예: MAX 멀티포컬 교육이 필요한 안경사 / 3년차 중 난시 인식 Gap / 교육 미완료 고우선순위 대상" />
+          <button class="button primary" id="runQuery">찾기</button>
+          <button class="button" id="clearQuery">초기화</button>
+        </div>
+        <p class="hint">연차, 제품군, 인식 Gap, 교육 미완료, 성장률, 우선순위 키워드를 규칙 기반으로 해석합니다.</p>
       </div>
-      <p class="hint">연차, 제품군, 인식 Gap, 교육 미완료, 성장률, 우선순위 키워드를 규칙 기반으로 해석합니다.</p>
-    </div>
-    <div class="filters">
-      <label>지역<select id="regionFilter"><option value="">전체</option></select></label>
-      <label>연차<select id="yearsFilter"><option value="">전체</option></select></label>
-      <label>Tier<select id="tierFilter"><option value="">전체</option></select></label>
-      <label>채널<select id="channelFilter"><option value="">전체</option></select></label>
-      <label>담당영업사원<select id="repFilter"><option value="">전체</option></select></label>
-      <button class="button ghost" id="resetFilters">필터 초기화</button>
-    </div>
-    <div id="queryExplanation" class="query-explanation">필터를 선택하거나 검색어를 입력하세요.</div>
-  </section>
-  <section id="overview" class="view active">
-    <div class="kpi-grid" id="kpiGrid"></div>
-    <div class="two-col">
+      <div class="filters">
+        <label>지역<select id="regionFilter"><option value="">전체</option></select></label>
+        <label>연차<select id="yearsFilter"><option value="">전체</option></select></label>
+        <label>Tier<select id="tierFilter"><option value="">전체</option></select></label>
+        <label>채널<select id="channelFilter"><option value="">전체</option></select></label>
+        <label>담당영업사원<select id="repFilter"><option value="">전체</option></select></label>
+        <button class="button ghost" id="resetFilters">필터 초기화</button>
+      </div>
+      <div id="queryExplanation" class="query-explanation">필터를 선택하거나 검색어를 입력하세요.</div>
+    </section>
+
+    <section id="overview" class="view active">
+      <div class="kpi-grid" id="kpiGrid"></div>
+      <div class="two-col">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>현재 그룹의 핵심 Gap</h2>
+              <p>상단 KPI는 성과, 이 영역은 개선 필요 대상을 보여줍니다.</p>
+            </div>
+          </div>
+          <div id="gapCards" class="gap-grid"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>인식 Gap TOP 문항</h2>
+              <p>가장 많이 목표 응답에서 벗어난 문항입니다.</p>
+            </div>
+          </div>
+          <div id="questionTop"></div>
+        </article>
+      </div>
       <article class="panel">
-        <div class="panel-head"><div><h2>현재 그룹의 핵심 Gap</h2><p>상단 KPI는 성과, 이 영역은 개선 필요 대상을 보여줍니다.</p></div></div>
-        <div id="gapCards" class="gap-grid"></div>
+        <div class="panel-head">
+          <div>
+            <h2>추천 교육 TOP</h2>
+            <p>현재 필터 그룹에 가장 많이 추천된 교육입니다.</p>
+          </div>
+        </div>
+        <div id="topEducation"></div>
       </article>
+    </section>
+
+    <section id="segment" class="view">
       <article class="panel">
-        <div class="panel-head"><div><h2>인식 Gap TOP 문항</h2><p>가장 많이 목표 응답에서 벗어난 문항입니다.</p></div></div>
-        <div id="questionTop"></div>
+        <div class="panel-head">
+          <div><h2>안경사 분석</h2><p>행을 클릭하면 상세 카드가 아래에 열립니다.</p></div>
+          <span id="resultCount"></span>
+        </div>
+        <div id="segmentSummary"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>안경사</th><th>안경원</th><th>연차/Tier</th><th>교육완료</th><th>인식 Gap</th><th>난시 성장률</th><th>MF 성장률</th><th>MAX 성장률</th><th>추천교육</th><th>우선순위</th></tr>
+            </thead>
+            <tbody id="segmentTable"></tbody>
+          </table>
+        </div>
       </article>
-    </div>
-    <article class="panel">
-      <div class="panel-head"><div><h2>추천 교육 TOP</h2><p>현재 필터 그룹에 가장 많이 추천된 교육입니다.</p></div></div>
-      <div id="topEducation"></div>
-    </article>
-  </section>
-  <section id="segment" class="view">
-    <article class="panel">
-      <div class="panel-head"><div><h2>안경사 분석</h2><p>행을 클릭하면 상세 카드가 아래에 열립니다.</p></div><span id="resultCount"></span></div>
-      <div id="segmentSummary"></div>
-      <div class="table-wrap"><table><thead><tr><th>안경사</th><th>안경원</th><th>연차/Tier</th><th>교육완료</th><th>인식 Gap</th><th>난시 성장률</th><th>MF 성장률</th><th>MAX 성장률</th><th>추천교육</th><th>우선순위</th></tr></thead><tbody id="segmentTable"></tbody></table></div>
-    </article>
-    <article class="panel" id="profilePanel" hidden><div class="panel-head"><div><h2>Optician 360</h2><p>선택한 안경사의 문항별 Gap과 성장률입니다.</p></div><button class="button ghost" id="closeProfile">닫기</button></div><div id="profileContent"></div></article>
-  </section>
-  <section id="recommendation" class="view">
-    <div class="kpi-grid compact" id="recommendationKpis"></div>
-    <article class="panel"><div class="panel-head"><div><h2>교육 추천 운영 리스트</h2><p>우선순위, 발송상태, 완료여부, 후속조치를 자동 계산합니다.</p></div></div><div class="table-wrap"><table><thead><tr><th>안경사</th><th>추천교육</th><th>추천근거</th><th>인식 Gap</th><th>성장률</th><th>우선순위</th><th>발송상태</th><th>완료여부</th><th>후속조치</th></tr></thead><tbody id="recommendationTable"></tbody></table></div></article>
-  </section>
-  <section id="external" class="view">
-    <article class="panel"><div class="panel-head"><div><h2>경쟁사 활동 · 외부 인사이트</h2><p>지정 키워드가 포함된 CSV 행만 표시합니다.</p></div><div class="header-actions"><label class="button" for="competitorInput">경쟁사 CSV 업로드</label><input id="competitorInput" type="file" accept=".csv" hidden><span class="badge neutral">보조지표</span></div></div><div id="externalInsight" class="empty-state">output/Competitor_Activity.csv 자동 연결을 시도합니다. 안 되면 CSV를 직접 업로드하세요.</div></article>
-    <article class="panel" id="externalDetailPanel" hidden><div class="panel-head"><div><h2>경쟁사 활동 상세</h2></div><button class="button ghost" id="closeExternalDetail">닫기</button></div><div id="externalDetail" class="external-detail"></div></article>
-  </section>
-</main>
-<div id="toast" class="toast"></div>
-<script src="app.js"></script>
+      <article class="panel" id="profilePanel" hidden>
+        <div class="panel-head">
+          <div><h2>Optician 360</h2><p>선택한 안경사의 문항별 Gap과 성장률입니다.</p></div>
+          <button class="button ghost" id="closeProfile">닫기</button>
+        </div>
+        <div id="profileContent"></div>
+      </article>
+    </section>
+
+    <section id="recommendation" class="view">
+      <div class="kpi-grid compact" id="recommendationKpis"></div>
+      <article class="panel">
+        <div class="panel-head"><div><h2>교육 추천 운영 리스트</h2><p>우선순위, 발송상태, 완료여부, 후속조치를 자동 계산합니다.</p></div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>안경사</th><th>추천교육</th><th>추천근거</th><th>인식 Gap</th><th>성장률</th><th>우선순위</th><th>발송상태</th><th>완료여부</th><th>후속조치</th></tr></thead>
+            <tbody id="recommendationTable"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section id="external" class="view">
+      <article class="panel">
+        <div class="panel-head">
+          <div><h2>경쟁사 활동 · 외부 인사이트</h2><p>지정 키워드가 포함된 CSV 행만 표시합니다.</p></div>
+          <div class="header-actions"><label class="button" for="competitorInput">경쟁사 CSV 업로드</label><input id="competitorInput" type="file" accept=".csv" hidden /><span class="badge neutral">보조지표</span></div>
+        </div>
+        <div id="externalInsight" class="empty-state">output/Competitor_Activity.csv 자동 연결을 시도합니다. 안 되면 CSV를 직접 업로드하세요.</div>
+      </article>
+      <article class="panel" id="externalDetailPanel" hidden>
+        <div class="panel-head"><div><h2>경쟁사 활동 상세</h2></div><button class="button ghost" id="closeExternalDetail">닫기</button></div>
+        <div id="externalDetail" class="external-detail"></div>
+      </article>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
 </body>
 </html>
