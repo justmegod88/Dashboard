@@ -11,8 +11,8 @@
 <header class="app-header">
   <div>
     <p class="eyebrow">ACUVUE EDUCATION RECOMMENDATION</p>
-    <h1>교육 · 인식문항 · 피팅/판매 기반 추천 대시보드</h1>
-    <p>평균 인식점수 대신 문항별 Gap과 실제 엑셀 데이터 기반 KPI를 확인합니다.</p>
+    <h1>교육 · 인식문항 · 제품군 성장률 대시보드</h1>
+    <p>교육 완료, 인식 목표 도달, 난시·멀티포컬·MAX 성장률을 한 화면에서 확인합니다.</p>
   </div>
   <div class="header-actions">
     <label class="button primary" for="workbookInput">통합 엑셀 업로드</label>
@@ -21,14 +21,12 @@
     <span class="upload-status" id="uploadStatus">데모 데이터</span>
   </div>
 </header>
-
 <nav class="tabs">
   <button class="tab active" data-view="overview">대시보드</button>
   <button class="tab" data-view="segment">안경사 분석</button>
   <button class="tab" data-view="recommendation">교육 추천 운영</button>
   <button class="tab" data-view="external">외부 인사이트</button>
 </nav>
-
 <main>
   <section class="search-shell">
     <div class="smart-search">
@@ -50,12 +48,11 @@
     </div>
     <div id="queryExplanation" class="query-explanation">필터를 선택하거나 검색어를 입력하세요.</div>
   </section>
-
   <section id="overview" class="view active">
     <div class="kpi-grid" id="kpiGrid"></div>
     <div class="two-col">
       <article class="panel">
-        <div class="panel-head"><div><h2>현재 그룹의 핵심 Gap</h2><p>교육·인식·성장률을 분리해 봅니다.</p></div></div>
+        <div class="panel-head"><div><h2>현재 그룹의 핵심 Gap</h2><p>상단 KPI는 성과, 이 영역은 개선 필요 대상을 보여줍니다.</p></div></div>
         <div id="gapCards" class="gap-grid"></div>
       </article>
       <article class="panel">
@@ -68,42 +65,20 @@
       <div id="topEducation"></div>
     </article>
   </section>
-
   <section id="segment" class="view">
     <article class="panel">
       <div class="panel-head"><div><h2>안경사 분석</h2><p>행을 클릭하면 상세 카드가 아래에 열립니다.</p></div><span id="resultCount"></span></div>
       <div id="segmentSummary"></div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>안경사</th><th>안경원</th><th>연차/Tier</th><th>교육완료</th><th>인식 Gap</th><th>신규고객수</th><th>성장률</th><th>추천교육</th><th>우선순위</th></tr></thead>
-          <tbody id="segmentTable"></tbody>
-        </table>
-      </div>
+      <div class="table-wrap"><table><thead><tr><th>안경사</th><th>안경원</th><th>연차/Tier</th><th>교육완료</th><th>인식 Gap</th><th>난시 성장률</th><th>MF 성장률</th><th>MAX 성장률</th><th>추천교육</th><th>우선순위</th></tr></thead><tbody id="segmentTable"></tbody></table></div>
     </article>
-    <article class="panel" id="profilePanel" hidden>
-      <div class="panel-head"><div><h2>Optician 360</h2><p>선택한 안경사의 문항별 Gap과 추천 근거입니다.</p></div><button class="button ghost" id="closeProfile">닫기</button></div>
-      <div id="profileContent"></div>
-    </article>
+    <article class="panel" id="profilePanel" hidden><div class="panel-head"><div><h2>Optician 360</h2><p>선택한 안경사의 문항별 Gap과 성장률입니다.</p></div><button class="button ghost" id="closeProfile">닫기</button></div><div id="profileContent"></div></article>
   </section>
-
   <section id="recommendation" class="view">
     <div class="kpi-grid compact" id="recommendationKpis"></div>
-    <article class="panel">
-      <div class="panel-head"><div><h2>교육 추천 운영 리스트</h2><p>우선순위, 발송상태, 완료여부, 후속조치를 자동 계산합니다.</p></div></div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>안경사</th><th>추천교육</th><th>추천근거</th><th>인식 Gap</th><th>신규/성장</th><th>우선순위</th><th>발송상태</th><th>완료여부</th><th>후속조치</th></tr></thead>
-          <tbody id="recommendationTable"></tbody>
-        </table>
-      </div>
-    </article>
+    <article class="panel"><div class="panel-head"><div><h2>교육 추천 운영 리스트</h2><p>우선순위, 발송상태, 완료여부, 후속조치를 자동 계산합니다.</p></div></div><div class="table-wrap"><table><thead><tr><th>안경사</th><th>추천교육</th><th>추천근거</th><th>인식 Gap</th><th>성장률</th><th>우선순위</th><th>발송상태</th><th>완료여부</th><th>후속조치</th></tr></thead><tbody id="recommendationTable"></tbody></table></div></article>
   </section>
-
   <section id="external" class="view">
-    <article class="panel">
-      <div class="panel-head"><div><h2>경쟁사 활동 · 외부 인사이트</h2><p>지정 키워드가 포함된 CSV 행만 표시합니다.</p></div><div class="header-actions"><label class="button" for="competitorInput">경쟁사 CSV 업로드</label><input id="competitorInput" type="file" accept=".csv" hidden><span class="badge neutral">보조지표</span></div></div>
-      <div id="externalInsight" class="empty-state">output/Competitor_Activity.csv 자동 연결을 시도합니다. 안 되면 CSV를 직접 업로드하세요.</div>
-    </article>
+    <article class="panel"><div class="panel-head"><div><h2>경쟁사 활동 · 외부 인사이트</h2><p>지정 키워드가 포함된 CSV 행만 표시합니다.</p></div><div class="header-actions"><label class="button" for="competitorInput">경쟁사 CSV 업로드</label><input id="competitorInput" type="file" accept=".csv" hidden><span class="badge neutral">보조지표</span></div></div><div id="externalInsight" class="empty-state">output/Competitor_Activity.csv 자동 연결을 시도합니다. 안 되면 CSV를 직접 업로드하세요.</div></article>
     <article class="panel" id="externalDetailPanel" hidden><div class="panel-head"><div><h2>경쟁사 활동 상세</h2></div><button class="button ghost" id="closeExternalDetail">닫기</button></div><div id="externalDetail" class="external-detail"></div></article>
   </section>
 </main>
