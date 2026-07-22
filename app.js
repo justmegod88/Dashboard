@@ -5,7 +5,7 @@
 
   const state = {
     master: [], content: [], edu: [], perRaw: [], per: [], qm: [],
-    sales: [], rec: [], send: [], filtered: [], query: '', competitorRows: []
+    sales: [], rec: [], send: [], filtered: [], query: '', gapFilter: '', competitorRows: []
   };
 
   // Performance indexes/caches
@@ -336,11 +336,13 @@
 
   function kpiGrowth(key, rows, peerRows) {
     const cur = avg(rows, (r) => metrics(r.안경사ID).growths[key].cur);
-    const py = avg(rows, (r) => metrics(r.안경사ID).growths[key].py);
     const group = avg(peerRows, (r) => metrics(r.안경사ID).growths[key].cur);
-    const pyDelta = cur != null && py != null ? cur - py : null;
     const groupDelta = cur != null && group != null ? cur - group : null;
-    return kpi(PRODUCT_RULES[key].label, rate(cur), `<span class="delta ${deltaClass(pyDelta)}">PY ${pp(pyDelta)}</span> / <span class="delta ${deltaClass(groupDelta)}">Group ${pp(groupDelta)}</span>`);
+    return kpi(
+      PRODUCT_RULES[key].label,
+      `${rate(cur)} (vs PY)`,
+      `<span class="delta ${deltaClass(groupDelta)}">Group ${pp(groupDelta)}</span>`
+    );
   }
 
   function filterByDropdown() {
@@ -356,26 +358,41 @@
   function filtered() {
     let rows = filterByDropdown();
     const q = clean(state.query);
-    if (!q) return rows;
 
-    const y = (q.match(/(\d+)\s*년차/) || [])[1];
-    if (y) rows = rows.filter((r) => clean(r.연차).includes(y));
+    if (q) {
+      const y = (q.match(/(\d+)\s*년차/) || [])[1];
+      if (y) rows = rows.filter((r) => clean(r.연차).includes(y));
 
-    const wantGap = /인식|Gap|갭|문항/.test(q);
-    const eduIncomplete = /미완료|미수료|교육.*필요/.test(q);
-    const salesLow = /성장률.*낮|성장.*낮|판매.*낮|미전환|성장률 음수/.test(q);
-    const high = /고우선|높음|우선순위/.test(q);
-    const text = q.replace(/\d+\s*년차|MAX|맥스|멀티포컬|다초점|난시|저난시|ASD|토릭|인식|Gap|갭|문항|미완료|미수료|교육|필요|성장률|성장|판매|낮은|안경사|고우선|높음|우선순위|음수|중/g, '').trim();
-    if (text.length >= 2) rows = rows.filter((r) => [r.안경사ID, r.안경사명, r.안경원명, r.지역, r.Tier, r.채널, r.담당영업사원].join(' ').includes(text));
+      const wantGap = /인식|Gap|갭|문항/.test(q);
+      const eduIncomplete = /미완료|미수료|교육.*필요/.test(q);
+      const salesLow = /성장률.*낮|성장.*낮|판매.*낮|미전환|성장률 음수|역성장/.test(q);
+      const high = /고우선|높음|우선순위/.test(q);
+      const text = q.replace(/\d+\s*년차|MAX|맥스|멀티포컬|다초점|난시|저난시|ASD|토릭|인식|Gap|갭|문항|미완료|미수료|교육|필요|성장률|성장|판매|낮은|안경사|고우선|높음|우선순위|음수|역성장|중/g, '').trim();
+      if (text.length >= 2) rows = rows.filter((r) => [r.안경사ID, r.안경사명, r.안경원명, r.지역, r.Tier, r.채널, r.담당영업사원].join(' ').includes(text));
 
-    return rows.filter((r) => {
-      const m = metrics(r.안경사ID);
-      if (wantGap && !m.gaps.length) return false;
-      if (eduIncomplete && !(m.eduRate == null || m.eduRate < 1)) return false;
-      if (salesLow && !(avg([m.growths.ast.cur, m.growths.mf.cur, m.growths.max.cur], (x) => x) < 0)) return false;
-      if (high && m.priority !== '높음') return false;
-      return true;
-    });
+      rows = rows.filter((r) => {
+        const m = metrics(r.안경사ID);
+        if (wantGap && !m.gaps.length) return false;
+        if (eduIncomplete && !(m.eduRate == null || m.eduRate < 1)) return false;
+        if (salesLow && !(avg([m.growths.ast.cur, m.growths.mf.cur, m.growths.max.cur], (x) => x) < 0)) return false;
+        if (high && m.priority !== '높음') return false;
+        return true;
+      });
+    }
+
+    if (state.gapFilter) {
+      rows = rows.filter((r) => {
+        const m = metrics(r.안경사ID);
+        if (state.gapFilter === 'educationIncomplete') return m.eduRate == null || m.eduRate < 1;
+        if (state.gapFilter === 'perceptionGap') return m.gaps.length > 0;
+        if (state.gapFilter === 'astNegative') return m.growths.ast.cur != null && m.growths.ast.cur < 0;
+        if (state.gapFilter === 'mfNegative') return m.growths.mf.cur != null && m.growths.mf.cur < 0;
+        if (state.gapFilter === 'maxNegative') return m.growths.max.cur != null && m.growths.max.cur < 0;
+        return true;
+      });
+    }
+
+    return rows;
   }
 
   function render() {
@@ -398,12 +415,39 @@
 
     const eduIncomplete = ms.filter((m) => m.eduRate == null || m.eduRate < 1).length;
     const gapPeople = ms.filter((m) => m.gaps.length).length;
-    const growthNeg = ms.filter((m) => avg([m.growths.ast.cur, m.growths.mf.cur, m.growths.max.cur], (x) => x) < 0).length;
-    $('gapCards').innerHTML = [
-      ['education', '교육 미완료', eduIncomplete],
-      ['perception', '인식 목표 미달', gapPeople],
-      ['sales', '성장률 음수', growthNeg]
-    ].map((x) => `<div class="gap-card ${x[0]}"><span>${x[1]}</span><b>${x[2]}명</b><small>현재 그룹 기준</small></div>`).join('');
+    const astNegative = ms.filter((m) => m.growths.ast.cur != null && m.growths.ast.cur < 0).length;
+    const mfNegative = ms.filter((m) => m.growths.mf.cur != null && m.growths.mf.cur < 0).length;
+    const maxNegative = ms.filter((m) => m.growths.max.cur != null && m.growths.max.cur < 0).length;
+
+    const gapItems = [
+      ['education', '교육 미완료', eduIncomplete, 'educationIncomplete'],
+      ['perception', '인식 목표 미달', gapPeople, 'perceptionGap'],
+      ['sales ast', '난시 역성장', astNegative, 'astNegative'],
+      ['sales mf', '멀티포컬 역성장', mfNegative, 'mfNegative'],
+      ['sales max', 'MAX 역성장', maxNegative, 'maxNegative']
+    ];
+
+    $('gapCards').innerHTML = gapItems.map((x) => `<div class="gap-card ${x[0]}" data-gap="${x[3]}" role="button" tabindex="0"><span>${x[1]}</span><b>${x[2]}명</b><small>클릭 시 대상 리스트 보기</small></div>`).join('');
+
+    document.querySelectorAll('#gapCards .gap-card').forEach((card) => {
+      const run = () => {
+        state.gapFilter = card.dataset.gap || '';
+        state.query = '';
+        $('smartQuery').value = '';
+        metricsCache.clear();
+        render();
+        const label = card.querySelector('span')?.textContent || 'Gap';
+        $('queryExplanation').textContent = `${label} 필터 적용 / 결과 ${state.filtered.length}명`;
+        view('segment');
+      };
+      card.onclick = run;
+      card.onkeydown = (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          run();
+        }
+      };
+    });
 
     renderQuestionTop(rows);
     renderTopEdu(ms);
@@ -470,7 +514,7 @@
       const el = $(id);
       const vals = [...new Set(state.master.map((r) => clean(r[field])).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
       el.innerHTML = '<option value="">전체</option>' + vals.map((v) => `<option>${esc(v)}</option>`).join('');
-      el.onchange = () => { state.query = ''; $('smartQuery').value = ''; metricsCache.clear(); render(); };
+      el.onchange = () => { state.query = ''; state.gapFilter = ''; $('smartQuery').value = ''; metricsCache.clear(); render(); };
     });
   }
 
@@ -511,6 +555,7 @@
 
   function resetAll() {
     state.query = '';
+    state.gapFilter = '';
     $('smartQuery').value = '';
     ['regionFilter', 'yearsFilter', 'tierFilter', 'channelFilter', 'repFilter'].forEach((id) => { if ($(id)) $(id).value = ''; });
     $('queryExplanation').textContent = '필터를 선택하거나 검색어를 입력하세요.';
@@ -710,6 +755,7 @@
     };
     $('runQuery').onclick = () => {
       state.query = $('smartQuery').value;
+      state.gapFilter = '';
       metricsCache.clear();
       render();
       $('queryExplanation').textContent = `검색 조건 적용: ${state.query || '없음'} / 결과 ${state.filtered.length}명`;
@@ -721,6 +767,7 @@
     document.querySelectorAll('.examples button').forEach((b) => {
       b.onclick = () => {
         state.query = b.dataset.query;
+        state.gapFilter = '';
         $('smartQuery').value = state.query;
         metricsCache.clear();
         render();
