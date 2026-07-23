@@ -66,10 +66,10 @@
   <section id="insight" class="view">
     <article class="panel insight-hero">
       <div><p class="eyebrow dark">AUTO INSIGHT ENGINE</p><h2>인사이트</h2><p><b>1. 무엇이 낮은가</b> → <b>2. 어떤 인식이 낮은가</b> → <b>3. 교육 미완료 여부</b> → <b>4. 추천 교육</b> 순서로 자동 분석합니다.</p></div>
-      <button class="button primary" id="refreshInsights">인사이트 다시 계산</button>
+      <button class="button primary" id="refreshInsights">AI 인사이트 생성</button>
     </article>
-    <div class="insight-summary" id="insightSummary"></div>
-    <article class="panel"><div class="panel-head"><div><h2>자동 발견 인사이트 TOP 5</h2><p>판매 저하가 큰 그룹을 먼저 찾고, 그 그룹 안에서 인식 문항과 교육 미완료를 확인합니다.</p></div></div><div id="insightCards" class="insight-grid"></div></article>
+    <div class="insight-summary" id="insightSummary"><div class="kpi-card"><span>인사이트 상태</span><strong>대기</strong><small>AI 인사이트 생성 버튼을 눌러 계산하세요.</small></div></div>
+    <article class="panel"><div class="panel-head"><div><h2>자동 발견 인사이트 TOP 5</h2><p>판매 저하가 큰 그룹을 먼저 찾고, 그 그룹 안에서 인식 문항과 교육 미완료를 확인합니다.</p></div></div><div id="insightCards" class="insight-grid"><div class="empty-state">엑셀 업로드 후 <b>AI 인사이트 생성</b> 버튼을 누르면 판매 저하 → 인식 원인 → 교육 제안 순서로 자동 분석합니다.</div></div></article>
     <article class="panel" id="insightDetailPanel" hidden><div class="panel-head"><div><h2>인사이트 상세</h2><p>증상, 원인 후보, 교육 제안을 함께 확인합니다.</p></div><button class="button ghost" id="closeInsightDetail">닫기</button></div><div id="insightDetail"></div></article>
   </section>
 
