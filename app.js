@@ -39,10 +39,111 @@ function showProfile(id){const m=metrics(id);if(!m.p)return;$('profilePanel').hi
 function by(arr,key){const m={};arr.forEach(x=>{const v=clean(x[key])||'미분류';(m[v]||(m[v]=[])).push(x)});return m}
 function lowQuestions(keys,ms){const ids=new Set(ms.map(m=>m.p?.안경사ID));const allQ={};S.per.forEach(p=>{if(keys==='all'||keys.includes(p.제품군)){(allQ[p.문항]||(allQ[p.문항]=[])).push(p.점수)}});const segQ={};S.per.forEach(p=>{if(ids.has(p.안경사ID)&&(keys==='all'||keys.includes(p.제품군))){(segQ[p.문항]||(segQ[p.문항]=[])).push(p.점수)}});return Object.keys(segQ).map(q=>({q,seg:avg(segQ[q]),all:avg(allQ[q])})).filter(x=>x.seg!=null&&x.all!=null).map(x=>({...x,diff:x.seg-x.all})).sort((a,b)=>a.diff-b.diff).slice(0,3)}
 function insight(type,title,rows,key,symptom,cause,action,score){return{type,title,targetIds:rows.map(r=>r.안경사ID),size:rows.length,key,symptom,cause,action,score}}
-function generateInsights(){const out=[],all=S.master;const overall={ast:avg(all,r=>metrics(r.안경사ID).growths.ast.cur),mf:avg(all,r=>metrics(r.안경사ID).growths.mf.cur),max:avg(all,r=>metrics(r.안경사ID).growths.max.cur)};const groups=[];['지역','연차','Tier','채널','담당영업사원'].forEach(dim=>Object.entries(by(all,dim)).forEach(([v,rows])=>{if(rows.length>=3)groups.push({name:`${v}`,rows,dim})}));Object.entries(by(all,'지역')).forEach(([r,rs])=>Object.entries(by(rs,'연차')).forEach(([y,rows])=>{if(rows.length>=3)groups.push({name:`${r} / ${y}`,rows,dim:'지역+연차'})}));groups.forEach(g=>{const ms=g.rows.map(r=>metrics(r.안경사ID));['ast','mf','max'].forEach(key=>{const sg=avg(ms,m=>m.growths[key].cur), og=overall[key];if(sg==null||og==null)return;const diff=sg-og;if(diff>-3)return;const q=lowQuestions([key],ms);const qAll=lowQuestions('all',ms);const best=q[0]||qAll[0];const miss=ms.filter(m=>m.eduRate==null||m.eduRate<1).length/g.rows.length;const cause=best?`${best.q}: 전체 평균 대비 ${best.diff.toFixed(1)}점 낮음`:'관련 인식 문항 저하는 뚜렷하지 않음';const type=best?'판매 저하 → 인식 원인':'판매 저하';out.push(insight(type,`${g.name} ${P[key].label} 판매 저하`,g.rows,key,`${P[key].label} 성장률이 전체 대비 ${pp(diff)} 낮습니다.`,`${cause}. 교육 미완료율은 ${pct(miss)}입니다.`,best?P[key].edu:`${P[key].label} 상담/현장 실행 점검`,Math.abs(diff)*5+g.rows.length/3+(best?Math.abs(best.diff)*10:0)+miss*20))})});['ast','mf','max'].forEach(key=>{const rows=all.filter(r=>metrics(r.안경사ID).gaps.some(g=>g.제품군===key));if(rows.length<3)return;const ms=rows.map(r=>metrics(r.안경사ID));const sg=avg(ms,m=>m.growths[key].cur),og=overall[key];if(sg==null||og==null)return;const diff=sg-og;if(diff<=-3){const best=lowQuestions([key],ms)[0];const miss=ms.filter(m=>m.eduRate==null||m.eduRate<1).length/rows.length;out.push(insight('인식 Gap → 판매 저하',`${P[key].label} 인식 Gap 보유 그룹`,rows,key,`${P[key].label} 인식 Gap 그룹의 성장률이 전체 대비 ${pp(diff)}입니다.`,`${best?best.q:P[key].label+' 관련 문항'} Gap과 판매 저하가 함께 관찰됩니다. 교육 미완료율은 ${pct(miss)}입니다.`,P[key].edu,Math.abs(diff)*5+rows.length/4+miss*20))}});return out.sort((a,b)=>b.score-a.score).slice(0,5)}
+function educationSummaryForRows(rows,key){
+  const ids=new Set(rows.map(r=>r.안경사ID));
+  const keywords={ast:['난시','토릭','ASD'],mf:['멀티포컬','다초점','노안','MF'],max:['MAX','맥스','블루라이트','실리콘']}[key]||[];
+  const eduRows=S.edu.filter(r=>ids.has(clean(get(r,['안경사ID','ID']))));
+  const related=eduRows.filter(r=>{const txt=[get(r,['교육명','콘텐츠명']),get(r,['교육ID','ID']),Object.values(r).join(' ')].join(' ');return keywords.some(k=>txt.includes(k))});
+  const base=related.length?related:eduRows;
+  const done=base.filter(eduDone).length;
+  const rateVal=base.length?done/base.length:null;
+  const names=[...new Set(base.map(r=>clean(get(r,['교육명','콘텐츠명']))||contentName(get(r,['교육ID','ID']))).filter(Boolean))].slice(0,3);
+  return {total:base.length,done,rate:rateVal,names};
+}
+
+function insight(type,title,rows,key,symptom,cause,education,action,score){
+  return{type,title,targetIds:rows.map(r=>r.안경사ID),size:rows.length,key,symptom,cause,education,action,score};
+}
+
+function generateInsights(){
+  const out=[], all=S.master;
+  const overall={
+    ast:avg(all,r=>metrics(r.안경사ID).growths.ast.cur),
+    mf:avg(all,r=>metrics(r.안경사ID).growths.mf.cur),
+    max:avg(all,r=>metrics(r.안경사ID).growths.max.cur)
+  };
+  const groups=[];
+  ['지역','연차','Tier','채널','담당영업사원'].forEach(dim=>{
+    Object.entries(by(all,dim)).forEach(([v,rows])=>{
+      if(rows.length>=3)groups.push({name:`${v}`,rows,dim});
+    });
+  });
+  Object.entries(by(all,'지역')).forEach(([r,rs])=>{
+    Object.entries(by(rs,'연차')).forEach(([y,rows])=>{
+      if(rows.length>=3)groups.push({name:`${r} / ${y}`,rows,dim:'지역+연차'});
+    });
+  });
+
+  groups.forEach(g=>{
+    const ms=g.rows.map(r=>metrics(r.안경사ID));
+    ['ast','mf','max'].forEach(key=>{
+      const sg=avg(ms,m=>m.growths[key].cur), og=overall[key];
+      if(sg==null)return;
+      const diff=og!=null?sg-og:null;
+      const belowOverall=diff!=null&&diff<0;
+      const reverseGrowth=sg<0;
+      if(!belowOverall&&!reverseGrowth)return;
+
+      const qRelated=lowQuestions([key],ms);
+      const qAll=lowQuestions('all',ms);
+      const best=qRelated[0]||qAll[0];
+      const edu=educationSummaryForRows(g.rows,key);
+      const eduText=edu.total
+        ? `관련/전체 교육 이력 ${edu.total}건 중 완료 ${edu.done}건(${pct(edu.rate)}). ${edu.names.length?'주요 이수/추천 교육: '+edu.names.join(', '):'교육명 데이터 없음'}`
+        : '교육 이력 데이터 없음';
+      const symptomParts=[];
+      if(reverseGrowth) symptomParts.push(`${P[key].label} 성장률이 전년 대비 ${rate(sg)}로 역성장입니다.`);
+      if(belowOverall) symptomParts.push(`${P[key].label} 성장률이 전체 평균 대비 ${pp(diff)} 낮습니다.`);
+      const cause=best
+        ? `${best.q}: 선택 그룹 평균 ${best.seg.toFixed(1)}점, 전체 평균 ${best.all.toFixed(1)}점으로 ${best.diff.toFixed(1)}점 낮습니다.`
+        : `${P[key].label} 관련 인식 문항의 뚜렷한 저하는 확인되지 않았습니다. 판매 실행, 상권, 제품 노출, 재고/프로모션 요인을 함께 점검하세요.`;
+      const type=best?'판매 이상 → 인식 원인 후보':'판매 이상';
+      const score=(reverseGrowth?20:0)+(belowOverall?Math.abs(diff)*6:0)+g.rows.length/3+(best?Math.abs(best.diff)*12:0)+(edu.rate!=null?(1-edu.rate)*10:0);
+      out.push(insight(
+        type,
+        `${g.name} ${P[key].label} 성장 이슈`,
+        g.rows,
+        key,
+        symptomParts.join(' '),
+        cause,
+        eduText,
+        P[key].edu,
+        score
+      ));
+    });
+  });
+
+  ['ast','mf','max'].forEach(key=>{
+    const rows=all.filter(r=>metrics(r.안경사ID).gaps.some(g=>g.제품군===key));
+    if(rows.length<3)return;
+    const ms=rows.map(r=>metrics(r.안경사ID));
+    const sg=avg(ms,m=>m.growths[key].cur), og=overall[key];
+    if(sg==null)return;
+    const diff=og!=null?sg-og:null;
+    if(!(sg<0||(diff!=null&&diff<0)))return;
+    const best=lowQuestions([key],ms)[0];
+    const edu=educationSummaryForRows(rows,key);
+    const eduText=edu.total
+      ? `관련/전체 교육 이력 ${edu.total}건 중 완료 ${edu.done}건(${pct(edu.rate)}). ${edu.names.length?'주요 이수/추천 교육: '+edu.names.join(', '):'교육명 데이터 없음'}`
+      : '교육 이력 데이터 없음';
+    out.push(insight(
+      '인식 Gap → 판매 이슈',
+      `${P[key].label} 인식 Gap 보유 그룹`,
+      rows,
+      key,
+      `${P[key].label} 인식 Gap 그룹의 성장률은 ${rate(sg)}이며 ${diff!=null?'전체 평균 대비 '+pp(diff)+'입니다.':'전체 평균 비교 데이터가 부족합니다.'}`,
+      `${best?best.q:P[key].label+' 관련 문항'} Gap이 판매 이슈와 함께 관찰됩니다.`,
+      eduText,
+      P[key].edu,
+      Math.abs(diff||0)*5+rows.length/4+(sg<0?15:0)+(edu.rate!=null?(1-edu.rate)*10:0)
+    ));
+  });
+
+  return out.sort((a,b)=>b.score-a.score).slice(0,8);
+}
 function renderInsightPlaceholder(){S.insights=[];$('insightSummary').innerHTML=[kpi('인사이트 상태','대기','AI 인사이트 생성 버튼을 눌러 계산하세요')].join('');$('insightCards').innerHTML='<div class="empty-state">엑셀 업로드 후 <b>AI 인사이트 생성</b> 버튼을 누르면 판매 저하 → 인식 원인 → 교육 제안 순서로 자동 분석합니다.</div>'}
-function renderInsights(){S.insights=generateInsights();$('insightSummary').innerHTML=[kpi('발견 인사이트',S.insights.length,'TOP 5'),kpi('우선 대상',S.insights.reduce((a,i)=>a+i.size,0).toLocaleString('ko-KR'),'중복 포함'),kpi('인식×판매',S.insights.filter(i=>/인식/.test(i.type)).length,'원인 후보'),kpi('교육 제안',S.insights.filter(i=>i.action).length,'자동 연결')].join('');$('insightCards').innerHTML=S.insights.length?S.insights.map((i,idx)=>`<div class="insight-card"><div class="type">${esc(i.type)}</div><h3>${idx+1}. ${esc(i.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 증상</small>${esc(i.symptom)}</div><div class="insight-step"><small>2. 원인 후보</small>${esc(i.cause)}</div><div class="insight-step"><small>3. 교육 제안</small>${esc(i.action)}</div></div><div class="note">대상 ${i.size}명 · 점수 ${Math.round(i.score)}</div><div class="insight-actions"><button class="button primary" data-insight="${idx}">대상 보기</button><button class="button" data-detail="${idx}">상세 보기</button></div></div>`).join(''):'<div class="empty-state">전체 대비 -3%p 이하 또는 대상 3명 이상 조건에 맞는 자동 인사이트가 없습니다.</div>';document.querySelectorAll('[data-insight]').forEach(b=>b.onclick=()=>{const ins=S.insights[+b.dataset.insight];S.targetIds=new Set(ins.targetIds);S.query='';render();$('queryExplanation').textContent=`인사이트 대상 필터 적용: ${ins.title} / 결과 ${S.filtered.length}명`;view('segment')});document.querySelectorAll('[data-detail]').forEach(b=>b.onclick=()=>showInsightDetail(+b.dataset.detail))}
-function showInsightDetail(idx){const i=S.insights[idx];$('insightDetailPanel').hidden=false;$('insightDetail').innerHTML=`<div class="insight-card"><div class="type">${esc(i.type)}</div><h3>${esc(i.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 무엇이 낮은가</small>${esc(i.symptom)}</div><div class="insight-step"><small>2. 어떤 원인이 의심되는가</small>${esc(i.cause)}</div><div class="insight-step"><small>3. 어떤 교육을 할 것인가</small>${esc(i.action)}</div></div><p class="note">자동 탐색 결과입니다. 대상 규모가 작거나 데이터가 누락된 경우 해석에 주의하세요.</p></div>`;$('insightDetailPanel').scrollIntoView({behavior:'smooth'})}
+function renderInsights(){S.insights=generateInsights();$('insightSummary').innerHTML=[kpi('발견 인사이트',S.insights.length,'TOP 8'),kpi('우선 대상',S.insights.reduce((a,i)=>a+i.size,0).toLocaleString('ko-KR'),'중복 포함'),kpi('인식×판매',S.insights.filter(i=>/인식/.test(i.type)).length,'원인 후보'),kpi('교육 제안',S.insights.filter(i=>i.action).length,'자동 연결')].join('');$('insightCards').innerHTML=S.insights.length?S.insights.map((i,idx)=>`<div class="insight-card"><div class="type">${esc(i.type)}</div><h3>${idx+1}. ${esc(i.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 증상</small>${esc(i.symptom)}</div><div class="insight-step"><small>2. 원인 후보</small>${esc(i.cause)}</div><div class="insight-step"><small>3. 교육 이력</small>${esc(i.education||'교육 이력 데이터 없음')}</div><div class="insight-step"><small>4. 추천 교육</small>${esc(i.action)}</div></div><div class="note">대상 ${i.size}명 · 점수 ${Math.round(i.score)}</div><div class="insight-actions"><button class="button primary" data-insight="${idx}">대상 보기</button><button class="button" data-detail="${idx}">상세 보기</button></div></div>`).join(''):'<div class="empty-state">아직 표시할 자동 인사이트가 없습니다. 엑셀 업로드 후 다시 확인하세요.</div>';document.querySelectorAll('[data-insight]').forEach(b=>b.onclick=()=>{const ins=S.insights[+b.dataset.insight];S.targetIds=new Set(ins.targetIds);S.query='';render();$('queryExplanation').textContent=`인사이트 대상 필터 적용: ${ins.title} / 결과 ${S.filtered.length}명`;view('segment')});document.querySelectorAll('[data-detail]').forEach(b=>b.onclick=()=>showInsightDetail(+b.dataset.detail))}
+function showInsightDetail(idx){const i=S.insights[idx];$('insightDetailPanel').hidden=false;$('insightDetail').innerHTML=`<div class="insight-card"><div class="type">${esc(i.type)}</div><h3>${esc(i.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 무엇이 낮은가</small>${esc(i.symptom)}</div><div class="insight-step"><small>2. 어떤 원인이 의심되는가</small>${esc(i.cause)}</div><div class="insight-step"><small>3. 교육 이력</small>${esc(i.education||'교육 이력 데이터 없음')}</div><div class="insight-step"><small>4. 어떤 교육을 추천할 것인가</small>${esc(i.action)}</div></div><p class="note">자동 탐색 결과입니다. 대상 규모가 작거나 데이터가 누락된 경우 해석에 주의하세요.</p></div>`;$('insightDetailPanel').scrollIntoView({behavior:'smooth'})}
 function buildFilters(){[['regionFilter','지역'],['yearsFilter','연차'],['tierFilter','Tier'],['channelFilter','채널'],['repFilter','담당영업사원']].forEach(([id,f])=>{const el=$(id);const vals=[...new Set(S.master.map(r=>clean(r[f])).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko',{numeric:true}));el.innerHTML='<option value="">전체</option>'+vals.map(v=>`<option>${esc(v)}</option>`).join('');el.onchange=()=>{S.query='';S.targetIds=null;render()}})}
 async function upload(file){if(!window.XLSX)throw new Error('XLSX 라이브러리가 로드되지 않았습니다.');const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:false});S.master=normMaster(sheet(wb,aliases.master));S.content=sheet(wb,aliases.content);S.edu=sheet(wb,aliases.edu);S.qm=normQm(sheet(wb,aliases.qm));S.per=normPer(sheet(wb,aliases.per));S.sales=sheet(wb,aliases.sales);S.rec=sheet(wb,aliases.rec);C.clear();S.targetIds=null;$('uploadStatus').textContent=file.name;buildFilters();render();renderInsightPlaceholder();toast(`업로드 완료: 안경사 ${S.master.length}명, 판매행 ${S.sales.length}건`)}
 function resetAll(){S.query='';S.targetIds=null;$('smartQuery').value='';['regionFilter','yearsFilter','tierFilter','channelFilter','repFilter'].forEach(id=>$(id).value='');$('queryExplanation').textContent='필터를 선택하거나 검색어를 입력하세요.';render()}
