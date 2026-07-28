@@ -4,29 +4,88 @@ const S={master:[],content:[],edu:[],qm:[],per:[],sales:[],rec:[],filtered:[],qu
 const aliases={master:['01_안경사마스터','안경사마스터'],content:['02_교육콘텐츠','교육콘텐츠마스터'],edu:['03_교육참여','교육참여이력','교육이력'],qm:['인식문항마스터','문항마스터'],per:['04_인식조사','인식조사','Sheet1'],sales:['06_피팅판매','피팅판매'],rec:['AI추천결과','교육추천결과','08_교육추천']};
 const likert={'전혀 그렇지 않다':1,'그렇지 않다':2,'보통이다':3,'비슷하다':3,'그렇다':4,'매우 그렇다':5};
 const P={ast:{label:'난시',growth:'난시 성장률',match:p=>/난시|토릭|TORIC|ASD/i.test(p||'')&&!/MAX|맥스/i.test(p||''),edu:'난시 피팅·조기 교정 교육'},mf:{label:'멀티포컬',growth:'멀티포컬 성장률',match:p=>/멀티포컬|MULTIFOCAL|다초점|노안|\bMF\b/i.test(p||'')||(/MAX|맥스/i.test(p||'')&&/난시|토릭|TORIC|ASD/i.test(p||'')),edu:'멀티포컬 상담·피팅 교육'},max:{label:'MAX',growth:'MAX 성장률',match:p=>/MAX|맥스/i.test(p||''),edu:'블루라이트/MAX 기술 교육'}};
+const GROWTH_ALIASES={ast:['난시 성장률','난시성장률','난시제품 성장률','난시 제품 성장률','난시제품군 성장률','난시 제품군 성장률'],mf:['멀티포컬 성장률','멀티포컬성장률','MF 성장률','MF성장률','멀티포컬제품 성장률','멀티포컬 제품 성장률'],max:['맥스 성장률','맥스성장률','MAX 성장률','MAX성장률','MAX제품군 성장률','MAX 제품군 성장률','맥스제품군 성장률','맥스 제품군 성장률']};
 const comp=[['알콘',['알콘','ALCON','토탈원','TOTAL1','데일리스','DAILIES','프리시전','PRECISION']],['바슈롬',['바슈롬','BAUSCH','ULTRA','바이오트루','BIOTRUE','레이셀','LACELLE']],['쿠퍼비전',['쿠퍼비전','COOPERVISION','마이데이','MYDAY','클라리티','CLARITI','바이오피니티','BIOFINITY']]];
 const extKeys=['멀티포컬','난시','렌즈','블루라이트','실리콘하이드로겔','콘택트렌즈','피팅','캠페인','신제품','프로모션','행사','할인'];
 const clean=v=>v==null?'':String(v).trim(), norm=s=>clean(s).replace(/[\s_\-()\/]/g,'').toLowerCase();
 const esc=s=>clean(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-const num=v=>{if(v==null||v==='')return null;const n=Number(String(v).replace(/,/g,'').replace(/%/g,''));return Number.isFinite(n)?n:null};
+const num=v=>{if(v==null||v==='')return null;const m=String(v).replace(/,/g,'').match(/[-+]?\d+(?:\.\d+)?/);return m?Number(m[0]):null};
 const avg=(a,fn=x=>x)=>{const v=a.map(fn).filter(x=>x!=null&&Number.isFinite(Number(x))).map(Number);return v.length?v.reduce((p,c)=>p+c,0)/v.length:null};
 const rate=v=>v==null?'데이터 없음':`${v>=0?'+':''}${Number(v).toFixed(1)}%`, pp=v=>v==null?'데이터 없음':`${v>=0?'+':''}${Number(v).toFixed(1)}%p`, pct=v=>v==null?'데이터 없음':`${Math.round(v*100)}%`;
 function get(r,names){if(!r)return'';const m={};Object.keys(r).forEach(k=>m[norm(k)]=r[k]);for(const n of names){const v=m[norm(n)];if(v!==undefined&&clean(v)!=='')return v}return''}
+function keyVal(v){return norm(v).replace(/[^a-z0-9가-힣]/g,'')}
 function sheet(wb,names){const n=wb.SheetNames.find(s=>names.some(a=>norm(s).includes(norm(a))));return n?XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:'',raw:true}):[]}
 function infer(q){q=clean(q);if(/블루라이트|실리콘|기술|MAX|맥스/.test(q))return'max';if(/멀티포컬|다초점|노안/.test(q))return'mf';if(/난시|토릭|ASD/.test(q))return'ast';return'other'}
 function score(v){if(typeof v==='number')return v;return likert[clean(v)]??num(v)}
 function normMaster(rows){return rows.map((r,i)=>({...r,안경사ID:clean(get(r,['안경사ID','ID']))||`AUTO-${i+1}`,안경사명:clean(get(r,['안경사명','이름','성명'])),안경원코드:clean(get(r,['안경원코드','매장코드','거래처코드','ShipTo','SoldTo'])),안경원명:clean(get(r,['안경원명','안경원','매장명','거래처명'])),지역:clean(get(r,['지역','시도'])),연차:clean(get(r,['연차'])),Tier:clean(get(r,['Tier','티어','등급'])),채널:clean(get(r,['채널','Channel'])),담당영업사원:clean(get(r,['담당영업사원','담당자','영업사원']))})).filter(r=>r.안경사ID||r.안경사명)}
 function normQm(rows){return rows.map((r,i)=>{const q=clean(get(r,['문항','문항명','Question']));return{문항ID:clean(get(r,['문항ID','QuestionID']))||`Q${String(i+1).padStart(3,'0')}`,문항:q,제품군:clean(get(r,['제품군']))?infer(clean(get(r,['제품군']))):infer(q),목표값:num(get(r,['목표값']))??4,긍정방향:clean(get(r,['긍정방향']))||(/역코딩/.test(q)?'낮을수록 긍정':'높을수록 긍정'),사용:clean(get(r,['분석사용여부','사용여부']))||'Y'}})}
 function normPer(rows){const meta=['안경사ID','ID','안경사명','안경원명','지역','연차','Tier','SEG','No','번호'];const out=[];rows.forEach(r=>{const id=clean(get(r,['안경사ID','ID']));if(!id)return;Object.keys(r).forEach(col=>{if(meta.some(m=>norm(m)===norm(col)))return;const qm=S.qm.find(q=>norm(col).includes(norm(q.문항ID))||norm(col).includes(norm(q.문항)))||{문항ID:col,문항:col,제품군:infer(col),목표값:4,긍정방향:/역코딩/.test(col)?'낮을수록 긍정':'높을수록 긍정',사용:'Y'};const s=score(r[col]);if(s==null||s<1||s>5||qm.사용==='N')return;const adj=/낮을수록/.test(qm.긍정방향)?6-s:s;out.push({안경사ID:id,문항ID:qm.문항ID,문항:qm.문항,제품군:qm.제품군,원응답:r[col],점수:adj,목표값:qm.목표값,gap:adj<qm.목표값})})});return out}
-function salesRows(id){const m=S.master.find(x=>x.안경사ID===id);if(!m)return[];return S.sales.filter(r=>[clean(get(r,['안경사ID','ID'])),clean(get(r,['안경원코드','매장코드','거래처코드','ShipTo','SoldTo'])),clean(get(r,['안경원명','매장명','거래처명']))].some(k=>k&&[m.안경사ID,m.안경원코드,m.안경원명].includes(k)))}
+function salesRows(id){const m=S.master.find(x=>x.안경사ID===id);if(!m)return[];const masterKeys=[m.안경사ID,m.안경원코드,m.안경원명,clean(get(m,['Outletnumber','Outlet Number','매장ID','매장번호']))].map(keyVal).filter(Boolean);return S.sales.filter(r=>[clean(get(r,['안경사ID','ID','OpticianID'])),clean(get(r,['안경원코드','매장코드','거래처코드','ShipTo','SoldTo','Outletnumber','Outlet Number','매장ID','매장번호','CustomerID'])),clean(get(r,['안경원명','매장명','거래처명','OutletName','StoreName']))].map(keyVal).some(k=>k&&masterKeys.includes(k)))}
 const pName=r=>clean(get(r,['제품명','상품명','Product','제품','SKU','품목명','브랜드제품명']));
 const y25=r=>num(get(r,['2025팩수','25년팩수','2025','2025년','25년','PY팩수','전년팩수','작년팩수','2025 판매팩수','25년 판매팩수']));
 const y26=r=>num(get(r,['2026팩수','26년팩수','2026','2026년','26년','CY팩수','올해팩수','현재팩수','2026 판매팩수','26년 판매팩수']));
-function growth(rows,key){const px=rows.filter(r=>P[key].match(pName(r)));let a=0,b=0,has=false;px.forEach(r=>{const v25=y25(r),v26=y26(r);if(v25!=null||v26!=null){a+=v25||0;b+=v26||0;has=true}});if(has)return a===0&&b>0?100:a?((b-a)/a*100):null;return avg(rows,r=>num(get(r,[P[key].growth,P[key].growth.replace(' ','')])))}
+function directGrowth(rows,key){return avg(rows,r=>num(get(r,GROWTH_ALIASES[key]||[P[key].growth,P[key].growth.replace(' ','')])))}
+function growth(rows,key){const direct=directGrowth(rows,key);if(direct!=null)return direct;const px=rows.filter(r=>P[key].match(pName(r)));let a=0,b=0,has=false;px.forEach(r=>{const v25=y25(r),v26=y26(r);if(v25!=null||v26!=null){a+=v25||0;b+=v26||0;has=true}});if(has)return a===0&&b>0?100:a?((b-a)/a*100):null;return null}
 function eduDone(r){const f=clean(get(r,['완료여부','수료여부','참여여부','시청여부'])).toUpperCase();if(['Y','YES','TRUE','완료','수료','DONE','COMPLETED'].includes(f))return true;const v=num(get(r,['완료율','진도율','진행률']));return v!=null&&v>=100}
 const C=new Map();function metrics(id){if(C.has(id))return C.get(id);const p=S.master.find(x=>x.안경사ID===id);const sr=salesRows(id);const perc=S.per.filter(x=>x.안경사ID===id);const gaps=perc.filter(x=>x.gap);const edu=S.edu.filter(r=>clean(get(r,['안경사ID','ID']))===id);const eduRate=edu.length?edu.filter(eduDone).length/edu.length:null;const rec=S.rec.find(r=>clean(get(r,['안경사ID','ID']))===id)||{};const growths={ast:{cur:growth(sr,'ast')},mf:{cur:growth(sr,'mf')},max:{cur:growth(sr,'max')}};const priority=gaps.length>=3||avg([growths.ast.cur,growths.mf.cur,growths.max.cur])<0?'높음':gaps.length?'중간':'낮음';const m={p,perc,gaps,eduRate,rec,growths,priority};C.set(id,m);return m}
 function filterByDropdown(){let rows=[...S.master];[['regionFilter','지역'],['yearsFilter','연차'],['tierFilter','Tier'],['channelFilter','채널'],['repFilter','담당영업사원']].forEach(([id,f])=>{const v=$(id)?.value;if(v)rows=rows.filter(r=>clean(r[f])===v)});return rows}
-function filtered(){let rows=filterByDropdown();const q=clean(S.query);if(q){const y=(q.match(/(\d+)\s*년차/)||[])[1];if(y)rows=rows.filter(r=>clean(r.연차).includes(y));const wantGap=/인식|Gap|갭|문항/.test(q),eduIn=/미완료|미수료|교육/.test(q),neg=/성장률 음수|역성장|성장률.*낮/.test(q);rows=rows.filter(r=>{const m=metrics(r.안경사ID);if(wantGap&&!m.gaps.length)return false;if(eduIn&&!(m.eduRate==null||m.eduRate<1))return false;if(neg&&!(avg([m.growths.ast.cur,m.growths.mf.cur,m.growths.max.cur])<0))return false;return true})}if(S.targetIds)rows=rows.filter(r=>S.targetIds.has(r.안경사ID));return rows}
+function productPerception(m,key){const vals=m.perc.filter(p=>p.제품군===key).map(p=>p.점수).filter(v=>v!=null&&Number.isFinite(Number(v)));return vals.length?vals.reduce((a,b)=>a+Number(b),0)/vals.length:null}
+function overallProductPerception(key){return avg(S.master,r=>productPerception(metrics(r.안경사ID),key))}
+function overallGrowth(key){return avg(S.master,r=>metrics(r.안경사ID).growths[key].cur)}
+function matchTextFields(r,text){return [r.안경사ID,r.안경사명,r.안경원명,r.지역,r.Tier,r.채널,r.담당영업사원,r.연차].join(' ').includes(text)}
+function productWords(key){return key==='ast'?['난시','토릭','ASD']:key==='mf'?['멀티포컬','다초점','노안','MF']:['MAX','맥스','블루라이트','실리콘']}
+function hasProductWord(q,key){return productWords(key).some(w=>q.toLowerCase().includes(w.toLowerCase()))}
+function parseSmartCriteria(q){
+  q=clean(q);const c={products:{ast:{},mf:{},max:{}},any:{},text:''};
+  const allVals=(field)=>[...new Set(S.master.map(r=>clean(r[field])).filter(Boolean))].sort((a,b)=>b.length-a.length);
+  c.region=allVals('지역').find(v=>q.includes(v))||'';
+  c.tier=allVals('Tier').find(v=>q.toLowerCase().includes(v.toLowerCase()))||'';
+  c.channel=allVals('채널').find(v=>q.toLowerCase().includes(v.toLowerCase()))||'';
+  c.rep=allVals('담당영업사원').find(v=>q.includes(v))||'';
+  const y=(q.match(/(\d+)\s*년차/)||[])[1]; if(y)c.years=y;
+  if(/교육\s*(안|미|못)|미완료|미수료|안들은|안 들은|미이수/.test(q))c.edu='incomplete';
+  if(/교육.*(완료|수료|이수)|수료.*교육|이수.*교육/.test(q))c.edu='complete';
+  ['ast','mf','max'].forEach(key=>{
+    if(!hasProductWord(q,key))return; const p=c.products[key];
+    const around=new RegExp(productWords(key).join('|')+'.{0,18}(평균|비슷|수준)|(?:평균|비슷|수준).{0,18}('+productWords(key).join('|')+')','i');
+    if(/역성장|음수|작년보다\s*(감소|하락)|전년.*(감소|하락)|마이너스/.test(q)&&new RegExp(productWords(key).join('|'),'i').test(q))p.growth='negative';
+    if(/평균보다\s*(낮|떨어|부진)|전체.*대비.*(낮|부진)|성장률.*낮/.test(q)&&new RegExp(productWords(key).join('|'),'i').test(q))p.growth='below';
+    if(around.test(q)&&!p.growth)p.growth='average';
+    if(/인식.*(낮|떨어|부족|gap|갭)|(?:낮|떨어|부족).{0,10}인식/i.test(q))p.perception='low';
+    if(/교육/.test(q)&&!c.edu)p.education='check';
+  });
+  if(/성장률.*낮|성장.*낮|판매.*낮|부진/.test(q))c.any.growth='below';
+  if(/역성장|성장률 음수|마이너스/.test(q))c.any.growth='negative';
+  if(/인식.*(낮|떨어|부족|gap|갭)/.test(q))c.any.perception='low';
+  let text=q.replace(/\d+\s*년차|서울|경기|인천|강원|충북|충남|대전|세종|전북|전남|광주|경북|경남|대구|울산|부산|제주|VIP|Platinum|Gold|Silver|Bronze|D\+K|Top50|Topplus|Davich|Lensme|Olens|I\/O|A\/K|K-vision|Look|See-ho|난시|토릭|ASD|멀티포컬|다초점|노안|MF|MAX|맥스|블루라이트|실리콘|성장률|역성장|음수|평균|전체|대비|낮은|낮고|낮|떨어진|떨어|부족|인식|교육|미완료|미수료|이수|수료|완료|안경사|매장|중|에서|있는|거주하는|작년|전년|보다|비슷|수준|찾아줘|보여줘|알려줘|하고|인데|은|는|이|가|도|를|을|의/g,'').trim();
+  c.text=text.length>=2?text:'';return c;
+}
+function rowMatchesCriteria(r,c){
+  if(c.region&&clean(r.지역)!==c.region)return false;
+  if(c.tier&&clean(r.Tier).toLowerCase()!==c.tier.toLowerCase())return false;
+  if(c.channel&&clean(r.채널).toLowerCase()!==c.channel.toLowerCase())return false;
+  if(c.rep&&clean(r.담당영업사원)!==c.rep)return false;
+  if(c.years&&!clean(r.연차).includes(c.years))return false;
+  if(c.text&&!matchTextFields(r,c.text))return false;
+  const m=metrics(r.안경사ID);
+  if(c.edu==='incomplete'&&!(m.eduRate==null||m.eduRate<1))return false;
+  if(c.edu==='complete'&&m.eduRate!==1)return false;
+  const productKeys=['ast','mf','max'];
+  for(const key of productKeys){const p=c.products[key];
+    if(p.growth){const g=m.growths[key].cur, og=overallGrowth(key), diff=g!=null&&og!=null?g-og:null;
+      if(p.growth==='negative'&&!(g!=null&&g<0))return false;
+      if(p.growth==='below'&&!(diff!=null&&diff<=-3))return false;
+      if(p.growth==='average'&&!(diff!=null&&Math.abs(diff)<=3))return false;
+    }
+    if(p.perception==='low'){const ps=productPerception(m,key), ops=overallProductPerception(key);const hasGap=m.gaps.some(g=>g.제품군===key);if(!(hasGap||(ps!=null&&ops!=null&&ps-ops<=-0.5)))return false;}
+  }
+  if(c.any.growth==='negative'&&!productKeys.some(key=>{const g=m.growths[key].cur;return g!=null&&g<0}))return false;
+  if(c.any.growth==='below'&&!productKeys.some(key=>{const g=m.growths[key].cur,og=overallGrowth(key);return g!=null&&og!=null&&g-og<=-3}))return false;
+  if(c.any.perception==='low'&&!productKeys.some(key=>{const ps=productPerception(m,key),ops=overallProductPerception(key);return m.gaps.some(g=>g.제품군===key)||(ps!=null&&ops!=null&&ps-ops<=-0.5)}))return false;
+  return true;
+}
+function criteriaSummary(c){const parts=[];if(c.region)parts.push(`지역=${c.region}`);if(c.years)parts.push(`연차=${c.years}년차`);if(c.tier)parts.push(`Tier=${c.tier}`);if(c.channel)parts.push(`채널=${c.channel}`);if(c.rep)parts.push(`담당=${c.rep}`);if(c.edu)parts.push(c.edu==='complete'?'교육완료':'교육미완료/미수료');const label={ast:'난시',mf:'멀티포컬',max:'MAX'};['ast','mf','max'].forEach(k=>{const p=c.products[k];if(p.growth)parts.push(`${label[k]} 성장률=${p.growth==='negative'?'역성장':p.growth==='below'?'전체대비 낮음':'전체평균 수준'}`);if(p.perception)parts.push(`${label[k]} 인식 낮음`)});if(c.any.growth)parts.push(`제품군 중 하나라도 ${c.any.growth==='negative'?'역성장':'전체대비 낮음'}`);if(c.any.perception)parts.push('제품군 인식 낮음');if(c.text)parts.push(`텍스트=${c.text}`);return parts.length?parts.join(' / '):'조건 없음'}
+function filtered(){let rows=filterByDropdown();const q=clean(S.query);if(q){const c=parseSmartCriteria(q);rows=rows.filter(r=>rowMatchesCriteria(r,c));S.lastCriteria=c}else S.lastCriteria=null;if(S.targetIds)rows=rows.filter(r=>S.targetIds.has(r.안경사ID));return rows}
 function kpi(label,value,note){return`<div class="kpi-card"><span>${label}</span><strong>${value}</strong><small>${note}</small></div>`}
 function dclass(v){return v==null?'':v<0?'negative':'positive'}
 function kpiGrowth(key,rows){const cur=avg(rows,r=>metrics(r.안경사ID).growths[key].cur);const all=avg(S.master,r=>metrics(r.안경사ID).growths[key].cur);const d=cur!=null&&all!=null?cur-all:null;return kpi(P[key].growth,`${rate(cur)} <span class="kpi-sub">(vs PY)</span>`,`<span class="delta ${dclass(d)}">${pp(d)} <span class="kpi-sub">(vs 전체)</span></span>`)}
@@ -157,5 +216,5 @@ function titleOf(r){return clean(get(r,['제목','title','Title','게시글제�
 function renderExternal(rows,source='output/Competitor_Activity.csv'){const raw=rows.length;rows=rows.map(r=>{const txt=Object.values(r).join(' ');return{...r,__vendor:detectVendor(r),__kw:extKeys.filter(k=>txt.includes(k)),__link:linkOf(r)}}).filter(r=>r.__vendor!=='미분류'||r.__kw.length);if(!rows.length){$('externalInsight').innerHTML=`CSV 연결됨. 업체/키워드 매칭 0건 / 전체 ${raw}건`;return}const summary=Object.entries(rows.reduce((a,r)=>{a[r.__vendor]=(a[r.__vendor]||0)+1;return a},{})).map(([k,v])=>`${k} ${v}건`).join(' · ');$('externalInsight').innerHTML=`<div class="query-explanation">${esc(source)} · 업체/키워드 매칭 ${rows.length}건 / 전체 ${raw}건<br>업체 기준: 알콘, 바슈롬, 쿠퍼비전 · ${esc(summary)}</div><div class="table-wrap"><table><thead><tr><th>업체</th><th>키워드</th><th>제목/내용</th><th>원본 링크</th></tr></thead><tbody>${rows.slice(0,300).map(r=>`<tr><td><span class="pill neutral">${esc(r.__vendor)}</span></td><td>${esc(r.__kw.join(', ')||'-')}</td><td>${esc(titleOf(r)).slice(0,140)}</td><td>${r.__link?`<a href="${esc(r.__link)}" target="_blank" rel="noopener noreferrer">원본 보기</a>`:'-'}</td></tr>`).join('')}</tbody></table></div>`}
 async function loadExternal(){try{const res=await fetch('output/Competitor_Activity.csv',{cache:'no-store'});if(!res.ok)throw new Error();renderExternal(parseCsv(await res.text()))}catch(e){$('externalInsight').innerHTML='자동 연결 실패. 타사 CSV 업로드 버튼으로 파일을 선택하세요.'}}
 function seed(){S.master=normMaster([{안경사ID:'A001',안경사명:'이창훈',안경원명:'으뜸50안경 신풍점',지역:'서울',연차:'3년차',Tier:'Gold',채널:'Top50',담당영업사원:'유아영'},{안경사ID:'A002',안경사명:'최용운',안경원명:'으뜸50안경 청라점',지역:'강원',연차:'3년차',Tier:'Silver',채널:'Top50',담당영업사원:'이자영'}]);S.qm=normQm([{문항ID:'Q001',문항:'블루라이트 보호 중요성을 설명할 수 있다',목표값:4},{문항ID:'Q002',문항:'난시 조기 교정의 중요성을 설명할 수 있다',목표값:4}]);S.per=normPer([{안경사ID:'A001','Q001_블루라이트 보호 중요성을 설명할 수 있다':'보통이다','Q002_난시 조기 교정의 중요성을 설명할 수 있다':'그렇다'},{안경사ID:'A002','Q001_블루라이트 보호 중요성을 설명할 수 있다':'그렇지 않다','Q002_난시 조기 교정의 중요성을 설명할 수 있다':'보통이다'}]);S.edu=[{안경사ID:'A001',완료여부:'N'},{안경사ID:'A002',완료여부:'Y'}];S.sales=[{안경사ID:'A001',제품명:'MAX 구면',2025:100,2026:80},{안경사ID:'A001',제품명:'모이스트 난시',2025:100,2026:120},{안경사ID:'A002',제품명:'MAX 구면',2025:100,2026:70},{안경사ID:'A002',제품명:'오아시스 난시',2025:100,2026:60}];buildFilters();render()}
-document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>view(t.dataset.view));$('workbookInput').onchange=e=>e.target.files[0]&&upload(e.target.files[0]).catch(err=>{console.error(err);alert('업로드 실패\n\n'+(err.message||err));toast('업로드 실패')});$('runQuery').onclick=()=>{S.query=$('smartQuery').value;S.targetIds=null;render();$('queryExplanation').textContent=`검색 조건 적용: ${S.query||'없음'} / 결과 ${S.filtered.length}명`;view('segment')};$('smartQuery').onkeydown=e=>{if(e.key==='Enter')$('runQuery').click()};$('clearQuery').onclick=resetAll;$('resetFilters').onclick=resetAll;document.querySelectorAll('.examples button').forEach(b=>b.onclick=()=>{S.query=b.dataset.query;S.targetIds=null;$('smartQuery').value=S.query;render();$('queryExplanation').textContent=`검색 조건 적용: ${S.query} / 결과 ${S.filtered.length}명`;view('segment')});$('downloadResults').onclick=download;$('closeProfile').onclick=()=>$('profilePanel').hidden=true;$('refreshInsights').onclick=()=>{C.clear();renderInsights();toast('AI 인사이트를 생성했습니다')};$('closeInsightDetail').onclick=()=>$('insightDetailPanel').hidden=true;$('competitorInput').onchange=e=>e.target.files[0]&&e.target.files[0].text().then(t=>renderExternal(parseCsv(t),e.target.files[0].name));$('closeExternalDetail').onclick=()=>$('externalDetailPanel').hidden=true;seed();renderInsightPlaceholder();loadExternal()});
+document.addEventListener('DOMContentLoaded',()=>{document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>view(t.dataset.view));$('workbookInput').onchange=e=>e.target.files[0]&&upload(e.target.files[0]).catch(err=>{console.error(err);alert('업로드 실패\n\n'+(err.message||err));toast('업로드 실패')});$('runQuery').onclick=()=>{S.query=$('smartQuery').value;S.targetIds=null;render();$('queryExplanation').textContent=`스마트 검색 적용: ${criteriaSummary(S.lastCriteria||{})} / 결과 ${S.filtered.length}명`;view('segment')};$('smartQuery').onkeydown=e=>{if(e.key==='Enter')$('runQuery').click()};$('clearQuery').onclick=resetAll;$('resetFilters').onclick=resetAll;document.querySelectorAll('.examples button').forEach(b=>b.onclick=()=>{S.query=b.dataset.query;S.targetIds=null;$('smartQuery').value=S.query;render();$('queryExplanation').textContent=`스마트 검색 적용: ${criteriaSummary(S.lastCriteria||{})} / 결과 ${S.filtered.length}명`;view('segment')});$('downloadResults').onclick=download;$('closeProfile').onclick=()=>$('profilePanel').hidden=true;$('refreshInsights').onclick=()=>{C.clear();renderInsights();toast('AI 인사이트를 생성했습니다')};$('closeInsightDetail').onclick=()=>$('insightDetailPanel').hidden=true;$('competitorInput').onchange=e=>e.target.files[0]&&e.target.files[0].text().then(t=>renderExternal(parseCsv(t),e.target.files[0].name));$('closeExternalDetail').onclick=()=>$('externalDetailPanel').hidden=true;seed();renderInsightPlaceholder();loadExternal()});
 })();
