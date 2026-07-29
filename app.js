@@ -9,7 +9,7 @@
     salesByStore: new Map(), salesById: new Map(), masterById: new Map(),
     eduById: new Map(), perById: new Map(), recById: new Map(), metricCache: new Map()
   };
-
+  window.S = S; 
   const aliases = {
     master: ['01_안경사마스터', '안경사마스터'],
     content: ['02_교육콘텐츠', '교육콘텐츠마스터'],
