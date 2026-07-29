@@ -12,6 +12,8 @@ alert('APP JS LOADED');
     eduById: new Map(), perById: new Map(), recById: new Map(), metricCache: new Map()
   };
   window.S = S; 
+  console.log('S exposed');
+  
   const aliases = {
     master: ['01_안경사마스터', '안경사마스터'],
     content: ['02_교육콘텐츠', '교육콘텐츠마스터'],
