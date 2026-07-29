@@ -60,7 +60,7 @@
   };
 
   const clean = v => (v == null ? '' : String(v).trim());
-  const norm = s => clean(s).replace(/\u00a0/g, '').replace(/[\s_\-()\.\/]/g, '').toLowerCase();
+  const norm = s => clean(s).replace(/\u00a0/g, '').replace(/[\s_\-()./]/g, '').toLowerCase();
   const keyVal = v => norm(v).replace(/[^a-z0-9가-힣]/g, '');
   const esc = s => clean(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
 
@@ -123,24 +123,31 @@
     return XLSX.utils.sheet_to_json(wb.Sheets[name], { defval: '', raw: true, blankrows: false });
   }
 
-  function forcedFittingSheetName(wb) {
-    if (wb.Sheets['06_피팅판매']) return '06_피팅판매';
-    const exact = (wb.SheetNames || []).find(name => sheetNameKey(name) === sheetNameKey('06_피팅판매'));
-    if (exact) return exact;
-    if (wb.Sheets['피팅판매']) return '피팅판매';
-    const fallback = (wb.SheetNames || []).find(name => sheetNameKey(name).includes('피팅판매'));
-    return fallback || '';
-  }
-
+  // 핵심: 06_피팅판매 강제 로딩. 헤더 탐지 안 함.
   function loadFittingSalesSheet(wb) {
-    const name = forcedFittingSheetName(wb);
-    console.log('[피팅판매 강제 로딩] sheetName=', name, 'allSheets=', wb.SheetNames);
-    if (!name || !wb.Sheets[name]) {
-      console.warn('[피팅판매 강제 로딩 실패] 06_피팅판매 또는 피팅판매 시트를 찾지 못했습니다.');
+    const sheetNames = wb.SheetNames || [];
+    let sheetName = sheetNames.find(n => sheetNameKey(n) === sheetNameKey('06_피팅판매'));
+    if (!sheetName) sheetName = sheetNames.find(n => clean(n) === '피팅판매');
+    if (!sheetName) sheetName = sheetNames.find(n => String(n).includes('피팅판매'));
+
+    console.log('[사용 시트]', sheetName);
+    console.log('[전체 시트]', sheetNames);
+
+    if (!sheetName || !wb.Sheets[sheetName]) {
+      console.error('[피팅판매 시트 없음]', sheetNames);
       return [];
     }
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { defval: '', raw: true, blankrows: false });
-    console.log('[피팅판매 강제 로딩 완료]', { sheetName: name, rowCount: rows.length, firstRow: rows[0], headers: Object.keys(rows[0] || {}) });
+
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {
+      defval: '',
+      raw: true,
+      blankrows: false
+    });
+
+    console.log('[판매행 수]', rows.length);
+    console.log('[첫번째 판매행]', rows[0]);
+    console.log('[판매 헤더]', Object.keys(rows[0] || {}));
+
     return rows;
   }
 
@@ -269,6 +276,7 @@
     });
   }
 
+  // 같은 안경원코드가 여러 번 걸리면 1개만 계산
   function dedupeSalesRows(rows) {
     const map = new Map();
     rows.forEach((row, idx) => {
@@ -280,6 +288,7 @@
     return [...map.values()];
   }
 
+  // 1순위 안경사ID 매칭, 없을 때만 안경원코드 fallback
   function rowsFor(id) {
     const direct = S.salesById.get(id) || [];
     if (direct.length) return dedupeSalesRows(direct);
@@ -721,23 +730,6 @@
     }
   }
 
-  function seed() {
-    S.master = normMaster([
-      { 안경사ID: 'A001', 안경사명: '데모1', 안경원코드: 'S001', 안경원명: '데모안경원', 지역: '서울', 연차: '3년차', Tier: 'VIP', 채널: 'Top50' },
-      { 안경사ID: 'A002', 안경사명: '데모2', 안경원코드: 'S001', 안경원명: '데모안경원', 지역: '서울', 연차: '3년차', Tier: 'Gold', 채널: 'I/O' }
-    ]);
-    S.qm = normQm([{ 문항ID: 'Q001', 문항: '난시 조기 교정의 중요성을 설명할 수 있다', 목표값: 4 }]);
-    S.per = normPer([{ 안경사ID: 'A001', Q001: '보통이다' }, { 안경사ID: 'A002', Q001: '그렇다' }]);
-    S.edu = [{ 안경사ID: 'A001', 완료여부: 'N' }, { 안경사ID: 'A002', 완료여부: 'Y' }];
-    S.sales = [
-      { 안경사ID: 'A001', 안경원코드: 'S001', 안경원명: '데모안경원', '2025 난시 팩수': 100, '2026 난시 팩수': 120, '난시 성장률': 20, '2025 멀티포컬  팩수': 50, '2026 멀티포컬  팩수': 40, '멀티포컬 성장률': -20, '2025 MAX  팩수': 200, '2026 MAX  팩수': 260, 'MAX 성장률': 30 },
-      { 안경사ID: 'A002', 안경원코드: 'S001', 안경원명: '데모안경원', '2025 난시 팩수': 80, '2026 난시 팩수': 70, '난시 성장률': -12.5, '2025 멀티포컬  팩수': 40, '2026 멀티포컬  팩수': 60, '멀티포컬 성장률': 50, '2025 MAX  팩수': 100, '2026 MAX  팩수': 90, 'MAX 성장률': -10 }
-    ];
-    rebuildIndexes();
-    buildFilters();
-    render();
-  }
-
   document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.tab').forEach(t => t.onclick = () => view(t.dataset.view));
     if ($('workbookInput')) $('workbookInput').onchange = e => e.target.files[0] && upload(e.target.files[0]).catch(err => {
@@ -769,7 +761,7 @@
     if ($('closeInsightDetail')) $('closeInsightDetail').onclick = () => { $('insightDetailPanel').hidden = true; };
     if ($('competitorInput')) $('competitorInput').onchange = e => e.target.files[0] && e.target.files[0].text().then(t => renderExternal(parseCsv(t), e.target.files[0].name));
     if ($('closeExternalDetail')) $('closeExternalDetail').onclick = () => { $('externalDetailPanel').hidden = true; };
-    seed();
+    render();
     renderInsightPlaceholder();
     loadExternal();
   });
