@@ -17,7 +17,6 @@
     edu: ['03_교육참여', '교육참여이력', '교육이력'],
     qm: ['인식문항마스터', '문항마스터'],
     per: ['04_인식조사', '인식조사', 'Sheet1'],
-    sales: ['06_피팅판매', '피팅판매', 'Sheet2'],
     rec: ['AI추천결과', '교육추천결과', '08_교육추천']
   };
 
@@ -28,6 +27,12 @@
     '비슷하다': 3,
     '그렇다': 4,
     '매우 그렇다': 5
+  };
+
+  const productWords = {
+    ast: ['난시', '토릭', 'TORIC', 'ASD'],
+    mf: ['멀티포컬', 'MULTIFOCAL', '다초점', '노안', 'MF'],
+    max: ['MAX', '맥스', '블루라이트', '실리콘']
   };
 
   const FITTING_COLUMNS = {
@@ -54,12 +59,6 @@
     }
   };
 
-  const productWords = {
-    ast: ['난시', '토릭', 'TORIC', 'ASD'],
-    mf: ['멀티포컬', 'MULTIFOCAL', '다초점', '노안', 'MF'],
-    max: ['MAX', '맥스', '블루라이트', '실리콘']
-  };
-
   const clean = v => (v == null ? '' : String(v).trim());
   const norm = s => clean(s).replace(/\u00a0/g, '').replace(/[\s_\-()\.\/]/g, '').toLowerCase();
   const keyVal = v => norm(v).replace(/[^a-z0-9가-힣]/g, '');
@@ -70,8 +69,8 @@
     const map = {};
     Object.keys(row).forEach(k => { map[norm(k)] = row[k]; });
     for (const name of names) {
-      const v = map[norm(name)];
-      if (v !== undefined && clean(v) !== '') return v;
+      const value = map[norm(name)];
+      if (value !== undefined && clean(value) !== '') return value;
     }
     return '';
   }
@@ -90,13 +89,13 @@
   }
 
   const avg = (arr, fn = x => x) => {
-    const vals = arr.map(fn).map(num).filter(v => v != null && Number.isFinite(v));
-    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    const values = arr.map(fn).map(num).filter(v => v != null && Number.isFinite(v));
+    return values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
   };
 
   const sum = (arr, fn = x => x) => {
-    const vals = arr.map(fn).map(num).filter(v => v != null && Number.isFinite(v));
-    return vals.length ? vals.reduce((a, b) => a + b, 0) : null;
+    const values = arr.map(fn).map(num).filter(v => v != null && Number.isFinite(v));
+    return values.length ? values.reduce((a, b) => a + b, 0) : null;
   };
 
   const fmtPct = v => v == null ? '데이터 없음' : `${Math.round(Number(v) * 100)}%`;
@@ -112,10 +111,10 @@
   function findWorkbookSheetName(wb, names) {
     const sheetNames = wb.SheetNames || [];
     const targets = (names || []).map(sheetNameKey).filter(Boolean);
-    let m = sheetNames.find(name => targets.includes(sheetNameKey(name)));
-    if (m) return m;
-    m = sheetNames.find(name => targets.some(target => sheetNameKey(name).includes(target) || target.includes(sheetNameKey(name))));
-    return m || '';
+    let matched = sheetNames.find(name => targets.includes(sheetNameKey(name)));
+    if (matched) return matched;
+    matched = sheetNames.find(name => targets.some(target => sheetNameKey(name).includes(target) || target.includes(sheetNameKey(name))));
+    return matched || '';
   }
 
   function sheet(wb, names) {
@@ -124,57 +123,25 @@
     return XLSX.utils.sheet_to_json(wb.Sheets[name], { defval: '', raw: true, blankrows: false });
   }
 
-  function rowLooksLikeFittingHeader(row) {
-    const text = (row || []).map(v => norm(v)).join('|');
-    const signals = [
-      '안경사id', '안경원코드',
-      '2025난시팩수', '2026난시팩수',
-      '2025멀티포컬팩수', '2026멀티포컬팩수',
-      '2025max팩수', '2026max팩수',
-      '난시성장률', '멀티포컬성장률', 'max성장률'
-    ];
-    return signals.filter(s => text.includes(norm(s))).length >= 4;
-  }
-
-  function aoaToObjects(aoa, headerIndex) {
-    const header = (aoa[headerIndex] || []).map(h => clean(h));
-    const rows = [];
-    for (let i = headerIndex + 1; i < aoa.length; i++) {
-      const line = aoa[i] || [];
-      if (!line.some(v => clean(v))) continue;
-      const obj = {};
-      header.forEach((h, idx) => { if (h) obj[h] = line[idx] == null ? '' : line[idx]; });
-      rows.push(obj);
-    }
-    return rows;
+  function forcedFittingSheetName(wb) {
+    if (wb.Sheets['06_피팅판매']) return '06_피팅판매';
+    const exact = (wb.SheetNames || []).find(name => sheetNameKey(name) === sheetNameKey('06_피팅판매'));
+    if (exact) return exact;
+    if (wb.Sheets['피팅판매']) return '피팅판매';
+    const fallback = (wb.SheetNames || []).find(name => sheetNameKey(name).includes('피팅판매'));
+    return fallback || '';
   }
 
   function loadFittingSalesSheet(wb) {
-    const names = wb.SheetNames || [];
-    const preferred = ['06_피팅판매', '피팅판매'];
-    const ordered = [...preferred.filter(n => wb.Sheets[n]), ...names.filter(n => !preferred.includes(n))];
-
-    for (const name of ordered) {
-      const ws = wb.Sheets[name];
-      if (!ws) continue;
-      const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true, blankrows: false });
-      const headerIndex = aoa.findIndex(rowLooksLikeFittingHeader);
-      if (headerIndex >= 0) {
-        const rows = aoaToObjects(aoa, headerIndex);
-        console.log('[피팅판매 발견]', { sheetName: name, headerRow: headerIndex + 1, rowCount: rows.length, firstRow: rows[0], headers: Object.keys(rows[0] || {}) });
-        return rows;
-      }
+    const name = forcedFittingSheetName(wb);
+    console.log('[피팅판매 강제 로딩] sheetName=', name, 'allSheets=', wb.SheetNames);
+    if (!name || !wb.Sheets[name]) {
+      console.warn('[피팅판매 강제 로딩 실패] 06_피팅판매 또는 피팅판매 시트를 찾지 못했습니다.');
+      return [];
     }
-
-    const fallbackName = findWorkbookSheetName(wb, aliases.sales);
-    if (fallbackName && wb.Sheets[fallbackName]) {
-      const rows = XLSX.utils.sheet_to_json(wb.Sheets[fallbackName], { defval: '', raw: true, blankrows: false });
-      console.warn('[피팅판매 fallback 로드]', fallbackName, rows.length, rows[0]);
-      return rows;
-    }
-
-    console.warn('[피팅판매 발견 실패]', names);
-    return [];
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { defval: '', raw: true, blankrows: false });
+    console.log('[피팅판매 강제 로딩 완료]', { sheetName: name, rowCount: rows.length, firstRow: rows[0], headers: Object.keys(rows[0] || {}) });
+    return rows;
   }
 
   function infer(q) {
@@ -191,30 +158,30 @@
   }
 
   function normMaster(rows) {
-    return rows.map((r, i) => ({
-      ...r,
-      안경사ID: clean(get(r, ['안경사ID', '안경사 ID', 'ID', 'OpticianID'])) || `AUTO-${i + 1}`,
-      안경사명: clean(get(r, ['안경사명', '안경사', '이름', '성명'])),
-      안경원코드: clean(get(r, ['안경원코드', '매장코드', '거래처코드', 'ShipTo', 'SoldTo', 'Outletnumber', 'Outlet Number', '매장ID', '매장번호', 'CustomerID'])),
-      안경원명: clean(get(r, ['안경원명', '안경원', '매장명', '거래처명', 'OutletName', 'StoreName'])),
-      지역: clean(get(r, ['지역', '시도', 'Region'])),
-      연차: clean(get(r, ['연차', 'Years', '경력'])),
-      Tier: clean(get(r, ['Tier', '티어', '등급'])),
-      채널: clean(get(r, ['채널', 'Channel', '전략구분', '유형'])),
-      담당영업사원: clean(get(r, ['담당영업사원', '담당자', '영업사원']))
-    })).filter(r => r.안경사ID || r.안경사명);
+    return rows.map((row, index) => ({
+      ...row,
+      안경사ID: clean(get(row, ['안경사ID', '안경사 ID', 'ID', 'OpticianID'])) || `AUTO-${index + 1}`,
+      안경사명: clean(get(row, ['안경사명', '안경사', '이름', '성명'])),
+      안경원코드: clean(get(row, ['안경원코드', '매장코드', '거래처코드', 'ShipTo', 'SoldTo', 'Outletnumber', 'Outlet Number', '매장ID', '매장번호', 'CustomerID'])),
+      안경원명: clean(get(row, ['안경원명', '안경원', '매장명', '거래처명', 'OutletName', 'StoreName'])),
+      지역: clean(get(row, ['지역', '시도', 'Region'])),
+      연차: clean(get(row, ['연차', 'Years', '경력'])),
+      Tier: clean(get(row, ['Tier', '티어', '등급'])),
+      채널: clean(get(row, ['채널', 'Channel', '전략구분', '유형'])),
+      담당영업사원: clean(get(row, ['담당영업사원', '담당자', '영업사원']))
+    })).filter(row => row.안경사ID || row.안경사명);
   }
 
   function normQm(rows) {
-    return rows.map((r, i) => {
-      const q = clean(get(r, ['문항', '문항명', 'Question']));
+    return rows.map((row, index) => {
+      const q = clean(get(row, ['문항', '문항명', 'Question']));
       return {
-        문항ID: clean(get(r, ['문항ID', 'QuestionID'])) || `Q${String(i + 1).padStart(3, '0')}`,
+        문항ID: clean(get(row, ['문항ID', 'QuestionID'])) || `Q${String(index + 1).padStart(3, '0')}`,
         문항: q,
-        제품군: clean(get(r, ['제품군'])) ? infer(clean(get(r, ['제품군']))) : infer(q),
-        목표값: num(get(r, ['목표값'])) ?? 4,
-        긍정방향: clean(get(r, ['긍정방향'])) || (/역코딩/.test(q) ? '낮을수록 긍정' : '높을수록 긍정'),
-        사용: clean(get(r, ['분석사용여부', '사용여부'])) || 'Y'
+        제품군: clean(get(row, ['제품군'])) ? infer(clean(get(row, ['제품군']))) : infer(q),
+        목표값: num(get(row, ['목표값'])) ?? 4,
+        긍정방향: clean(get(row, ['긍정방향'])) || (/역코딩/.test(q) ? '낮을수록 긍정' : '높을수록 긍정'),
+        사용: clean(get(row, ['분석사용여부', '사용여부'])) || 'Y'
       };
     });
   }
@@ -222,10 +189,10 @@
   function normPer(rows) {
     const meta = ['안경사ID', 'ID', '안경사명', '안경원명', '지역', '연차', 'Tier', 'SEG', 'No', '번호'];
     const out = [];
-    rows.forEach(r => {
-      const id = clean(get(r, ['안경사ID', '안경사 ID', 'ID']));
+    rows.forEach(row => {
+      const id = clean(get(row, ['안경사ID', '안경사 ID', 'ID']));
       if (!id) return;
-      Object.keys(r).forEach(col => {
+      Object.keys(row).forEach(col => {
         if (meta.some(m => norm(m) === norm(col))) return;
         const qm = S.qm.find(q => norm(col).includes(norm(q.문항ID)) || norm(col).includes(norm(q.문항))) || {
           문항ID: col,
@@ -235,10 +202,10 @@
           긍정방향: /역코딩/.test(col) ? '낮을수록 긍정' : '높을수록 긍정',
           사용: 'Y'
         };
-        const s = score(r[col]);
+        const s = score(row[col]);
         if (s == null || s < 1 || s > 5 || qm.사용 === 'N') return;
         const adj = /낮을수록/.test(qm.긍정방향) ? 6 - s : s;
-        out.push({ 안경사ID: id, 문항ID: qm.문항ID, 문항: qm.문항, 제품군: qm.제품군, 원응답: r[col], 점수: adj, 목표값: qm.목표값, gap: adj < qm.목표값 });
+        out.push({ 안경사ID: id, 문항ID: qm.문항ID, 문항: qm.문항, 제품군: qm.제품군, 원응답: row[col], 점수: adj, 목표값: qm.목표값, gap: adj < qm.목표값 });
       });
     });
     return out;
@@ -263,42 +230,42 @@
     S.recById = new Map();
     S.metricCache = new Map();
 
-    S.master.forEach(r => { if (r.안경사ID) S.masterById.set(r.안경사ID, r); });
+    S.master.forEach(row => { if (row.안경사ID) S.masterById.set(row.안경사ID, row); });
 
-    S.sales.forEach(r => {
-      const id = salesId(r);
+    S.sales.forEach(row => {
+      const id = salesId(row);
       if (id) {
-        let a = S.salesById.get(id);
-        if (!a) { a = []; S.salesById.set(id, a); }
-        a.push(r);
+        let arr = S.salesById.get(id);
+        if (!arr) { arr = []; S.salesById.set(id, arr); }
+        arr.push(row);
       }
-      const sk = storeKey(r);
+      const sk = storeKey(row);
       if (sk) {
-        let a = S.salesByStore.get(sk);
-        if (!a) { a = []; S.salesByStore.set(sk, a); }
-        a.push(r);
+        let arr = S.salesByStore.get(sk);
+        if (!arr) { arr = []; S.salesByStore.set(sk, arr); }
+        arr.push(row);
       }
     });
 
-    S.edu.forEach(r => {
-      const id = clean(get(r, ['안경사ID', '안경사 ID', 'ID']));
+    S.edu.forEach(row => {
+      const id = clean(get(row, ['안경사ID', '안경사 ID', 'ID']));
       if (!id) return;
-      let a = S.eduById.get(id);
-      if (!a) { a = []; S.eduById.set(id, a); }
-      a.push(r);
+      let arr = S.eduById.get(id);
+      if (!arr) { arr = []; S.eduById.set(id, arr); }
+      arr.push(row);
     });
 
-    S.per.forEach(r => {
-      const id = r.안경사ID;
+    S.per.forEach(row => {
+      const id = row.안경사ID;
       if (!id) return;
-      let a = S.perById.get(id);
-      if (!a) { a = []; S.perById.set(id, a); }
-      a.push(r);
+      let arr = S.perById.get(id);
+      if (!arr) { arr = []; S.perById.set(id, arr); }
+      arr.push(row);
     });
 
-    S.rec.forEach(r => {
-      const id = clean(get(r, ['안경사ID', '안경사 ID', 'ID']));
-      if (id && !S.recById.has(id)) S.recById.set(id, r);
+    S.rec.forEach(row => {
+      const id = clean(get(row, ['안경사ID', '안경사 ID', 'ID']));
+      if (id && !S.recById.has(id)) S.recById.set(id, row);
     });
   }
 
@@ -325,28 +292,25 @@
   }
 
   function selectedSalesRows(masterRows) {
-    const salesRows = [];
-    masterRows.forEach(row => {
-      salesRows.push(...rowsFor(row.안경사ID));
-    });
-    return dedupeSalesRows(salesRows);
+    const rows = [];
+    masterRows.forEach(row => rows.push(...rowsFor(row.안경사ID)));
+    return dedupeSalesRows(rows);
   }
 
   function packDelta(rows, key) {
     const col = FITTING_COLUMNS[key];
-    const py = sum(rows, r => get(r, col.py));
-    const cy = sum(rows, r => get(r, col.cy));
+    const py = sum(rows, row => get(row, col.py));
+    const cy = sum(rows, row => get(row, col.cy));
     if (py == null && cy == null) return null;
     return (cy || 0) - (py || 0);
   }
 
   function growth(rows, key) {
     const col = FITTING_COLUMNS[key];
-    const directRate = avg(rows, r => get(r, col.rate));
+    const directRate = avg(rows, row => get(row, col.rate));
     if (directRate != null) return directRate;
-
-    const py = sum(rows, r => get(r, col.py));
-    const cy = sum(rows, r => get(r, col.cy));
+    const py = sum(rows, row => get(row, col.py));
+    const cy = sum(rows, row => get(row, col.cy));
     if (py == null && cy == null) return null;
     if (!py && cy) return 100;
     return py ? ((cy - py) / py * 100) : null;
@@ -383,8 +347,8 @@
   function filterByDropdown() {
     let rows = [...S.master];
     [['regionFilter', '지역'], ['yearsFilter', '연차'], ['tierFilter', 'Tier'], ['channelFilter', '채널'], ['repFilter', '담당영업사원']].forEach(([id, field]) => {
-      const v = $(id)?.value;
-      if (v) rows = rows.filter(r => clean(r[field]) === v);
+      const value = $(id)?.value;
+      if (value) rows = rows.filter(row => clean(row[field]) === value);
     });
     return rows;
   }
@@ -394,19 +358,19 @@
     const q = clean(S.query);
     if (q) {
       const years = (q.match(/(\d+)\s*년차/) || [])[1];
-      if (years) rows = rows.filter(r => clean(r.연차).includes(years));
+      if (years) rows = rows.filter(row => clean(row.연차).includes(years));
       const wantGap = /인식|Gap|갭|문항/.test(q);
       const eduIn = /미완료|미수료|교육/.test(q);
       const negative = /성장률 음수|역성장|마이너스|성장률.*낮/.test(q);
-      rows = rows.filter(r => {
-        const m = metrics(r.안경사ID);
+      rows = rows.filter(row => {
+        const m = metrics(row.안경사ID);
         if (wantGap && !m.gaps.length) return false;
         if (eduIn && !(m.eduRate == null || m.eduRate < 1)) return false;
         if (negative && !['ast', 'mf', 'max'].some(k => m.growths[k].cur != null && m.growths[k].cur < 0)) return false;
         return true;
       });
     }
-    if (S.targetIds) rows = rows.filter(r => S.targetIds.has(r.안경사ID));
+    if (S.targetIds) rows = rows.filter(row => S.targetIds.has(row.안경사ID));
     return rows;
   }
 
@@ -431,7 +395,7 @@
   function render() {
     const rows = filtered();
     S.filtered = rows;
-    const ms = rows.map(r => metrics(r.안경사ID));
+    const ms = rows.map(row => metrics(row.안경사ID));
     const eduComplete = ms.filter(m => m.eduRate === 1).length;
     const reached = ms.filter(m => m.perc.length && m.gaps.length === 0).length;
 
@@ -464,7 +428,7 @@
 
   function renderQuestionTop(rows) {
     if (!$('questionTop')) return;
-    const ids = new Set(rows.map(r => r.안경사ID));
+    const ids = new Set(rows.map(row => row.안경사ID));
     const counts = {};
     S.per.forEach(p => {
       if (ids.has(p.안경사ID) && p.gap) counts[p.문항] = (counts[p.문항] || 0) + 1;
@@ -481,8 +445,8 @@
     if (!$('topEducation')) return;
     const counts = {};
     ms.forEach(m => {
-      const n = clean(get(m.rec, ['추천교육명', '교육명'])) || contentName(get(m.rec, ['추천교육ID', '교육ID']));
-      if (n) counts[n] = (counts[n] || 0) + 1;
+      const name = clean(get(m.rec, ['추천교육명', '교육명'])) || contentName(get(m.rec, ['추천교육ID', '교육ID']));
+      if (name) counts[name] = (counts[name] || 0) + 1;
     });
     $('topEducation').innerHTML = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map((x, i) => `<div class="rank-item"><span class="rank-no">${i + 1}</span><b>${esc(x[0])}</b><span>${x[1]}명</span></div>`).join('') || '<div class="empty-state">추천 교육 데이터가 없습니다.</div>';
   }
@@ -529,9 +493,9 @@
 
   function by(arr, key) {
     const map = {};
-    arr.forEach(x => {
-      const value = clean(x[key]) || '미분류';
-      (map[value] || (map[value] = [])).push(x);
+    arr.forEach(item => {
+      const value = clean(item[key]) || '미분류';
+      (map[value] || (map[value] = [])).push(item);
     });
     return map;
   }
@@ -554,19 +518,19 @@
   }
 
   function educationSummaryForRows(rows, key) {
-    const ids = new Set(rows.map(r => r.안경사ID));
+    const ids = new Set(rows.map(row => row.안경사ID));
     const keywords = productWords[key] || [];
-    const eduRows = S.edu.filter(r => ids.has(clean(get(r, ['안경사ID', '안경사 ID', 'ID']))));
-    const related = eduRows.filter(r => keywords.some(k => Object.values(r).join(' ').includes(k)));
+    const eduRows = S.edu.filter(row => ids.has(clean(get(row, ['안경사ID', '안경사 ID', 'ID']))));
+    const related = eduRows.filter(row => keywords.some(k => Object.values(row).join(' ').includes(k)));
     const base = related.length ? related : eduRows;
     const done = base.filter(eduDone).length;
     const rateVal = base.length ? done / base.length : null;
-    const names = [...new Set(base.map(r => clean(get(r, ['교육명', '콘텐츠명'])) || contentName(get(r, ['교육ID', 'ID']))).filter(Boolean))].slice(0, 3);
+    const names = [...new Set(base.map(row => clean(get(row, ['교육명', '콘텐츠명'])) || contentName(get(row, ['교육ID', 'ID']))).filter(Boolean))].slice(0, 3);
     return { total: base.length, done, rate: rateVal, names };
   }
 
   function insight(type, title, rows, key, symptom, cause, action, scoreValue) {
-    return { type, title, targetIds: rows.map(r => r.안경사ID), size: rows.length, key, symptom, cause, action, score: scoreValue };
+    return { type, title, targetIds: rows.map(row => row.안경사ID), size: rows.length, key, symptom, cause, action, score: scoreValue };
   }
 
   function generateInsights() {
@@ -579,13 +543,13 @@
     };
     const groups = [];
     ['지역', '연차', 'Tier', '채널', '담당영업사원'].forEach(dim => {
-      Object.entries(by(S.master, dim)).forEach(([v, rows]) => {
-        if (rows.length >= 3) groups.push({ name: v, rows, dim });
+      Object.entries(by(S.master, dim)).forEach(([value, rows]) => {
+        if (rows.length >= 3) groups.push({ name: value, rows, dim });
       });
     });
     groups.forEach(g => {
       const sales = selectedSalesRows(g.rows);
-      const ms = g.rows.map(r => metrics(r.안경사ID));
+      const ms = g.rows.map(row => metrics(row.안경사ID));
       ['ast', 'mf', 'max'].forEach(key => {
         const rg = growth(sales, key);
         const pk = packDelta(sales, key);
@@ -620,23 +584,23 @@
       kpi('교육 로드맵', S.insights.length, 'STEP1+STEP2')
     ].join('');
     if (!$('insightCards')) return;
-    $('insightCards').innerHTML = S.insights.length ? S.insights.map((i, idx) => `<div class="insight-card"><div class="type">${esc(i.type)}</div><h3>${idx + 1}. ${esc(i.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 증상</small>${esc(i.symptom)}</div><div class="insight-step"><small>2. 원인 후보</small>${esc(i.cause)}</div><div class="insight-step"><small>3. 교육 이력</small>${esc(i.action || '교육 이력 데이터 없음')}</div></div><div class="note">대상 ${i.size}명 · 점수 ${Math.round(i.score)}</div><div class="insight-actions"><button class="button primary" data-insight="${idx}">대상 보기</button><button class="button" data-detail="${idx}">상세 보기</button></div></div>`).join('') : '<div class="empty-state">조건에 맞는 자동 인사이트가 없습니다.</div>';
-    document.querySelectorAll('[data-insight]').forEach(b => b.onclick = () => {
-      const ins = S.insights[+b.dataset.insight];
+    $('insightCards').innerHTML = S.insights.length ? S.insights.map((item, idx) => `<div class="insight-card"><div class="type">${esc(item.type)}</div><h3>${idx + 1}. ${esc(item.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 증상</small>${esc(item.symptom)}</div><div class="insight-step"><small>2. 원인 후보</small>${esc(item.cause)}</div><div class="insight-step"><small>3. 교육 이력</small>${esc(item.action || '교육 이력 데이터 없음')}</div></div><div class="note">대상 ${item.size}명 · 점수 ${Math.round(item.score)}</div><div class="insight-actions"><button class="button primary" data-insight="${idx}">대상 보기</button><button class="button" data-detail="${idx}">상세 보기</button></div></div>`).join('') : '<div class="empty-state">조건에 맞는 자동 인사이트가 없습니다.</div>';
+    document.querySelectorAll('[data-insight]').forEach(button => button.onclick = () => {
+      const ins = S.insights[+button.dataset.insight];
       S.targetIds = new Set(ins.targetIds);
       S.query = '';
       render();
       if ($('queryExplanation')) $('queryExplanation').textContent = `인사이트 대상 필터 적용: ${ins.title} / 결과 ${S.filtered.length}명`;
       view('segment');
     });
-    document.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => showInsightDetail(+b.dataset.detail));
+    document.querySelectorAll('[data-detail]').forEach(button => button.onclick = () => showInsightDetail(+button.dataset.detail));
   }
 
   function showInsightDetail(idx) {
-    const i = S.insights[idx];
+    const item = S.insights[idx];
     if (!$('insightDetailPanel')) return;
     $('insightDetailPanel').hidden = false;
-    $('insightDetail').innerHTML = `<div class="insight-card"><div class="type">${esc(i.type)}</div><h3>${esc(i.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 무엇이 낮은가</small>${esc(i.symptom)}</div><div class="insight-step"><small>2. 어떤 원인이 의심되는가</small>${esc(i.cause)}</div><div class="insight-step"><small>3. 교육 이력</small>${esc(i.action || '교육 이력 데이터 없음')}</div></div></div>`;
+    $('insightDetail').innerHTML = `<div class="insight-card"><div class="type">${esc(item.type)}</div><h3>${esc(item.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 무엇이 낮은가</small>${esc(item.symptom)}</div><div class="insight-step"><small>2. 어떤 원인이 의심되는가</small>${esc(item.cause)}</div><div class="insight-step"><small>3. 교육 이력</small>${esc(item.action || '교육 이력 데이터 없음')}</div></div></div>`;
     $('insightDetailPanel').scrollIntoView({ behavior: 'smooth' });
   }
 
@@ -644,7 +608,7 @@
     [['regionFilter', '지역'], ['yearsFilter', '연차'], ['tierFilter', 'Tier'], ['channelFilter', '채널'], ['repFilter', '담당영업사원']].forEach(([id, field]) => {
       const el = $(id);
       if (!el) return;
-      const vals = [...new Set(S.master.map(r => clean(r[field])).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
+      const vals = [...new Set(S.master.map(row => clean(row[field])).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
       el.innerHTML = '<option value="">전체</option>' + vals.map(v => `<option>${esc(v)}</option>`).join('');
       el.onchange = () => { S.query = ''; S.targetIds = null; render(); };
     });
