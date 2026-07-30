@@ -31,19 +31,19 @@
 
   const FITTING_COLUMNS = {
     ast: {
-      label: '난시', title: '난시 성장',
+      label: '난시', title: '난시 성장 (pack)',
       py: ['2025 난시 팩수', '2025난시팩수', '25년 난시 팩수', '25년난시팩수'],
       cy: ['2026 난시 팩수', '2026난시팩수', '26년 난시 팩수', '26년난시팩수'],
       rate: ['난시 성장률', '난시성장률']
     },
     mf: {
-      label: '멀티포컬', title: '멀티포컬 성장',
+      label: '멀티포컬', title: '멀티포컬 성장 (pack)',
       py: ['2025 멀티포컬  팩수', '2025 멀티포컬 팩수', '2025멀티포컬팩수', '25년 멀티포컬  팩수', '25년 멀티포컬 팩수', '25년멀티포컬팩수'],
       cy: ['2026 멀티포컬  팩수', '2026 멀티포컬 팩수', '2026멀티포컬팩수', '26년 멀티포컬  팩수', '26년 멀티포컬 팩수', '26년멀티포컬팩수'],
       rate: ['멀티포컬 성장률', '멀티포컬성장률', 'MF 성장률', 'MF성장률']
     },
     max: {
-      label: 'MAX', title: 'MAX 성장',
+      label: 'MAX', title: 'MAX 성장 (pack)',
       py: ['2025 MAX  팩수', '2025 MAX 팩수', '2025MAX팩수', '25년 MAX  팩수', '25년 MAX 팩수', '25년MAX팩수'],
       cy: ['2026 MAX  팩수', '2026 MAX 팩수', '2026MAX팩수', '26년 MAX  팩수', '26년 MAX 팩수', '26년MAX팩수'],
       rate: ['MAX 성장률', 'MAX성장률', '맥스 성장률', '맥스성장률']
@@ -117,7 +117,7 @@
   const fmtPackMain = v => {
     if (v == null) return '데이터 없음';
     const rounded = Math.round(Number(v));
-    return `${rounded >= 0 ? '+' : ''}${rounded.toLocaleString('ko-KR')}팩`;
+    return `${rounded >= 0 ? '+' : ''}${rounded.toLocaleString('ko-KR')}`;
   };
   const dclass = v => v == null ? '' : Number(v) < 0 ? 'negative' : 'positive';
 
@@ -502,7 +502,6 @@
       FITTING_COLUMNS[key].title,
       `<span class="growth-kpi-line ${dclass(avgPack)}">
          <span class="growth-pack">${fmtPackMain(avgPack)}</span>
-         <span class="growth-unit">/ACC</span>
          <span class="growth-vs-py">(${fmtRate(cur)} vs PY)</span>
        </span>`,
       `<span class="growth-vs-avg ${dclass(diff)}">(${fmtPp(diff)} vs avg)</span>`
@@ -1208,23 +1207,15 @@
     S.gapFilter = null;
     if ($('smartQuery')) $('smartQuery').value = '';
     render();
-    if ($('queryExplanation')) {
-      $('queryExplanation').textContent = '스마트 검색이 초기화되었습니다. 상세 조건은 유지됩니다.';
-    }
+    if ($('queryExplanation')) $('queryExplanation').textContent = '스마트 검색이 초기화되었습니다. 상세 조건은 유지됩니다.';
   }
 
   function resetDetailFilters() {
     S.targetIds = null;
     S.gapFilter = null;
-    ['regionFilter', 'yearsFilter', 'tierFilter', 'channelFilter', 'repFilter'].forEach(id => {
-      if ($(id)) $(id).value = '';
-    });
+    ['regionFilter', 'yearsFilter', 'tierFilter', 'channelFilter', 'repFilter'].forEach(id => { if ($(id)) $(id).value = ''; });
     render();
-    if ($('queryExplanation')) {
-      $('queryExplanation').textContent = S.query
-        ? `상세 조건이 초기화되었습니다. 스마트 검색 "${S.query}"은 유지됩니다.`
-        : '상세 조건이 초기화되었습니다.';
-    }
+    if ($('queryExplanation')) $('queryExplanation').textContent = S.query ? `상세 조건이 초기화되었습니다. 스마트 검색 "${S.query}"은 유지됩니다.` : '상세 조건이 초기화되었습니다.';
   }
 
   function resetAll() {
@@ -1476,4 +1467,157 @@
   function renderRestored(){const items=MENUS.map(build).filter(Boolean).slice(0,5),box=$('insightCards'); if(!box)return;box.innerHTML=items.length?items.map(card).join(''):'<div class="empty-state">조건에 맞는 자동 인사이트가 없습니다.</div>'; box.querySelectorAll('[data-view-target]').forEach(b=>b.onclick=e=>{e.stopPropagation();showDetail(items[+b.dataset.viewTarget]);}); box.querySelectorAll('[data-card]').forEach(c=>c.onclick=()=>showDetail(items[+c.dataset.card]));}
   function styles(){if($('restored-insight-style'))return;const s=document.createElement('style');s.id='restored-insight-style';s.textContent=`.restored-insight-card{cursor:pointer}.restored-grid{display:grid;grid-template-columns:.8fr 1.65fr 1.15fr 1.15fr;gap:12px;margin-top:14px}.restored-grid>section{background:#f4f7fb;border-radius:14px;padding:18px;min-height:155px}.restored-grid small{display:block;color:#667085;font-weight:800;margin-bottom:10px}.restored-grid strong{font-size:22px}.insight-result-main{display:flex;justify-content:space-between;gap:8px;font-weight:800;margin:8px 0}.insight-result-other{font-size:13px;color:#667085;font-weight:400;margin-top:12px}.edu-line{font-weight:700;margin:8px 0}.tab[data-view="segment"]{opacity:.55}.tab[data-view="segment"].active,.tab[data-view="segment"]:hover{opacity:1}@media(max-width:1050px){.restored-grid{grid-template-columns:1fr 1fr}}@media(max-width:650px){.restored-grid{grid-template-columns:1fr}}`;document.head.appendChild(s);}
   document.addEventListener('DOMContentLoaded',()=>{styles();const t=document.querySelector('.tab[data-view="segment"]');if(t)t.textContent='안경사 상세 분석';const b=$('refreshInsights');if(b)b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();renderRestored();},true);});
+})();
+
+
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  function placeDashboardSections() {
+    const dashboard = $('dashboard');
+    const kpiGrid = $('kpiGrid');
+    const gapCards = $('gapCards');
+    const linked = $('linkedGapEducation');
+    if (!dashboard || !kpiGrid || !gapCards) return;
+
+    const gapPanel = gapCards.closest('section, .panel, .card, .section-card') || gapCards.parentElement;
+    const kpiPanel = kpiGrid.closest('section, .panel, .card, .section-card') || kpiGrid;
+
+    if (gapPanel) {
+      gapPanel.classList.add('full-width-gap-panel');
+      if (kpiPanel.nextElementSibling !== gapPanel) kpiPanel.insertAdjacentElement('afterend', gapPanel);
+    }
+    if (linked && gapPanel && gapPanel.nextElementSibling !== linked) {
+      gapPanel.insertAdjacentElement('afterend', linked);
+    }
+
+    const q = $('questionTop');
+    const e = $('topEducation');
+    [q, e].forEach(node => {
+      const panel = node && (node.closest('section, .panel, .card, .section-card') || node.parentElement);
+      if (panel && panel !== gapPanel && panel !== linked) panel.classList.add('legacy-gap-panel-hidden');
+    });
+  }
+
+  function fixKpiUnits() {
+    document.querySelectorAll('.growth-unit').forEach(el => { el.textContent = '/ACC'; });
+  }
+
+  function installStyles() {
+    if ($('dashboard-final-visual-fix')) return;
+    const style = document.createElement('style');
+    style.id = 'dashboard-final-visual-fix';
+    style.textContent = `
+      /* KPI: 숫자와 /ACC 한 줄, 비교 수치는 아래 줄 */
+      .kpi-card strong { overflow: visible !important; }
+      .kpi-card .growth-kpi-line {
+        display: grid !important;
+        grid-template-columns: max-content max-content !important;
+        align-items: baseline !important;
+        justify-content: start !important;
+        column-gap: 0 !important;
+        row-gap: 5px !important;
+        width: 100% !important;
+        white-space: nowrap !important;
+      }
+      .kpi-card .growth-pack {
+        grid-column: 1 !important;
+        font-size: 38px !important;
+        line-height: .95 !important;
+        font-weight: 950 !important;
+        letter-spacing: -1.6px !important;
+      }
+      .kpi-card .growth-unit {
+        grid-column: 2 !important;
+        margin: 0 !important;
+        font-size: 15px !important;
+        line-height: 1 !important;
+        font-weight: 800 !important;
+        color: #475467 !important;
+      }
+      .kpi-card .growth-vs-py {
+        grid-column: 1 / 3 !important;
+        display: block !important;
+        margin: 0 !important;
+        font-size: 13px !important;
+        line-height: 1.2 !important;
+        font-weight: 700 !important;
+        color: #475467 !important;
+      }
+      .kpi-card .growth-vs-avg {
+        display: block !important;
+        margin-top: 5px !important;
+        font-size: 12px !important;
+      }
+
+      /* 핵심 Gap 전체 폭 한 줄 */
+      .full-width-gap-panel {
+        width: 100% !important;
+        max-width: none !important;
+        grid-column: 1 / -1 !important;
+      }
+      #gapCards {
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+        width: 100% !important;
+      }
+      #gapCards .gap-card { min-width: 0 !important; min-height: 122px !important; }
+
+      /* 문항 → 교육 → 대상자 보기 */
+      #linkedGapEducation {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        grid-column: 1 / -1 !important;
+      }
+      .legacy-gap-panel-hidden { display: none !important; }
+      .linked-gap-row {
+        grid-template-columns: 34px minmax(360px, 1.45fr) 30px minmax(280px, 1fr) auto !important;
+      }
+
+      @media (max-width: 1280px) {
+        .kpi-card .growth-pack { font-size: 32px !important; }
+        #gapCards { grid-template-columns: repeat(5, minmax(170px, 1fr)) !important; overflow-x: auto !important; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    installStyles();
+    fixKpiUnits();
+    placeDashboardSections();
+    const observer = new MutationObserver(() => {
+      fixKpiUnits();
+      placeDashboardSections();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+})();
+
+
+(function () {
+  'use strict';
+  document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('pack-title-number-only-style')) return;
+    const style = document.createElement('style');
+    style.id = 'pack-title-number-only-style';
+    style.textContent = `
+      .kpi-card .growth-kpi-line {
+        grid-template-columns: max-content !important;
+      }
+      .kpi-card .growth-pack {
+        grid-column: 1 !important;
+      }
+      .kpi-card .growth-vs-py {
+        grid-column: 1 !important;
+      }
+      .kpi-card .growth-unit {
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  });
 })();
