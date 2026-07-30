@@ -702,14 +702,31 @@
   }
 
   function educationSummaryForRows(rows, key) {
-    const ids = new Set(rows.map(r => r.안경사ID));
-    const all = S.edu.filter(r => ids.has(clean(get(r, ['안경사ID', '안경사 ID', 'ID']))));
+    const targetIds = new Set(rows.map(r => r.안경사ID));
+    const targetCount = targetIds.size;
+    const all = S.edu.filter(r => targetIds.has(clean(get(r, ['안경사ID', '안경사 ID', 'ID']))));
     const related = all.filter(r => educationRelated(Object.values(r).join(' '), key));
     const base = related.length ? related : all;
-    const done = base.filter(eduDone).length;
-    const incomplete = base.length - done;
-    const titles = [...new Set(base.map(educationTitle).filter(Boolean))].slice(0, 4);
-    return { all, base, relatedCount: related.length, total: base.length, done, incomplete, rate: base.length ? done / base.length : null, titles };
+    const doneRows = base.filter(eduDone);
+    const incompleteRows = base.filter(r => !eduDone(r));
+    const donePeople = new Set(doneRows.map(r => clean(get(r, ['안경사ID', '안경사 ID', 'ID']))).filter(Boolean));
+    const incompletePeople = new Set(incompleteRows.map(r => clean(get(r, ['안경사ID', '안경사 ID', 'ID']))).filter(Boolean));
+    const noRelatedPeople = targetCount ? [...targetIds].filter(id => !donePeople.has(id)).length : 0;
+    const titles = [...new Set(doneRows.map(educationTitle).filter(Boolean))].slice(0, 5);
+    return {
+      all,
+      base,
+      relatedCount: related.length,
+      total: base.length,
+      done: doneRows.length,
+      incomplete: incompleteRows.length,
+      rate: base.length ? doneRows.length / base.length : null,
+      titles,
+      targetCount,
+      donePeopleCount: donePeople.size,
+      incompletePeopleCount: incompletePeople.size,
+      noRelatedPeopleCount: noRelatedPeople
+    };
   }
 
   function completedEducationTitles(rows) {
@@ -845,12 +862,27 @@
     return list.length ? list.map(x => `<b>${esc(x.q)}</b><br><small>선택 그룹 평균 ${x.seg.toFixed(1)}점, 전체 평균 ${x.all.toFixed(1)}점</small>`).join('<hr>') : '특별히 추가로 두드러진 저하 영역은 없습니다.';
   }
 
-  function eduHtml(edu) {
-    return edu.total ? `관련/전체 교육 이력 ${edu.total}건 중 완료 ${edu.done}건(${fmtPct(edu.rate)}), 미완료 ${edu.incomplete}건.<br><small>${edu.titles.length ? '확인된 교육: ' + edu.titles.map(esc).join(', ') : '교육명 데이터 없음'}</small>` : '관련 교육 이력이 확인되지 않았습니다.';
+  function eduHtml(edu, targetCount = 0) {
+    if (!edu || !targetCount) return '교육 대상자 기준 이수 현황을 확인할 수 없습니다.';
+    const doneRate = targetCount ? Math.round((edu.donePeopleCount || 0) / targetCount * 100) : 0;
+    const noDone = Math.max(0, targetCount - (edu.donePeopleCount || 0));
+    const titleText = edu.titles && edu.titles.length ? edu.titles.map(esc).join(', ') : '확인된 관련 이수 교육 없음';
+    return `대상자 ${targetCount}명 중 관련 교육 이수자 ${edu.donePeopleCount || 0}명(${doneRate}%), 관련 교육 미이수 또는 확인 필요 ${noDone}명.<br><small>확인된 관련 이수 교육: ${titleText}</small><br><small>※ 위 수치는 교육 이력 건수가 아니라 대상자 기준 이수 여부입니다.</small>`;
   }
 
   function recHtml(recs) {
     return recs.map(r => `<div class="recommend-card"><b>${r.step}: ${esc(r.title)}</b><br><small>${esc(r.reason)}</small></div>`).join('');
+  }
+
+  function followUpHtml(item) {
+    const product = FITTING_COLUMNS[item.key]?.label || '해당 제품군';
+    const topQuestion = item.causeList && item.causeList.length ? item.causeList[0].q : `${product} 관련 인식 TOP 문항`;
+    const recTitles = (item.recs || []).map(r => r.title).filter(Boolean).slice(0, 2).join(', ') || '추천 교육';
+    return `<b>교육 이후 Follow-up 추적</b><br>
+      <small>1) 교육 이수 확인: ${esc(recTitles)} 완료 여부</small><br>
+      <small>2) 인식 변화 확인: ${esc(topQuestion)} 문항 재측정</small><br>
+      <small>3) 판매 변화 확인: ${esc(product)} 연환산 성장률과 팩 / ACC 재확인</small><br>
+      <small>4) 판정: 인식 개선 + 판매 회복 시 완료, 미개선 시 추가 코칭/교육 필요</small>`;
   }
 
   function renderInsights() {
@@ -860,7 +892,7 @@
       $('insightSummary').style.display = 'none';
     }
     if (!$('insightCards')) return;
-    $('insightCards').innerHTML = S.insights.length ? S.insights.map((item, idx) => `<div class="insight-card"><div class="type">${esc(item.type)}</div><h3>${idx + 1}. ${esc(item.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 증상</small>${esc(item.symptom)}</div><div class="insight-step"><small>2. ${esc(INSIGHT[item.key].focus)} 원인 후보</small>${causeHtml(item.causeList, item.key)}</div><div class="insight-step"><small>3. 참고 저하 영역</small>${otherHtml(item.otherList)}</div><div class="insight-step"><small>4. 교육 이수 내역</small>${eduHtml(item.edu)}</div><div class="insight-step rec"><small>5. 추천 교육 2개</small>${recHtml(item.recs)}</div></div><div class="note">교육 대상 ${item.size}명</div><div class="insight-actions"><button class="button primary" data-insight="${idx}">대상 보기</button><button class="button" data-detail="${idx}">상세 보기</button></div></div>`).join('') : '<div class="empty-state">조건에 맞는 자동 인사이트가 없습니다.</div>';
+    $('insightCards').innerHTML = S.insights.length ? S.insights.map((item, idx) => `<div class="insight-card"><div class="type">${esc(item.type)}</div><h3>${idx + 1}. ${esc(item.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 증상</small>${esc(item.symptom)}</div><div class="insight-step"><small>2. ${esc(INSIGHT[item.key].focus)} 원인 후보</small>${causeHtml(item.causeList, item.key)}</div><div class="insight-step"><small>3. 참고 저하 영역</small>${otherHtml(item.otherList)}</div><div class="insight-step"><small>4. 관련 교육 이수 현황</small>${eduHtml(item.edu, item.size)}</div><div class="insight-step rec"><small>5. 추천 교육 2개</small>${recHtml(item.recs)}</div><div class="insight-step"><small>6. 교육 후 Follow-up</small>${followUpHtml(item)}</div></div><div class="note">교육 대상 ${item.size}명</div><div class="insight-actions"><button class="button primary" data-insight="${idx}">대상 보기</button><button class="button" data-detail="${idx}">상세 보기</button></div></div>`).join('') : '<div class="empty-state">조건에 맞는 자동 인사이트가 없습니다.</div>';
     document.querySelectorAll('[data-insight]').forEach(button => button.onclick = () => {
       const ins = S.insights[+button.dataset.insight];
       S.targetIds = new Set(ins.targetIds);
@@ -877,7 +909,7 @@
     const item = S.insights[idx];
     if (!$('insightDetailPanel')) return;
     $('insightDetailPanel').hidden = false;
-    $('insightDetail').innerHTML = `<div class="insight-card"><div class="type">${esc(item.type)}</div><h3>${esc(item.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 증상</small>${esc(item.symptom)}</div><div class="insight-step"><small>2. ${esc(INSIGHT[item.key].focus)} 원인 후보</small>${causeHtml(item.causeList, item.key)}</div><div class="insight-step"><small>3. 참고 저하 영역</small>${otherHtml(item.otherList)}</div><div class="insight-step"><small>4. 교육 이수 내역</small>${eduHtml(item.edu)}</div><div class="insight-step rec"><small>5. 추천 교육 2개</small>${recHtml(item.recs)}</div></div><div class="note">교육 대상 ${item.size}명</div></div>`;
+    $('insightDetail').innerHTML = `<div class="insight-card"><div class="type">${esc(item.type)}</div><h3>${esc(item.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 증상</small>${esc(item.symptom)}</div><div class="insight-step"><small>2. ${esc(INSIGHT[item.key].focus)} 원인 후보</small>${causeHtml(item.causeList, item.key)}</div><div class="insight-step"><small>3. 참고 저하 영역</small>${otherHtml(item.otherList)}</div><div class="insight-step"><small>4. 관련 교육 이수 현황</small>${eduHtml(item.edu, item.size)}</div><div class="insight-step rec"><small>5. 추천 교육 2개</small>${recHtml(item.recs)}</div><div class="insight-step"><small>6. 교육 후 Follow-up</small>${followUpHtml(item)}</div></div><div class="note">교육 대상 ${item.size}명</div></div>`;
     $('insightDetailPanel').scrollIntoView({ behavior: 'smooth' });
   }
 
@@ -893,6 +925,21 @@
     return qs.map(q => findBestEducationForQuestion(q.문항));
   }
 
+
+  function completedEducationForPerson(id, productKey = null) {
+    const rows = S.eduById.get(id) || [];
+    const doneRows = rows.filter(eduDone);
+    const relatedRows = productKey
+      ? doneRows.filter(r => educationRelated(Object.values(r).join(' '), productKey))
+      : doneRows;
+    return relatedRows.map(educationTitle).filter(Boolean);
+  }
+
+  function currentDownloadProductKey() {
+    if (S.gapFilter && S.gapFilter.type === 'sales') return S.gapFilter.key;
+    return null;
+  }
+
   function downloadRows() {
     const baseRows = S.filtered || [];
     return S.gapFilter ? rowsForGapFilter(baseRows) : baseRows;
@@ -905,6 +952,9 @@
       const m = metrics(p.안경사ID);
       const gaps = gapQuestionsForPerson(p.안경사ID);
       const recs = neededEducationForPerson(p.안경사ID);
+      const productKey = currentDownloadProductKey();
+      const completedRelated = completedEducationForPerson(p.안경사ID, productKey);
+      const completedAll = completedEducationForPerson(p.안경사ID, null);
       return {
         다운로드기준: S.gapFilter ? gapFilterTitle() : '현재 필터 대상',
         안경사ID: p.안경사ID,
@@ -916,8 +966,27 @@
         Tier: p.Tier,
         채널: p.채널,
         이상인식문항: gaps.map(g => g.문항).join(' | '),
+        이상인식문항1: gaps[0]?.문항 || '',
+        이상인식문항1_점수: gaps[0]?.점수 ?? '',
+        이상인식문항1_목표: gaps[0]?.목표값 ?? '',
+        이상인식문항2: gaps[1]?.문항 || '',
+        이상인식문항2_점수: gaps[1]?.점수 ?? '',
+        이상인식문항2_목표: gaps[1]?.목표값 ?? '',
+        이상인식문항3: gaps[2]?.문항 || '',
+        이상인식문항3_점수: gaps[2]?.점수 ?? '',
+        이상인식문항3_목표: gaps[2]?.목표값 ?? '',
         필요교육: recs.map(r => r.title).join(' | '),
+        필요교육1: recs[0]?.title || '',
+        필요교육1_상태: recs[0]?.status || '',
+        필요교육2: recs[1]?.title || '',
+        필요교육2_상태: recs[1]?.status || '',
+        필요교육3: recs[2]?.title || '',
+        필요교육3_상태: recs[2]?.status || '',
         교육상태: recs.map(r => r.status).join(' | '),
+        관련이수교육: completedRelated.join(' | '),
+        전체이수교육: completedAll.join(' | '),
+        관련이수교육수: completedRelated.length,
+        전체이수교육수: completedAll.length,
         난시성장팩_연환산: m.growths.ast.pack,
         난시평균팩ACC: m.growths.ast.avgPack,
         난시성장률_연환산: m.growths.ast.cur,
