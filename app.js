@@ -98,10 +98,14 @@
     return values.length ? values.reduce((a, b) => a + b, 0) : null;
   };
 
+  const currentMonth = () => Math.max(1, Math.min(12, new Date().getMonth() + 1));
+  const annualize = value => value == null ? null : (value / currentMonth()) * 12;
+
   const fmtPct = v => v == null ? '데이터 없음' : `${Math.round(Number(v) * 100)}%`;
   const fmtRate = v => v == null ? '데이터 없음' : `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(1)}%`;
   const fmtPp = v => v == null ? '데이터 없음' : `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(1)}%p`;
   const fmtPack = v => v == null ? '데이터 없음' : `${Math.round(Number(v)) >= 0 ? '+' : ''}${Math.round(Number(v)).toLocaleString('ko-KR')}팩`;
+  const fmtPackPerAcc = v => v == null ? '데이터 없음' : `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(1)}팩 / ACC`;
   const dclass = v => v == null ? '' : Number(v) < 0 ? 'negative' : 'positive';
 
   function sheetNameKey(value) {
@@ -306,23 +310,40 @@
     return dedupeSalesRows(rows);
   }
 
+  function annualizedCY(rows, key) {
+    const cy = sum(rows, row => get(row, FITTING_COLUMNS[key].cy));
+    return annualize(cy);
+  }
+
   function packDelta(rows, key) {
     const col = FITTING_COLUMNS[key];
     const py = sum(rows, row => get(row, col.py));
-    const cy = sum(rows, row => get(row, col.cy));
-    if (py == null && cy == null) return null;
-    return (cy || 0) - (py || 0);
+    const cyAnnualized = annualize(sum(rows, row => get(row, col.cy)));
+    if (py == null && cyAnnualized == null) return null;
+    return (cyAnnualized || 0) - (py || 0);
+  }
+
+  function avgPackDeltaPerAcc(rows, key) {
+    const uniqueRows = dedupeSalesRows(rows);
+    if (!uniqueRows.length) return null;
+    const total = packDelta(uniqueRows, key);
+    return total == null ? null : total / uniqueRows.length;
   }
 
   function growth(rows, key) {
     const col = FITTING_COLUMNS[key];
-    const directRate = avg(rows, row => get(row, col.rate));
-    if (directRate != null) return directRate;
     const py = sum(rows, row => get(row, col.py));
-    const cy = sum(rows, row => get(row, col.cy));
-    if (py == null && cy == null) return null;
-    if (!py && cy) return 100;
-    return py ? ((cy - py) / py * 100) : null;
+    const cyAnnualized = annualize(sum(rows, row => get(row, col.cy)));
+    if (py == null && cyAnnualized == null) return null;
+    if (!py && cyAnnualized) return 100;
+    return py ? ((cyAnnualized - py) / py * 100) : null;
+  }
+
+  function negativeAccCount(rows, key) {
+    return dedupeSalesRows(rows).filter(row => {
+      const g = growth([row], key);
+      return g != null && g < 0;
+    }).length;
   }
 
   function eduDone(row) {
@@ -342,9 +363,9 @@
     const eduRate = edu.length ? edu.filter(eduDone).length / edu.length : null;
     const rec = S.recById.get(id) || {};
     const growths = {
-      ast: { cur: growth(sr, 'ast'), pack: packDelta(sr, 'ast') },
-      mf: { cur: growth(sr, 'mf'), pack: packDelta(sr, 'mf') },
-      max: { cur: growth(sr, 'max'), pack: packDelta(sr, 'max') }
+      ast: { cur: growth(sr, 'ast'), pack: packDelta(sr, 'ast'), avgPack: avgPackDeltaPerAcc(sr, 'ast') },
+      mf: { cur: growth(sr, 'mf'), pack: packDelta(sr, 'mf'), avgPack: avgPackDeltaPerAcc(sr, 'mf') },
+      max: { cur: growth(sr, 'max'), pack: packDelta(sr, 'max'), avgPack: avgPackDeltaPerAcc(sr, 'max') }
     };
     const avgGrowth = avg([growths.ast.cur, growths.mf.cur, growths.max.cur]);
     const priority = gaps.length >= 3 || (avgGrowth != null && avgGrowth < 0) ? '높음' : gaps.length ? '중간' : '낮음';
@@ -392,11 +413,11 @@
     const cur = growth(sales, key);
     const all = growth(dedupeSalesRows(S.sales), key);
     const diff = cur != null && all != null ? cur - all : null;
-    const packSum = packDelta(sales, key);
+    const avgPack = avgPackDeltaPerAcc(sales, key);
     return kpi(
       FITTING_COLUMNS[key].title,
-      `<span class="${dclass(packSum)}">${fmtPack(packSum)}</span>`,
-      `<span>${fmtRate(cur)} <span class="kpi-sub">(vs 전년)</span></span><br>
+      `<span class="${dclass(avgPack)}">${fmtPackPerAcc(avgPack)}</span>`,
+      `<span>${fmtRate(cur)} <span class="kpi-sub">(vs PY)</span></span><br>
        <span class="delta ${dclass(diff)}">${fmtPp(diff)} <span class="kpi-sub">(vs 전체평균)</span></span>`
     );
   }
@@ -407,6 +428,7 @@
     const ms = rows.map(row => metrics(row.안경사ID));
     const eduComplete = ms.filter(m => m.eduRate === 1).length;
     const reached = ms.filter(m => m.perc.length && m.gaps.length === 0).length;
+    const salesForCurrentRows = selectedSalesRows(rows);
 
     if ($('kpiGrid')) {
       $('kpiGrid').innerHTML = [
@@ -421,13 +443,13 @@
 
     if ($('gapCards')) {
       const cards = [
-        ['education', '교육 미완료', ms.filter(m => m.educationIncomplete).length],
-        ['perception', '인식 목표 미달', ms.filter(m => m.gaps.length).length],
-        ['sales ast', '난시 역성장', ms.filter(m => m.growths.ast.cur != null && m.growths.ast.cur < 0).length],
-        ['sales mf', '멀티포컬 역성장', ms.filter(m => m.growths.mf.cur != null && m.growths.mf.cur < 0).length],
-        ['sales max', 'MAX 역성장', ms.filter(m => m.growths.max.cur != null && m.growths.max.cur < 0).length]
+        ['education', '교육 미완료', `${ms.filter(m => m.educationIncomplete).length}명`],
+        ['perception', '인식 목표 미달', `${ms.filter(m => m.gaps.length).length}명`],
+        ['sales ast', '난시 역성장', `${negativeAccCount(salesForCurrentRows, 'ast')} ACC`],
+        ['sales mf', '멀티포컬 역성장', `${negativeAccCount(salesForCurrentRows, 'mf')} ACC`],
+        ['sales max', 'MAX 역성장', `${negativeAccCount(salesForCurrentRows, 'max')} ACC`]
       ];
-      $('gapCards').innerHTML = cards.map(c => `<div class="gap-card ${c[0]}"><span>${c[1]}</span><b>${c[2]}명</b><small>현재 그룹 기준</small></div>`).join('');
+      $('gapCards').innerHTML = cards.map(c => `<div class="gap-card ${c[0]}"><span>${c[1]}</span><b>${c[2]}</b><small>현재 그룹 기준</small></div>`).join('');
     }
 
     renderQuestionTop(rows);
@@ -569,7 +591,7 @@
         if (!below && !reverse) return;
         const best = lowQuestions([key], ms)[0] || lowQuestions('all', ms)[0];
         const edu = educationSummaryForRows(g.rows, key);
-        const symptom = `${FITTING_COLUMNS[key].title} ${fmtPack(pk)} (${fmtRate(rg)} vs 전년)${diff != null ? ` / ${fmtPp(diff)} vs 전체평균` : ''}`;
+        const symptom = `${FITTING_COLUMNS[key].title} ${fmtPack(pk)} (${fmtRate(rg)} vs PY)${diff != null ? ` / ${fmtPp(diff)} vs 전체평균` : ''}`;
         const cause = best ? `${best.q}: 선택 그룹 평균 ${best.seg.toFixed(1)}점, 전체 평균 ${best.all.toFixed(1)}점으로 ${best.diff.toFixed(1)}점 낮습니다.` : `${FITTING_COLUMNS[key].title} 관련 인식 문항에서 뚜렷한 저하는 확인되지 않았습니다. 판매 실행, 상권, 제품 노출 요인을 함께 점검하세요.`;
         const eduText = edu.total ? `관련/전체 교육 이력 ${edu.total}건 중 완료 ${edu.done}건(${fmtPct(edu.rate)}). ${edu.names.length ? '주요 이수/추천 교육: ' + edu.names.join(', ') : '교육명 데이터 없음'}` : '교육 이력 데이터 없음';
         const scoreValue = (reverse ? 25 : 0) + (below ? Math.abs(diff) * 8 : 0) + Math.abs(pk || 0) / 50 + g.rows.length / 3 + (best ? Math.abs(best.diff) * 15 : 0);
@@ -676,11 +698,14 @@
         안경사명: p.안경사명,
         안경원명: p.안경원명,
         난시성장팩: m.growths.ast.pack,
-        난시성장률: m.growths.ast.cur,
+        난시평균팩ACC: m.growths.ast.avgPack,
+        난시성장률_연환산: m.growths.ast.cur,
         멀티포컬성장팩: m.growths.mf.pack,
-        멀티포컬성장률: m.growths.mf.cur,
+        멀티포컬평균팩ACC: m.growths.mf.avgPack,
+        멀티포컬성장률_연환산: m.growths.mf.cur,
         MAX성장팩: m.growths.max.pack,
-        MAX성장률: m.growths.max.cur,
+        MAX평균팩ACC: m.growths.max.avgPack,
+        MAX성장률_연환산: m.growths.max.cur,
         인식Gap: m.gaps.length,
         교육완료율: m.eduRate
       };
