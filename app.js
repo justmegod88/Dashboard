@@ -114,6 +114,11 @@
   const fmtPp = v => v == null ? '데이터 없음' : `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(1)}%p`;
   const fmtPack = v => v == null ? '데이터 없음' : `${Math.round(Number(v)) >= 0 ? '+' : ''}${Math.round(Number(v)).toLocaleString('ko-KR')}팩`;
   const fmtPackPerAcc = v => v == null ? '데이터 없음' : `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(1)}팩 / ACC`;
+  const fmtPackMain = v => {
+    if (v == null) return '데이터 없음';
+    const rounded = Math.round(Number(v));
+    return `${rounded >= 0 ? '+' : ''}${rounded.toLocaleString('ko-KR')}팩`;
+  };
   const dclass = v => v == null ? '' : Number(v) < 0 ? 'negative' : 'positive';
 
   function sheetNameKey(v) {
@@ -493,7 +498,15 @@
     const all = growth(dedupeSalesRows(S.sales), key);
     const diff = cur != null && all != null ? cur - all : null;
     const avgPack = avgPackDeltaPerAcc(sales, key);
-    return kpi(FITTING_COLUMNS[key].title, `<span class="${dclass(avgPack)}">${fmtPackPerAcc(avgPack)}</span>`, `<span>${fmtRate(cur)} <span class="kpi-sub">(vs PY)</span></span><br><span class="delta ${dclass(diff)}">${fmtPp(diff)} <span class="kpi-sub">(vs 전체평균)</span></span>`);
+    return kpi(
+      FITTING_COLUMNS[key].title,
+      `<span class="growth-kpi-line ${dclass(avgPack)}">
+         <span class="growth-pack">${fmtPackMain(avgPack)}</span>
+         <span class="growth-unit">/ ACC</span>
+         <span class="growth-vs-py">(${fmtRate(cur)} vs PY)</span>
+       </span>`,
+      `<span class="growth-vs-avg ${dclass(diff)}">(${fmtPp(diff)} vs avg)</span>`
+    );
   }
 
   function renderGapCards(rows, ms) {
@@ -1193,6 +1206,15 @@
       .detail-analysis-tab { opacity: .55; }
       .detail-analysis-tab.active, .detail-analysis-tab:hover { opacity: 1; }
       .gap-target-button { margin-left: 8px; padding: 4px 9px; font-size: 12px; line-height: 1.2; }
+      .growth-kpi-line { display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; margin-top: 7px; }
+      .growth-pack { font-size: 32px; line-height: 1; font-weight: 900; letter-spacing: -1px; }
+      .growth-unit { font-size: 13px; line-height: 1; font-weight: 700; color: #667085; white-space: nowrap; }
+      .growth-vs-py { margin-left: 7px; font-size: 13px; line-height: 1.2; font-weight: 700; color: #475467; white-space: nowrap; }
+      .growth-vs-avg { display: block; margin-top: 5px; font-size: 12px; line-height: 1.2; font-weight: 650; color: #667085; }
+      @media (max-width: 1200px) {
+        .growth-pack { font-size: 27px; }
+        .growth-vs-py { margin-left: 0; }
+      }
     `;
     document.head.appendChild(style);
   }
@@ -1210,7 +1232,15 @@
     if ($('smartQuery')) $('smartQuery').onkeydown = e => { if (e.key === 'Enter') $('runQuery').click(); };
     if ($('clearQuery')) $('clearQuery').onclick = resetAll;
     if ($('resetFilters')) $('resetFilters').onclick = resetAll;
-    document.querySelectorAll('.examples button').forEach(b => b.onclick = () => { S.query = b.dataset.query; S.targetIds = null; S.gapFilter = null; if ($('smartQuery')) $('smartQuery').value = S.query; render(); view('segment'); });
+    document.querySelectorAll('.examples button').forEach(b => b.onclick = () => {
+      // HTML에서 버튼명을 바꾸면 화면에 보이는 버튼 문구가 그대로 검색창에 입력됩니다.
+      S.query = clean(b.textContent) || clean(b.dataset.query);
+      S.targetIds = null;
+      S.gapFilter = null;
+      if ($('smartQuery')) $('smartQuery').value = S.query;
+      render();
+      view('segment');
+    });
     if ($('downloadResults')) $('downloadResults').onclick = download;
     if ($('closeProfile')) $('closeProfile').onclick = () => { $('profilePanel').hidden = true; };
     if ($('refreshInsights')) $('refreshInsights').onclick = () => { renderInsights(); toast('자동 인사이트 분석을 완료했습니다'); };
