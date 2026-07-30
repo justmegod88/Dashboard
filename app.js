@@ -388,6 +388,14 @@
     return null;
   }
 
+  function productKeysFromQuery(q) {
+    const keys = [];
+    if (/난시|토릭|ASD/i.test(q)) keys.push('ast');
+    if (/멀티포컬|다초점|노안|\bMF\b/i.test(q)) keys.push('mf');
+    if (/MAX|맥스|블루라이트|눈건강/i.test(q)) keys.push('max');
+    return [...new Set(keys)];
+  }
+
   function questionRelevance(q, key) {
     const text = `${q.문항 || ''} ${q.문항ID || ''}`;
     let scoreValue = q.제품군 === key ? 4 : 0;
@@ -408,7 +416,8 @@
   }
 
   function parseSmartConditions(q) {
-    const product = productFromQuery(q);
+    const productKeys = productKeysFromQuery(q);
+    const product = productKeys[0] || productFromQuery(q);
     const conditions = [];
     const region = uniqueValues('지역').find(v => queryHas(q, v));
     if (region) conditions.push({ label: `지역=${region}`, test: r => clean(r.지역) === region });
@@ -426,11 +435,14 @@
       conditions.push({ label: '교육 미완료', test: r => { const m = metrics(r.안경사ID); return m.eduRate == null || m.eduRate < 1; } });
     }
     if (/역성장|성장률.*음수|마이너스|성장.*낮/i.test(q)) {
-      conditions.push({ label: product ? `${FITTING_COLUMNS[product].label} 역성장` : '역성장', test: r => {
-        const m = metrics(r.안경사ID);
-        if (product) return m.growths[product].cur != null && m.growths[product].cur < 0;
-        return ['ast', 'mf', 'max'].some(k => m.growths[k].cur != null && m.growths[k].cur < 0);
-      }});
+      conditions.push({
+        label: productKeys.length ? productKeys.map(k => `${FITTING_COLUMNS[k].label} 역성장`).join(' + ') : '역성장',
+        test: r => {
+          const m = metrics(r.안경사ID);
+          if (productKeys.length) return productKeys.every(k => m.growths[k].cur != null && m.growths[k].cur < 0);
+          return ['ast', 'mf', 'max'].some(k => m.growths[k].cur != null && m.growths[k].cur < 0);
+        }
+      });
     }
     return { product, conditions };
   }
@@ -450,7 +462,7 @@
     if (!S.gapFilter) return rows;
     if (S.gapFilter.type === 'education') return rows.filter(row => metrics(row.안경사ID).educationIncomplete);
     if (S.gapFilter.type === 'perception') return rows.filter(row => metrics(row.안경사ID).gaps.length > 0);
-    if (S.gapFilter.type === 'sales') { const keys = Array.isArray(S.gapFilter.keys) ? S.gapFilter.keys : [S.gapFilter.key].filter(Boolean); return rows.filter(r => keys.some(k => rowsForSalesReverse([r], k).length)); }
+    if (S.gapFilter.type === 'sales') { const keys = Array.isArray(S.gapFilter.keys) ? S.gapFilter.keys : [S.gapFilter.key].filter(Boolean); return rows.filter(r => keys.every(k => rowsForSalesReverse([r], k).length)); }
     return rows;
   }
 
@@ -1081,8 +1093,8 @@
   function gapQuestionsForPerson(id) {
     const rows = S.perById.get(id) || [];
     let product = null;
-    if (S.gapFilter && S.gapFilter.type === 'sales') product = S.gapFilter.key;
-    return rows.filter(p => p.gap && (!product || questionRelevance(p, product) > 0)).sort((a, b) => (a.점수 || 9) - (b.점수 || 9));
+    const products = (S.gapFilter && S.gapFilter.type === 'sales') ? (S.gapFilter.keys || [S.gapFilter.key].filter(Boolean)) : [];
+    return rows.filter(p => p.gap && (!products.length || products.some(product => questionRelevance(p, product) > 0))).sort((a, b) => (a.점수 || 9) - (b.점수 || 9));
   }
 
   function neededEducationForPerson(id) {
@@ -1101,7 +1113,7 @@
   }
 
   function currentDownloadProductKey() {
-    if (S.gapFilter && S.gapFilter.type === 'sales') return S.gapFilter.key;
+    if (S.gapFilter && S.gapFilter.type === 'sales') return (S.gapFilter.keys || [S.gapFilter.key])[0];
     return null;
   }
 
