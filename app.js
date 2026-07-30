@@ -1621,3 +1621,223 @@
     document.head.appendChild(style);
   });
 })();
+
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  function normalizeEmptyGrowthCards() {
+    document.querySelectorAll('.growth-pack').forEach(el => {
+      const empty = el.textContent.trim() === '데이터 없음';
+      el.classList.toggle('growth-no-data', empty);
+      if (empty) el.textContent = '-';
+    });
+  }
+
+  function enforceDashboardAnalysisStack() {
+    const dashboard = $('dashboard');
+    const kpiGrid = $('kpiGrid');
+    const gapCards = $('gapCards');
+    if (!dashboard || !kpiGrid || !gapCards) return;
+
+    let stack = $('dashboardAnalysisStack');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.id = 'dashboardAnalysisStack';
+      stack.className = 'dashboard-analysis-stack';
+      const kpiContainer = kpiGrid.closest('section, .panel, .card, .section-card') || kpiGrid;
+      kpiContainer.insertAdjacentElement('afterend', stack);
+    }
+
+    const gapPanel = gapCards.closest('section, .panel, .card, .section-card') || gapCards.parentElement;
+    if (gapPanel && gapPanel.parentElement !== stack) stack.appendChild(gapPanel);
+
+    const linked = $('linkedGapEducation');
+    if (linked && linked.parentElement !== stack) stack.appendChild(linked);
+  }
+
+  function installFinalDashboardStyles() {
+    if ($('dashboard-empty-layout-fix')) return;
+    const style = document.createElement('style');
+    style.id = 'dashboard-empty-layout-fix';
+    style.textContent = `
+      .growth-pack.growth-no-data {
+        font-size: 34px !important;
+        font-weight: 800 !important;
+        letter-spacing: 0 !important;
+      }
+      .dashboard-analysis-stack {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 18px !important;
+        width: 100% !important;
+        margin-top: 18px !important;
+      }
+      .dashboard-analysis-stack > * {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+      }
+      .dashboard-analysis-stack #gapCards {
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+        width: 100% !important;
+      }
+      .dashboard-analysis-stack #linkedGapEducation {
+        display: block !important;
+        width: 100% !important;
+      }
+      @media (max-width: 1100px) {
+        .dashboard-analysis-stack #gapCards {
+          grid-template-columns: repeat(5, minmax(165px, 1fr)) !important;
+          overflow-x: auto !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    installFinalDashboardStyles();
+    normalizeEmptyGrowthCards();
+    enforceDashboardAnalysisStack();
+    const observer = new MutationObserver(() => {
+      normalizeEmptyGrowthCards();
+      enforceDashboardAnalysisStack();
+    });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  });
+})();
+
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  function directChildOfDashboard(node, dashboard) {
+    let current = node;
+    while (current && current.parentElement && current.parentElement !== dashboard) {
+      current = current.parentElement;
+    }
+    return current;
+  }
+
+  function alignKpiTypography() {
+    document.querySelectorAll('.kpi-card .growth-pack').forEach(value => {
+      value.style.setProperty('font-size', 'inherit', 'important');
+      value.style.setProperty('font-weight', 'inherit', 'important');
+      value.style.setProperty('line-height', 'inherit', 'important');
+      value.style.setProperty('letter-spacing', 'inherit', 'important');
+      value.style.setProperty('color', 'inherit', 'important');
+    });
+  }
+
+  function expandGapSection() {
+    const dashboard = $('dashboard');
+    const kpiGrid = $('kpiGrid');
+    const gapCards = $('gapCards');
+    if (!dashboard || !kpiGrid || !gapCards) return;
+
+    let stack = $('dashboardAnalysisStack');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.id = 'dashboardAnalysisStack';
+      stack.className = 'dashboard-analysis-stack';
+    }
+
+    const kpiTopLevel = directChildOfDashboard(kpiGrid, dashboard);
+    if (stack.parentElement !== dashboard) {
+      if (kpiTopLevel) kpiTopLevel.insertAdjacentElement('afterend', stack);
+      else dashboard.appendChild(stack);
+    } else if (kpiTopLevel && kpiTopLevel.nextElementSibling !== stack) {
+      kpiTopLevel.insertAdjacentElement('afterend', stack);
+    }
+
+    const gapPanel = gapCards.closest('section, .panel, .card, .section-card') || gapCards.parentElement;
+    if (gapPanel && gapPanel.parentElement !== stack) stack.appendChild(gapPanel);
+
+    const linked = $('linkedGapEducation');
+    if (linked && linked.parentElement !== stack) stack.appendChild(linked);
+  }
+
+  function installTypographyAndWidthFix() {
+    if ($('kpi-gap-width-final-style')) return;
+    const style = document.createElement('style');
+    style.id = 'kpi-gap-width-final-style';
+    style.textContent = `
+      /* 성장 KPI는 왼쪽 KPI 숫자와 동일한 크기, 굵기, 색상 */
+      .kpi-card .growth-kpi-line {
+        display: block !important;
+        width: 100% !important;
+      }
+      .kpi-card .growth-pack {
+        display: block !important;
+        font-size: inherit !important;
+        font-weight: inherit !important;
+        line-height: inherit !important;
+        letter-spacing: inherit !important;
+        color: inherit !important;
+      }
+      .kpi-card .growth-vs-py,
+      .kpi-card .growth-vs-avg {
+        display: block !important;
+        margin: 5px 0 0 !important;
+        font-size: 12px !important;
+        line-height: 1.25 !important;
+        font-weight: 650 !important;
+      }
+
+      /* 핵심 Gap 영역을 대시보드 전체 가로 폭으로 확장 */
+      #dashboardAnalysisStack.dashboard-analysis-stack {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-column: 1 / -1 !important;
+        align-self: stretch !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        gap: 18px !important;
+        margin: 18px 0 0 !important;
+      }
+      #dashboardAnalysisStack > * {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+      #dashboardAnalysisStack #gapCards {
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        width: 100% !important;
+        max-width: none !important;
+        gap: 14px !important;
+      }
+      #dashboardAnalysisStack #gapCards .gap-card {
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+
+      @media (max-width: 1080px) {
+        #dashboardAnalysisStack #gapCards {
+          grid-template-columns: repeat(5, minmax(160px, 1fr)) !important;
+          overflow-x: auto !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    installTypographyAndWidthFix();
+    alignKpiTypography();
+    expandGapSection();
+
+    const observer = new MutationObserver(() => {
+      alignKpiTypography();
+      expandGapSection();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+})();
