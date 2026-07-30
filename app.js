@@ -450,7 +450,7 @@
     if (!S.gapFilter) return rows;
     if (S.gapFilter.type === 'education') return rows.filter(row => metrics(row.안경사ID).educationIncomplete);
     if (S.gapFilter.type === 'perception') return rows.filter(row => metrics(row.안경사ID).gaps.length > 0);
-    if (S.gapFilter.type === 'sales' && S.gapFilter.key) return rowsForSalesReverse(rows, S.gapFilter.key);
+    if (S.gapFilter.type === 'sales') { const keys = Array.isArray(S.gapFilter.keys) ? S.gapFilter.keys : [S.gapFilter.key].filter(Boolean); return rows.filter(r => keys.some(k => rowsForSalesReverse([r], k).length)); }
     return rows;
   }
 
@@ -458,12 +458,12 @@
     if (!S.gapFilter) return '현재 그룹';
     if (S.gapFilter.type === 'education') return '교육 미완료 대상';
     if (S.gapFilter.type === 'perception') return '인식 목표 미달 대상';
-    if (S.gapFilter.type === 'sales') return `${FITTING_COLUMNS[S.gapFilter.key].label} 역성장 ACC 소속 안경사`;
+    if (S.gapFilter.type === 'sales') { const keys = Array.isArray(S.gapFilter.keys)?S.gapFilter.keys:[S.gapFilter.key]; return keys.map(k=>FITTING_COLUMNS[k].label).join(', ') + ' 역성장'; }
     return '현재 그룹';
   }
 
   function setGapFilter(type, key = null) {
-    S.gapFilter = { type, key };
+    if(type==='sales'){ const cur=(S.gapFilter&&S.gapFilter.type==='sales')?(Array.isArray(S.gapFilter.keys)?S.gapFilter.keys:[]):[]; const keys=cur.includes(key)?cur.filter(k=>k!==key):[...cur,key]; S.gapFilter=keys.length?{type:'sales',keys}:null; } else { S.gapFilter = { type, key }; }
     render();
   }
 
@@ -519,7 +519,7 @@
     ];
 
     $('gapCards').innerHTML = cards.map(c => {
-      const active = S.gapFilter && S.gapFilter.type === c.type && S.gapFilter.key === c.key ? ' active' : '';
+      const active = c.type==='sales' ? (S.gapFilter&&S.gapFilter.type==='sales'&&((S.gapFilter.keys||[]).includes(c.key))) : (S.gapFilter && S.gapFilter.type===c.type && S.gapFilter.key===c.key) ? ' active' : '';
       return `<button class="gap-card ${c.cls}${active}" data-gap-type="${c.type}" data-gap-key="${c.key || ''}" type="button"><span>${c.label}</span><b>${c.value}</b><small>${active ? '선택됨 · 다시 클릭하면 해제' : '클릭 시 아래 TOP 문항/교육 변경'}</small></button>`;
     }).join('');
 
@@ -589,7 +589,7 @@
   function renderQuestionTop(rows) {
     if (!$('questionTop')) return;
     const targetRows = rowsForGapFilter(rows);
-    const top = getTopGapQuestions(rows, 7);
+    let top = getTopGapQuestions(rows, 7); if(S.gapFilter&&S.gapFilter.type==='sales'){ const ks=S.gapFilter.keys||[S.gapFilter.key]; top=top.filter(x=>ks.some(k=>questionRelevance({문항:x.q},k)>0)); }
     const subtitle = $('questionTop')?.previousElementSibling;
     if (subtitle && subtitle.tagName && subtitle.tagName.toLowerCase() === 'p') {
       subtitle.textContent = `${gapFilterTitle()} 기준으로 가장 많이 부족한 문항입니다. 대상 ${targetRows.length}명`;
@@ -761,7 +761,7 @@
     $('segmentTable').innerHTML = ms.map(m => {
       const p = m.p || {};
       const eduName = clean(get(m.rec, ['추천교육명', '교육명'])) || contentName(get(m.rec, ['추천교육ID', '교육ID']));
-      return `<tr data-id="${esc(p.안경사ID)}"><td><b>${esc(p.안경사명)}</b><small><br>${esc(p.안경사ID)}</small></td><td>${esc(p.안경원명)}<small><br>${esc(p.지역)} · ${esc(p.채널)}</small></td><td>${esc(p.연차)} / ${esc(p.Tier)}</td><td>${m.eduRate == null ? '데이터 없음' : fmtPct(m.eduRate)}</td><td>${m.gaps.length}개</td><td>${fmtPack(m.growths.ast.pack)}<br><small>${fmtRate(m.growths.ast.cur)}</small></td><td>${fmtPack(m.growths.mf.pack)}<br><small>${fmtRate(m.growths.mf.cur)}</small></td><td>${fmtPack(m.growths.max.pack)}<br><small>${fmtRate(m.growths.max.cur)}</small></td><td>${esc(eduName || '없음')}</td><td>${m.priority}</td></tr>`;
+      return `<tr data-id="${esc(p.안경사ID)}"><td><b>${esc(p.안경사명)}</b><small><br>${esc(p.안경사ID)}</small></td><td>${esc(p.안경원명)}<small><br>${esc(p.지역)} · ${esc(p.채널)}</small></td><td>${esc(p.연차)} / ${esc(p.Tier)}</td><td>${m.eduRate == null ? '데이터 없음' : fmtPct(m.eduRate)}</td><td>${m.perc.length ? `${m.gaps.length}개` : '데이터 없음'}</td><td>${fmtPack(m.growths.ast.pack)}<br><small>${fmtRate(m.growths.ast.cur)}</small></td><td>${fmtPack(m.growths.mf.pack)}<br><small>${fmtRate(m.growths.mf.cur)}</small></td><td>${fmtPack(m.growths.max.pack)}<br><small>${fmtRate(m.growths.max.cur)}</small></td><td>${esc(eduName || '없음')}</td><td>${m.priority}</td></tr>`;
     }).join('');
     document.querySelectorAll('#segmentTable tr').forEach(tr => tr.onclick = () => showProfile(tr.dataset.id));
   }
@@ -770,7 +770,7 @@
     const m = metrics(id);
     if (!m.p || !$('profilePanel')) return;
     $('profilePanel').hidden = false;
-    $('profileContent').innerHTML = `<h3>${esc(m.p.안경사명)} <small>${esc(id)}</small></h3><p>${esc(m.p.안경원명)} · ${esc(m.p.지역)} · ${esc(m.p.연차)} / ${esc(m.p.Tier)}</p><div class="profile-grid"><div class="status-card"><small>교육완료</small><h3>${m.eduRate == null ? '데이터 없음' : fmtPct(m.eduRate)}</h3></div><div class="status-card"><small>인식 Gap</small><h3>${m.gaps.length}개</h3></div><div class="status-card"><small>우선순위</small><h3>${m.priority}</h3></div></div><h3>문항별 Gap</h3>${m.gaps.slice(0, 10).map(g => `<div class="question-card"><b>${esc(g.문항)}</b><br><small>${esc(g.제품군)} · 응답 ${esc(g.원응답)} · 목표 ${g.목표값}</small></div>`).join('') || '<div class="empty-state">Gap 문항이 없습니다.</div>'}`;
+    $('profileContent').innerHTML = `<h3>${esc(m.p.안경사명)} <small>${esc(id)}</small></h3><p>${esc(m.p.안경원명)} · ${esc(m.p.지역)} · ${esc(m.p.연차)} / ${esc(m.p.Tier)}</p><div class="profile-grid"><div class="status-card"><small>교육완료</small><h3>${m.eduRate == null ? '데이터 없음' : fmtPct(m.eduRate)}</h3></div><div class="status-card"><small>인식 Gap</small><h3>${m.perc.length ? `${m.gaps.length}개` : '데이터 없음'}</h3></div><div class="status-card"><small>우선순위</small><h3>${m.priority}</h3></div></div><h3>문항별 Gap</h3>${m.gaps.slice(0, 10).map(g => `<div class="question-card"><b>${esc(g.문항)}</b><br><small>${esc(g.제품군)} · 응답 ${esc(g.원응답)} · 목표 ${g.목표값}</small></div>`).join('') || '<div class="empty-state">Gap 문항이 없습니다.</div>'}`;
     $('profilePanel').scrollIntoView({ behavior: 'smooth' });
     view('segment');
   }
@@ -2083,3 +2083,65 @@
     observer.observe(document.body, { childList: true, subtree: true });
   });
 })();
+
+
+(function () {
+  'use strict';
+
+  function getBaseKpiStrong() {
+    const candidates = Array.from(document.querySelectorAll('#kpiGrid .kpi-card strong'));
+    return candidates.find(el => !el.querySelector('.growth-pack')) || candidates[0] || null;
+  }
+
+  function syncGrowthKpiTypography() {
+    const base = getBaseKpiStrong();
+    if (!base) return;
+    const style = window.getComputedStyle(base);
+
+    document.querySelectorAll('#kpiGrid .growth-pack').forEach(el => {
+      if (el.textContent.trim() === '데이터 없음') el.textContent = '-';
+      el.style.setProperty('font-family', style.fontFamily, 'important');
+      el.style.setProperty('font-size', style.fontSize, 'important');
+      el.style.setProperty('font-weight', style.fontWeight, 'important');
+      el.style.setProperty('line-height', style.lineHeight, 'important');
+      el.style.setProperty('letter-spacing', style.letterSpacing, 'important');
+      el.style.setProperty('color', style.color, 'important');
+      el.style.setProperty('display', 'block', 'important');
+      el.style.setProperty('margin', '0', 'important');
+    });
+
+    document.querySelectorAll('#kpiGrid .growth-kpi-line').forEach(el => {
+      el.style.setProperty('display', 'block', 'important');
+      el.style.setProperty('width', '100%', 'important');
+      el.style.setProperty('margin', '0', 'important');
+    });
+
+    document.querySelectorAll('#kpiGrid .growth-vs-py, #kpiGrid .growth-vs-avg').forEach(el => {
+      el.style.setProperty('display', 'block', 'important');
+      el.style.setProperty('margin', '5px 0 0', 'important');
+      el.style.setProperty('font-size', '12px', 'important');
+      el.style.setProperty('line-height', '1.25', 'important');
+      el.style.setProperty('font-weight', '600', 'important');
+    });
+  }
+
+  function installKpiTypographySync() {
+    if (document.getElementById('kpi-typography-sync-style')) return;
+    const style = document.createElement('style');
+    style.id = 'kpi-typography-sync-style';
+    style.textContent = `
+      #kpiGrid .growth-unit { display: none !important; }
+      #kpiGrid .growth-pack { text-transform: none !important; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    installKpiTypographySync();
+    syncGrowthKpiTypography();
+    const observer = new MutationObserver(() => syncGrowthKpiTypography());
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  });
+})();
+
+(function(){document.addEventListener('DOMContentLoaded',()=>{const sync=()=>{const b=document.querySelector('#kpiGrid .kpi-card strong'); if(!b)return; const st=getComputedStyle(b); document.querySelectorAll('.growth-pack').forEach(e=>{e.style.fontSize=st.fontSize;e.style.fontWeight=st.fontWeight;e.style.color=st.color;});}; sync(); new MutationObserver(sync).observe(document.body,{subtree:true,childList:true});});})();
