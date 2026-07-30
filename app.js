@@ -1222,3 +1222,42 @@
     loadExternal();
   });
 })();
+(function () {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+  const clean = v => v == null ? '' : String(v).trim();
+  const norm = v => clean(v).replace(/\u00a0/g, '').replace(/[\s_\-()./]/g, '').toLowerCase();
+  const esc = v => clean(v).replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[m]));
+  const n = v => { const m=clean(v).replace(/,/g,'').replace(/%/g,'').match(/[-+]?\d+(?:\.\d+)?/); return m ? Number(m[0]) : null; };
+  const avg = a => { const v=a.map(n).filter(Number.isFinite); return v.length ? v.reduce((x,y)=>x+y,0)/v.length : null; };
+  const sum = a => { const v=a.map(n).filter(Number.isFinite); return v.length ? v.reduce((x,y)=>x+y,0) : null; };
+  const annualize = v => v == null ? null : v / (new Date().getMonth()+1) * 12;
+
+  const PRODUCTS = {
+    mf:{label:'멀티포컬', keys:['멀티포컬','다초점','노안','mf','적응','상담'], py:['2025 멀티포컬  팩수','2025 멀티포컬 팩수','2025멀티포컬팩수','25년 멀티포컬 팩수'], cy:['2026 멀티포컬  팩수','2026 멀티포컬 팩수','2026멀티포컬팩수','26년 멀티포컬 팩수'], edu:['멀티포컬 적응 관리 교육','멀티포컬 상담 기본 과정']},
+    ast:{label:'난시', keys:['난시','토릭','asd','프리즘','축','원주','구면'], py:['2025 난시 팩수','2025난시팩수','25년 난시 팩수'], cy:['2026 난시 팩수','2026난시팩수','26년 난시 팩수'], edu:['난시 프리즘 및 디자인 관련 교육','난시 피팅 및 상담 실전 교육']},
+    max:{label:'MAX', keys:['max','맥스','블루라이트','눈건강','자외선','실리콘','오아시스'], py:['2025 MAX  팩수','2025 MAX 팩수','2025MAX팩수','25년 MAX 팩수'], cy:['2026 MAX  팩수','2026 MAX 팩수','2026MAX팩수','26년 MAX 팩수'], edu:['블루라이트·눈건강 가치 전달 교육','ACUVUE OASYS MAX 상담 교육']}
+  };
+  const MENUS=[
+    ['mf','reverse','멀티포컬 전년 대비 역성장'],['mf','under','멀티포컬 판매 평균 대비 낮음'],
+    ['ast','reverse','난시 전년 대비 역성장'],['ast','under','난시 판매 평균 대비 낮음'],
+    ['max','reverse','MAX 전년 대비 역성장'],['max','under','MAX 판매 평균 대비 낮음']
+  ];
+
+  function get(row,names){ const m={}; Object.keys(row||{}).forEach(k=>m[norm(k)]=row[k]); for(const x of names){const v=m[norm(x)]; if(v!==undefined&&clean(v)!=='')return v;} return ''; }
+  function storeKey(r){ return norm(get(r,['안경원코드','매장코드','거래처코드','ShipTo','SoldTo','Outletnumber','Outlet Number','매장ID','CustomerID'])||get(r,['안경원명','안경원','매장명','거래처명'])||r?.안경원코드||r?.안경원명); }
+  function uniqueSales(rows){const m=new Map(); rows.forEach((r,i)=>{const k=storeKey(r)||`r${i}`; if(!m.has(k))m.set(k,r);}); return [...m.values()];}
+  function salesForPeople(people){const S=window.S||{}, out=[]; people.forEach(p=>{const d=S.salesById?.get(p.안경사ID)||[]; if(d.length)out.push(...d); else out.push(...(S.salesByStore?.get(storeKey(p))||[]));}); return uniqueSales(out);}
+  function growth(rows,key){const p=PRODUCTS[key], py=sum(rows.map(r=>get(r,p.py))), cy=annualize(sum(rows.map(r=>get(r,p.cy)))); if(py==null&&cy==null)return null; if(!py&&cy)return 100; return py?(cy-py)/py*100:null;}
+  function productPerception(p,key){const text=`${p.문항||''} ${p.문항ID||''} ${p.제품군||''}`.toLowerCase(); return p.제품군===key||PRODUCTS[key].keys.some(k=>text.includes(k));}
+  function peopleForSales(master,sales){const stores=new Set(sales.map(storeKey).filter(Boolean)); return master.filter(p=>stores.has(storeKey(p)));}
+  function topPerceptions(people,key){const ids=new Set(people.map(p=>p.안경사ID)), main=new Map(), other=new Map(); (window.S?.per||[]).forEach(p=>{if(!ids.has(p.안경사ID)||!p.gap)return; const map=productPerception(p,key)?main:other; if(!map.has(p.문항))map.set(p.문항,[]); map.get(p.문항).push(p.점수);}); const make=map=>[...map].map(([q,a])=>({q,score:avg(a),count:a.length})).sort((a,b)=>b.count-a.count||(a.score??99)-(b.score??99)); return {main:make(main).slice(0,2),other:make(other).slice(0,1)};}
+  function focusGroup(people,question){if(!question)return ''; const dims=[['Tier','Tier'],['채널','채널'],['연차','연차'],['지역','지역']], candidates=[]; for(let i=0;i<dims.length;i++)for(let j=i+1;j<dims.length;j++){const [a]=dims[i],[b]=dims[j], groups=new Map(); people.forEach(p=>{if(!clean(p[a])||!clean(p[b]))return;const k=`${p[a]} · ${p[b]}`;(groups.get(k)||groups.set(k,[]).get(k)).push(p);}); groups.forEach((members,label)=>{if(members.length<2)return;const ids=new Set(members.map(x=>x.안경사ID));const sc=avg((window.S?.per||[]).filter(x=>ids.has(x.안경사ID)&&x.문항===question.q).map(x=>x.점수));if(sc!=null)candidates.push({label,score:sc});});} candidates.sort((a,b)=>a.score-b.score); return candidates[0]?`${candidates[0].label} · ${question.q} ${candidates[0].score.toFixed(1)}점`:'';}
+  function build(menu){const [key,mode,title]=menu,S=window.S||{},master=(S.filtered&&S.filtered.length?S.filtered:S.master)||[], all=salesForPeople(master), overall=growth(all,key); if(overall==null)return null; const targetSales=all.filter(r=>{const g=growth([r],key);return g!=null&&(mode==='reverse'?g<0:g<overall-3);}); if(!targetSales.length)return null; const people=peopleForSales(master,targetSales), per=topPerceptions(people,key), focus=focusGroup(people,per.main[0]); return {key,title,people,per,focus,edu:PRODUCTS[key].edu};}
+  function card(item,i){const main=item.per.main.length?item.per.main.map((x,j)=>`<div class="insight-result-main"><b>${j+1}. ${esc(x.q)}</b><span>${x.score==null?'-':x.score.toFixed(1)+'점'}</span></div>`).join(''):'<span>관련 제품 인식 Gap 없음</span>'; const other=item.per.other.length?`<div class="insight-result-other">참고: ${esc(item.per.other[0].q)} ${item.per.other[0].score?.toFixed(1)??'-'}점</div>`:''; return `<article class="insight-card restored-insight-card" data-card="${i}"><div class="type">인사이트 메뉴</div><h3>${esc(item.title)}</h3><div class="restored-grid"><section><small>대상</small><strong>${item.people.length.toLocaleString('ko-KR')}명</strong></section><section><small>인식 조사 분석 결과</small>${main}${other}</section><section><small>집중 포커스 그룹</small><div>${item.focus?esc(item.focus):'두드러지는 그룹 없음'}</div></section><section><small>추천 교육</small><div class="edu-line"><b>1.</b> ${esc(item.edu[0])}</div><div class="edu-line"><b>2.</b> ${esc(item.edu[1])}</div></section></div><div class="insight-actions"><button class="button primary" data-view-target="${i}" type="button">대상 안경사 보기</button></div></article>`;}
+  function showDetail(item){const S=window.S||{};S.targetIds=new Set(item.people.map(p=>p.안경사ID));S.query='';S.gapFilter=null;if(typeof window.render==='function')window.render();document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));$('segment')?.classList.add('active');document.querySelector('.tab[data-view="segment"]')?.classList.add('active');$('segment')?.scrollIntoView({behavior:'smooth',block:'start'});}
+  function renderRestored(){const items=MENUS.map(build).filter(Boolean).slice(0,5),box=$('insightCards'); if(!box)return;box.innerHTML=items.length?items.map(card).join(''):'<div class="empty-state">조건에 맞는 자동 인사이트가 없습니다.</div>'; box.querySelectorAll('[data-view-target]').forEach(b=>b.onclick=e=>{e.stopPropagation();showDetail(items[+b.dataset.viewTarget]);}); box.querySelectorAll('[data-card]').forEach(c=>c.onclick=()=>showDetail(items[+c.dataset.card]));}
+  function styles(){if($('restored-insight-style'))return;const s=document.createElement('style');s.id='restored-insight-style';s.textContent=`.restored-insight-card{cursor:pointer}.restored-grid{display:grid;grid-template-columns:.8fr 1.65fr 1.15fr 1.15fr;gap:12px;margin-top:14px}.restored-grid>section{background:#f4f7fb;border-radius:14px;padding:18px;min-height:155px}.restored-grid small{display:block;color:#667085;font-weight:800;margin-bottom:10px}.restored-grid strong{font-size:22px}.insight-result-main{display:flex;justify-content:space-between;gap:8px;font-weight:800;margin:8px 0}.insight-result-other{font-size:13px;color:#667085;font-weight:400;margin-top:12px}.edu-line{font-weight:700;margin:8px 0}.tab[data-view="segment"]{opacity:.55}.tab[data-view="segment"].active,.tab[data-view="segment"]:hover{opacity:1}@media(max-width:1050px){.restored-grid{grid-template-columns:1fr 1fr}}@media(max-width:650px){.restored-grid{grid-template-columns:1fr}}`;document.head.appendChild(s);}
+  document.addEventListener('DOMContentLoaded',()=>{styles();const t=document.querySelector('.tab[data-view="segment"]');if(t)t.textContent='안경사 상세 분석';const b=$('refreshInsights');if(b)b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();renderRestored();},true);});
+})();
