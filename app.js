@@ -802,46 +802,87 @@
     return reverse + underAvg + perception;
   }
 
-  function insight(type, title, rows, key, symptom, causeList, otherList, edu, recs, priority) {
-    return { type, title, targetIds: rows.map(r => r.안경사ID), size: rows.length, key, symptom, causeList, otherList, edu, recs, priority };
+  function insight(type, title, rows, key, symptom, causeList, otherList, edu, recs, priority, severityGroups = []) {
+    return { type, title, targetIds: rows.map(r => r.안경사ID), size: rows.length, key, symptom, causeList, otherList, edu, recs, priority, severityGroups };
+  }
+
+  function segmentSeverityGroups(masterRows, key, overallGrowth) {
+    const dims = [
+      { field: 'Tier', label: 'Tier' },
+      { field: '채널', label: '채널' },
+      { field: '연차', label: '연차' },
+      { field: '지역', label: '지역' }
+    ];
+    const selected = [];
+
+    dims.forEach(dim => {
+      const candidates = Object.entries(by(masterRows, dim.field)).map(([value, rows]) => {
+        if (!value || rows.length < 3) return null;
+        const sales = selectedSalesRows(rows);
+        if (!dedupeSalesRows(sales).length) return null;
+        const rg = growth(sales, key);
+        if (rg == null) return null;
+        const diff = overallGrowth != null ? rg - overallGrowth : null;
+        const avgPack = avgPackDeltaPerAcc(sales, key);
+        const issue = rg < 0 || (diff != null && diff <= -3);
+        if (!issue) return null;
+        const severity = (rg < 0 ? Math.abs(rg) * 10 : 0) + (diff != null && diff < 0 ? Math.abs(diff) * 8 : 0);
+        return { dim: dim.label, value, rows, size: rows.length, growth: rg, diff, avgPack, severity };
+      }).filter(Boolean).sort((a, b) => b.severity - a.severity);
+      if (candidates.length) selected.push(candidates[0]);
+    });
+
+    return selected;
+  }
+
+  function rowsForProductIssue(masterRows, key, overallGrowth) {
+    const salesRows = selectedSalesRows(masterRows);
+    const affectedSales = affectedSalesRowsForProduct(salesRows, key, overallGrowth);
+    const people = peopleInSalesAccounts(masterRows, affectedSales);
+    return people.length ? people : masterRows;
   }
 
   function generateInsights() {
     const out = [];
-    const allSales = dedupeSalesRows(S.sales);
-    const overall = { ast: growth(allSales, 'ast'), mf: growth(allSales, 'mf'), max: growth(allSales, 'max') };
-    const groups = [];
-    ['Tier', '연차', '채널'].forEach(dim => {
-      Object.entries(by(S.master, dim)).forEach(([value, rows]) => {
-        if (rows.length >= 3) groups.push({ name: value, rows, dim });
-      });
+    const baseRows = S.filtered && S.filtered.length ? S.filtered : S.master;
+    const allSales = selectedSalesRows(baseRows);
+    const overall = {
+      ast: growth(allSales, 'ast'),
+      mf: growth(allSales, 'mf'),
+      max: growth(allSales, 'max')
+    };
+
+    ['ast', 'mf', 'max'].forEach(key => {
+      const rg = overall[key];
+      if (rg == null) return;
+
+      const avgPack = avgPackDeltaPerAcc(allSales, key);
+      const severeGroups = segmentSeverityGroups(baseRows, key, rg);
+      const overallIssue = rg < 0;
+      const segmentIssue = severeGroups.length > 0;
+      if (!overallIssue && !segmentIssue) return;
+
+      const affectedPeopleAll = rowsForProductIssue(baseRows, key, rg);
+      const targetPeople = educationTargetPeople(affectedPeopleAll, key);
+      const insightPeople = targetPeople.length ? targetPeople : affectedPeopleAll;
+      if (!insightPeople.length) return;
+
+      const causeList = lowQuestionsForRows(insightPeople, key, 3, true);
+      const primary = causeList[0] || null;
+      const otherList = otherLowAreas(insightPeople, key);
+      const edu = educationSummaryForRows(insightPeople, key);
+      const recs = recommendedEducationPlan(insightPeople, key, primary);
+      const title = overallIssue
+        ? `전체 ${FITTING_COLUMNS[key].label} 성장률 저하`
+        : `${FITTING_COLUMNS[key].label} 평균 대비 저하 그룹 발견`;
+      const symptom = overallIssue
+        ? `${FITTING_COLUMNS[key].label} ${fmtPackPerAcc(avgPack)} (${fmtRate(rg)} vs PY)`
+        : `${FITTING_COLUMNS[key].label} 전체는 ${fmtRate(rg)} vs PY이나, 일부 그룹에서 전체 평균 대비 낮은 성장률이 확인됩니다.`;
+      const segmentSeverity = severeGroups.reduce((acc, g) => acc + g.severity, 0);
+      const priority = priorityScore(rg, 0, causeList) + segmentSeverity;
+      out.push(insight('전체 문제 → 공통 인식 원인 → 심화 그룹 확인', title, insightPeople, key, symptom, causeList, otherList, edu, recs, priority, severeGroups));
     });
-    groups.forEach(g => {
-      const groupSales = selectedSalesRows(g.rows);
-      if (!dedupeSalesRows(groupSales).length) return;
-      ['ast', 'mf', 'max'].forEach(key => {
-        const rg = growth(groupSales, key);
-        if (rg == null) return;
-        const diff = overall[key] != null ? rg - overall[key] : null;
-        const avgPack = avgPackDeltaPerAcc(groupSales, key);
-        const salesIssue = rg < 0 || (diff != null && diff <= -3);
-        const affectedSales = affectedSalesRowsForProduct(groupSales, key, overall[key]);
-        const affectedPeople = peopleInSalesAccounts(g.rows, affectedSales);
-        const targetPeople = educationTargetPeople(affectedPeople, key);
-        const insightPeople = targetPeople.length ? targetPeople : affectedPeople;
-        if (!insightPeople.length) return;
-        const causeList = lowQuestionsForRows(insightPeople, key, 3, true);
-        const perceptionIssue = causeList.length > 0 && (causeList[0].diff <= -0.2 || causeList[0].targetGap < 0);
-        if (!salesIssue && !perceptionIssue) return;
-        const primary = causeList[0] || null;
-        const otherList = otherLowAreas(insightPeople, key);
-        const edu = educationSummaryForRows(insightPeople, key);
-        const recs = recommendedEducationPlan(insightPeople, key, primary);
-        const symptom = `${FITTING_COLUMNS[key].label} ${fmtPackPerAcc(avgPack)} (${fmtRate(rg)} vs PY)${diff != null ? ` / ${fmtPp(diff)} vs 전체평균` : ''}`;
-        const priority = priorityScore(rg, diff, causeList);
-        out.push(insight('판매 이상 → 개인 인식 원인 후보 → 교육 추천', `${g.name} ${FITTING_COLUMNS[key].label} 성장 이슈`, insightPeople, key, symptom, causeList, otherList, edu, recs, priority));
-      });
-    });
+
     return out.sort((a, b) => b.priority - a.priority).slice(0, 5);
   }
 
@@ -885,6 +926,16 @@
       <small>4) 판정: 인식 개선 + 판매 회복 시 완료, 미개선 시 추가 코칭/교육 필요</small>`;
   }
 
+  function segmentHtml(item) {
+    if (!item.severityGroups || !item.severityGroups.length) {
+      return '특히 더 심한 세부 그룹은 확인되지 않았습니다.';
+    }
+    return item.severityGroups.map(g => {
+      const diffText = g.diff != null ? ` / ${fmtPp(g.diff)} vs 전체` : '';
+      return `<b>${esc(g.dim)}: ${esc(g.value)}</b><br><small>${fmtRate(g.growth)} vs PY${diffText} · 대상 ${g.size}명</small>`;
+    }).join('<hr>');
+  }
+
   function renderInsights() {
     S.insights = generateInsights();
     if ($('insightSummary')) {
@@ -892,7 +943,7 @@
       $('insightSummary').style.display = 'none';
     }
     if (!$('insightCards')) return;
-    $('insightCards').innerHTML = S.insights.length ? S.insights.map((item, idx) => `<div class="insight-card"><div class="type">${esc(item.type)}</div><h3>${idx + 1}. ${esc(item.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 증상</small>${esc(item.symptom)}</div><div class="insight-step"><small>2. ${esc(INSIGHT[item.key].focus)} 원인 후보</small>${causeHtml(item.causeList, item.key)}</div><div class="insight-step"><small>3. 참고 저하 영역</small>${otherHtml(item.otherList)}</div><div class="insight-step"><small>4. 관련 교육 이수 현황</small>${eduHtml(item.edu, item.size)}</div><div class="insight-step rec"><small>5. 추천 교육 2개</small>${recHtml(item.recs)}</div><div class="insight-step"><small>6. 교육 후 Follow-up</small>${followUpHtml(item)}</div></div><div class="note">교육 대상 ${item.size}명</div><div class="insight-actions"><button class="button primary" data-insight="${idx}">대상 보기</button><button class="button" data-detail="${idx}">상세 보기</button></div></div>`).join('') : '<div class="empty-state">조건에 맞는 자동 인사이트가 없습니다.</div>';
+    $('insightCards').innerHTML = S.insights.length ? S.insights.map((item, idx) => `<div class="insight-card"><div class="type">${esc(item.type)}</div><h3>${idx + 1}. ${esc(item.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 증상</small>${esc(item.symptom)}</div><div class="insight-step"><small>2. ${esc(INSIGHT[item.key].focus)} 원인 후보</small>${causeHtml(item.causeList, item.key)}</div><div class="insight-step"><small>3. 특히 증상이 심한 그룹</small>${segmentHtml(item)}</div><div class="insight-step"><small>4. 참고 저하 영역</small>${otherHtml(item.otherList)}</div><div class="insight-step"><small>5. 관련 교육 이수 현황</small>${eduHtml(item.edu, item.size)}</div><div class="insight-step rec"><small>6. 추천 교육 2개</small>${recHtml(item.recs)}</div><div class="insight-step"><small>7. 교육 후 Follow-up</small>${followUpHtml(item)}</div></div><div class="note">교육 대상 ${item.size}명</div><div class="insight-actions"><button class="button primary" data-insight="${idx}">대상 보기</button><button class="button" data-detail="${idx}">상세 보기</button></div></div>`).join('') : '<div class="empty-state">조건에 맞는 자동 인사이트가 없습니다.</div>';
     document.querySelectorAll('[data-insight]').forEach(button => button.onclick = () => {
       const ins = S.insights[+button.dataset.insight];
       S.targetIds = new Set(ins.targetIds);
@@ -909,7 +960,7 @@
     const item = S.insights[idx];
     if (!$('insightDetailPanel')) return;
     $('insightDetailPanel').hidden = false;
-    $('insightDetail').innerHTML = `<div class="insight-card"><div class="type">${esc(item.type)}</div><h3>${esc(item.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 증상</small>${esc(item.symptom)}</div><div class="insight-step"><small>2. ${esc(INSIGHT[item.key].focus)} 원인 후보</small>${causeHtml(item.causeList, item.key)}</div><div class="insight-step"><small>3. 참고 저하 영역</small>${otherHtml(item.otherList)}</div><div class="insight-step"><small>4. 관련 교육 이수 현황</small>${eduHtml(item.edu, item.size)}</div><div class="insight-step rec"><small>5. 추천 교육 2개</small>${recHtml(item.recs)}</div><div class="insight-step"><small>6. 교육 후 Follow-up</small>${followUpHtml(item)}</div></div><div class="note">교육 대상 ${item.size}명</div></div>`;
+    $('insightDetail').innerHTML = `<div class="insight-card"><div class="type">${esc(item.type)}</div><h3>${esc(item.title)}</h3><div class="insight-steps"><div class="insight-step"><small>1. 증상</small>${esc(item.symptom)}</div><div class="insight-step"><small>2. ${esc(INSIGHT[item.key].focus)} 원인 후보</small>${causeHtml(item.causeList, item.key)}</div><div class="insight-step"><small>3. 특히 증상이 심한 그룹</small>${segmentHtml(item)}</div><div class="insight-step"><small>4. 참고 저하 영역</small>${otherHtml(item.otherList)}</div><div class="insight-step"><small>5. 관련 교육 이수 현황</small>${eduHtml(item.edu, item.size)}</div><div class="insight-step rec"><small>6. 추천 교육 2개</small>${recHtml(item.recs)}</div><div class="insight-step"><small>7. 교육 후 Follow-up</small>${followUpHtml(item)}</div></div><div class="note">교육 대상 ${item.size}명</div></div>`;
     $('insightDetailPanel').scrollIntoView({ behavior: 'smooth' });
   }
 
