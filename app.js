@@ -1841,3 +1841,163 @@
     observer.observe(document.body, { childList: true, subtree: true });
   });
 })();
+
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  function lowestCommonAncestor(a, b) {
+    if (!a || !b) return null;
+    const ancestors = new Set();
+    let node = a;
+    while (node) {
+      ancestors.add(node);
+      node = node.parentElement;
+    }
+    node = b;
+    while (node) {
+      if (ancestors.has(node)) return node;
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  function directChildUnder(node, ancestor) {
+    let current = node;
+    while (current && current.parentElement && current.parentElement !== ancestor) {
+      current = current.parentElement;
+    }
+    return current;
+  }
+
+  function forceFullWidthDashboardOrder() {
+    const kpiGrid = $('kpiGrid');
+    const gapCards = $('gapCards');
+    if (!kpiGrid || !gapCards) return;
+
+    const gapPanel = gapCards.closest('section, .panel, .card, .section-card') || gapCards.parentElement;
+    if (!gapPanel) return;
+
+    const common = lowestCommonAncestor(kpiGrid, gapPanel);
+    if (!common) return;
+
+    const kpiBlock = directChildUnder(kpiGrid, common);
+    if (!kpiBlock) return;
+
+    let fullWidthRow = $('fullWidthGapRow');
+    if (!fullWidthRow) {
+      fullWidthRow = document.createElement('div');
+      fullWidthRow.id = 'fullWidthGapRow';
+      fullWidthRow.className = 'full-width-gap-row';
+    }
+
+    if (fullWidthRow.parentElement !== common || kpiBlock.nextElementSibling !== fullWidthRow) {
+      kpiBlock.insertAdjacentElement('afterend', fullWidthRow);
+    }
+    if (gapPanel.parentElement !== fullWidthRow) fullWidthRow.appendChild(gapPanel);
+
+    const linked = $('linkedGapEducation');
+    if (linked && linked.parentElement !== fullWidthRow) fullWidthRow.appendChild(linked);
+
+    common.classList.add('dashboard-common-layout');
+    gapPanel.classList.add('gap-panel-forced-wide');
+  }
+
+  function normalizeGrowthKpi() {
+    document.querySelectorAll('.growth-pack').forEach(el => {
+      if (el.textContent.trim() === '데이터 없음') el.textContent = '-';
+    });
+  }
+
+  function installForceStyles() {
+    if ($('force-gap-one-line-style')) return;
+    const style = document.createElement('style');
+    style.id = 'force-gap-one-line-style';
+    style.textContent = `
+      /* 성장 KPI를 좌측 KPI 숫자와 동일한 시각 규칙으로 통일 */
+      .kpi-card .growth-kpi-line {
+        display: block !important;
+        width: 100% !important;
+      }
+      .kpi-card .growth-pack {
+        display: block !important;
+        color: #0b2345 !important;
+        font-size: 28px !important;
+        font-weight: 800 !important;
+        line-height: 1.12 !important;
+        letter-spacing: -0.6px !important;
+      }
+      .kpi-card .growth-vs-py,
+      .kpi-card .growth-vs-avg {
+        display: block !important;
+        margin: 5px 0 0 !important;
+        color: #47627f !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        line-height: 1.25 !important;
+      }
+
+      /* KPI 다음에 핵심 Gap과 연결 교육을 하나의 전체 폭 행으로 강제 배치 */
+      .full-width-gap-row {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        gap: 10px !important;
+        margin: 16px 0 0 !important;
+        padding: 0 !important;
+      }
+      .full-width-gap-row > * {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+      }
+      .gap-panel-forced-wide {
+        width: 100% !important;
+        max-width: none !important;
+      }
+      .gap-panel-forced-wide #gapCards,
+      .full-width-gap-row #gapCards {
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+        width: 100% !important;
+        max-width: none !important;
+      }
+      .full-width-gap-row #gapCards .gap-card {
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+
+      /* 핵심 Gap과 문항/교육 패널 사이 간격 축소 */
+      .full-width-gap-row #linkedGapEducation {
+        margin-top: 0 !important;
+        padding-top: 18px !important;
+      }
+
+      @media (max-width: 1100px) {
+        .full-width-gap-row #gapCards {
+          grid-template-columns: repeat(5, minmax(165px, 1fr)) !important;
+          overflow-x: auto !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    installForceStyles();
+    normalizeGrowthKpi();
+    forceFullWidthDashboardOrder();
+
+    const observer = new MutationObserver(() => {
+      normalizeGrowthKpi();
+      forceFullWidthDashboardOrder();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+})();
