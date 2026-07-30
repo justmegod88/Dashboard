@@ -615,7 +615,79 @@
       };
     });
 
+    renderLinkedGapEducation(top);
     renderRecommendedEducationTop(top.slice(0, 3));
+  }
+
+  function ensureLinkedGapEducationLayout() {
+    let section = $('linkedGapEducation');
+    if (section) return section;
+
+    section = document.createElement('section');
+    section.id = 'linkedGapEducation';
+    section.className = 'linked-gap-education-panel';
+    section.innerHTML = `
+      <div class="linked-panel-heading">
+        <div>
+          <h3>인식 Gap 문항 · 추천 교육</h3>
+          <p>선택한 핵심 Gap 대상의 문항과 필요한 교육을 바로 연결합니다.</p>
+        </div>
+      </div>
+      <div id="linkedGapEducationRows" class="linked-gap-education-rows"></div>
+    `;
+
+    const gapCards = $('gapCards');
+    const gapSection = gapCards?.closest('section, .panel, .card, .section-card') || gapCards?.parentElement;
+    if (gapSection?.parentElement) gapSection.insertAdjacentElement('afterend', section);
+    else $('dashboard')?.appendChild(section);
+
+    const questionPanel = $('questionTop')?.closest('section, .panel, .card, .section-card') || $('questionTop')?.parentElement;
+    const educationPanel = $('topEducation')?.closest('section, .panel, .card, .section-card') || $('topEducation')?.parentElement;
+    if (questionPanel && questionPanel !== section && !questionPanel.contains(gapCards)) questionPanel.classList.add('legacy-gap-panel-hidden');
+    if (educationPanel && educationPanel !== section && educationPanel !== questionPanel && !educationPanel.contains(gapCards)) educationPanel.classList.add('legacy-gap-panel-hidden');
+
+    return section;
+  }
+
+  function renderLinkedGapEducation(top) {
+    ensureLinkedGapEducationLayout();
+    const rowsBox = $('linkedGapEducationRows');
+    if (!rowsBox) return;
+
+    if (!top.length) {
+      rowsBox.innerHTML = '<div class="empty-state">선택 대상의 인식 Gap 문항이 없습니다.</div>';
+      return;
+    }
+
+    rowsBox.innerHTML = top.slice(0, 7).map((item, index) => {
+      const recommendation = findBestEducationForQuestion(item.q);
+      return `<div class="linked-gap-row">
+        <div class="linked-rank">${index + 1}</div>
+        <div class="linked-question">
+          <b>${esc(item.q)}</b>
+          <small>${item.count}명</small>
+        </div>
+        <div class="linked-arrow" aria-hidden="true">→</div>
+        <div class="linked-education">
+          <small>추천 교육</small>
+          <b>${esc(recommendation.title)}</b>
+          <span>${esc(recommendation.status)}</span>
+        </div>
+        <button class="button linked-target-button" type="button" data-linked-target="${index}">대상자 보기</button>
+      </div>`;
+    }).join('');
+
+    rowsBox.querySelectorAll('[data-linked-target]').forEach(button => {
+      button.onclick = () => {
+        const item = top[Number(button.dataset.linkedTarget)];
+        S.targetIds = new Set(item.targetIds || []);
+        S.query = '';
+        S.gapFilter = null;
+        render();
+        if ($('queryExplanation')) $('queryExplanation').textContent = `인식 Gap 문항 대상: ${item.q} / ${item.count}명`;
+        view('segment');
+      };
+    });
   }
 
   function contentName(id) {
@@ -1130,6 +1202,31 @@
     toast(`업로드 완료: 안경사 ${S.master.length}명, 판매행 ${S.sales.length}건`);
   }
 
+  function resetSmartSearch() {
+    S.query = '';
+    S.targetIds = null;
+    S.gapFilter = null;
+    if ($('smartQuery')) $('smartQuery').value = '';
+    render();
+    if ($('queryExplanation')) {
+      $('queryExplanation').textContent = '스마트 검색이 초기화되었습니다. 상세 조건은 유지됩니다.';
+    }
+  }
+
+  function resetDetailFilters() {
+    S.targetIds = null;
+    S.gapFilter = null;
+    ['regionFilter', 'yearsFilter', 'tierFilter', 'channelFilter', 'repFilter'].forEach(id => {
+      if ($(id)) $(id).value = '';
+    });
+    render();
+    if ($('queryExplanation')) {
+      $('queryExplanation').textContent = S.query
+        ? `상세 조건이 초기화되었습니다. 스마트 검색 "${S.query}"은 유지됩니다.`
+        : '상세 조건이 초기화되었습니다.';
+    }
+  }
+
   function resetAll() {
     S.query = '';
     S.targetIds = null;
@@ -1211,9 +1308,94 @@
       .growth-unit { margin-left: 0; font-size: 13px; line-height: 1; font-weight: 700; color: #667085; white-space: nowrap; }
       .growth-vs-py { margin-left: 10px; font-size: 13px; line-height: 1.2; font-weight: 700; color: #475467; white-space: nowrap; }
       .growth-vs-avg { display: block; margin-top: 5px; font-size: 12px; line-height: 1.2; font-weight: 650; color: #667085; }
+      /* KPI 성장 숫자 강조: 100팩/ACC를 한 덩어리로 표시 */
+      .kpi-card .growth-kpi-line {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: baseline !important;
+        gap: 0 !important;
+        white-space: nowrap !important;
+      }
+      .kpi-card .growth-pack {
+        display: inline-block !important;
+        font-size: 40px !important;
+        line-height: 1 !important;
+        font-weight: 950 !important;
+        letter-spacing: -1.5px !important;
+        white-space: nowrap !important;
+      }
+      .kpi-card .growth-unit {
+        display: inline-block !important;
+        margin: 0 !important;
+        font-size: 16px !important;
+        line-height: 1 !important;
+        font-weight: 800 !important;
+        white-space: nowrap !important;
+      }
+      .kpi-card .growth-vs-py {
+        margin-left: 12px !important;
+        font-size: 13px !important;
+        white-space: nowrap !important;
+      }
+
+      /* 핵심 Gap 카드 한 줄 */
+      #gapCards {
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+        width: 100% !important;
+      }
+      #gapCards .gap-card { min-width: 0 !important; }
+
+      /* 문항과 추천 교육 직접 연결 */
+      .legacy-gap-panel-hidden { display: none !important; }
+      .linked-gap-education-panel {
+        background: #fff;
+        border: 1px solid #d8e1ee;
+        border-radius: 18px;
+        padding: 22px;
+        margin-top: 18px;
+        box-shadow: 0 10px 26px rgba(21, 42, 74, .05);
+      }
+      .linked-panel-heading h3 { margin: 0 0 4px; font-size: 21px; }
+      .linked-panel-heading p { margin: 0 0 15px; color: #667085; }
+      .linked-gap-education-rows { display: grid; gap: 0; }
+      .linked-gap-row {
+        display: grid;
+        grid-template-columns: 34px minmax(300px, 1.45fr) 30px minmax(260px, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        min-height: 78px;
+        padding: 13px 4px;
+        border-bottom: 1px solid #e5eaf1;
+      }
+      .linked-gap-row:last-child { border-bottom: 0; }
+      .linked-rank {
+        width: 28px; height: 28px; border-radius: 50%;
+        display: grid; place-items: center;
+        background: #e7f4ff; color: #1265a8; font-weight: 900;
+      }
+      .linked-question b { display: block; font-size: 15px; line-height: 1.45; }
+      .linked-question small { display: block; margin-top: 5px; color: #475467; font-weight: 800; }
+      .linked-arrow { color: #00a3a3; font-size: 23px; font-weight: 900; text-align: center; }
+      .linked-education {
+        background: #f5f8fc; border-radius: 12px; padding: 11px 13px;
+      }
+      .linked-education small { display: block; color: #667085; margin-bottom: 3px; }
+      .linked-education b { display: block; font-size: 15px; }
+      .linked-education span { display: block; margin-top: 4px; color: #667085; font-size: 12px; }
+      .linked-target-button { white-space: nowrap; padding: 8px 12px; }
+
       @media (max-width: 1200px) {
-        .growth-pack { font-size: 27px; }
-        .growth-vs-py { margin-left: 0; }
+        .kpi-card .growth-pack { font-size: 34px !important; }
+        #gapCards { grid-template-columns: repeat(5, minmax(150px, 1fr)) !important; overflow-x: auto; }
+        .linked-gap-row { grid-template-columns: 30px minmax(230px, 1fr) 24px minmax(210px, .9fr) auto; }
+      }
+      @media (max-width: 800px) {
+        .linked-gap-row { grid-template-columns: 30px 1fr auto; }
+        .linked-arrow { display: none; }
+        .linked-education { grid-column: 2 / 4; }
+        .linked-target-button { grid-column: 2 / 4; justify-self: start; }
       }
     `;
     document.head.appendChild(style);
@@ -1234,8 +1416,8 @@
     if ($('workbookInput')) $('workbookInput').onchange = e => e.target.files[0] && upload(e.target.files[0]).catch(err => { console.error(err); alert('업로드 실패\n\n' + (err.message || err)); toast('업로드 실패'); });
     if ($('runQuery')) $('runQuery').onclick = () => { S.query = $('smartQuery')?.value || ''; S.targetIds = null; S.gapFilter = null; render(); if ($('queryExplanation') && !S.query) $('queryExplanation').textContent = `검색 조건 적용: 없음 / 결과 ${S.filtered.length}명`; view('segment'); };
     if ($('smartQuery')) $('smartQuery').onkeydown = e => { if (e.key === 'Enter') $('runQuery').click(); };
-    if ($('clearQuery')) $('clearQuery').onclick = resetAll;
-    if ($('resetFilters')) $('resetFilters').onclick = resetAll;
+    if ($('clearQuery')) $('clearQuery').onclick = resetSmartSearch;
+    if ($('resetFilters')) $('resetFilters').onclick = resetDetailFilters;
     document.querySelectorAll('.examples button').forEach(b => b.onclick = () => {
       // HTML에서 버튼명을 바꾸면 화면에 보이는 버튼 문구가 그대로 검색창에 입력됩니다.
       S.query = clean(b.textContent) || clean(b.dataset.query);
