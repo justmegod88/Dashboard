@@ -502,7 +502,7 @@
       FITTING_COLUMNS[key].title,
       `<span class="growth-kpi-line ${dclass(avgPack)}">
          <span class="growth-pack">${fmtPackMain(avgPack)}</span>
-         <span class="growth-unit">/ ACC</span>
+         <span class="growth-unit">/ACC</span>
          <span class="growth-vs-py">(${fmtRate(cur)} vs PY)</span>
        </span>`,
       `<span class="growth-vs-avg ${dclass(diff)}">(${fmtPp(diff)} vs avg)</span>`
@@ -1206,10 +1206,10 @@
       .detail-analysis-tab { opacity: .55; }
       .detail-analysis-tab.active, .detail-analysis-tab:hover { opacity: 1; }
       .gap-target-button { margin-left: 8px; padding: 4px 9px; font-size: 12px; line-height: 1.2; }
-      .growth-kpi-line { display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; margin-top: 7px; }
-      .growth-pack { font-size: 32px; line-height: 1; font-weight: 900; letter-spacing: -1px; }
-      .growth-unit { font-size: 13px; line-height: 1; font-weight: 700; color: #667085; white-space: nowrap; }
-      .growth-vs-py { margin-left: 7px; font-size: 13px; line-height: 1.2; font-weight: 700; color: #475467; white-space: nowrap; }
+      .growth-kpi-line { display: flex; align-items: baseline; gap: 0; flex-wrap: nowrap; white-space: nowrap; margin-top: 7px; width: 100%; }
+      .growth-pack { font-size: 36px; line-height: 1; font-weight: 900; letter-spacing: -1px; white-space: nowrap; }
+      .growth-unit { margin-left: 0; font-size: 13px; line-height: 1; font-weight: 700; color: #667085; white-space: nowrap; }
+      .growth-vs-py { margin-left: 10px; font-size: 13px; line-height: 1.2; font-weight: 700; color: #475467; white-space: nowrap; }
       .growth-vs-avg { display: block; margin-top: 5px; font-size: 12px; line-height: 1.2; font-weight: 650; color: #667085; }
       @media (max-width: 1200px) {
         .growth-pack { font-size: 27px; }
@@ -1221,7 +1221,11 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     injectDynamicStyles();
+    const dashboardTab = document.querySelector('.tab[data-view="dashboard"]');
+    const insightTab = document.querySelector('.tab[data-view="insight"]');
     const detailTab = document.querySelector('.tab[data-view="segment"]');
+    if (dashboardTab) dashboardTab.textContent = '통합 대시보드';
+    if (insightTab) insightTab.textContent = '교육 인사이트';
     if (detailTab) {
       detailTab.textContent = '안경사 상세 분석';
       detailTab.classList.add('detail-analysis-tab');
