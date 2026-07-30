@@ -11,8 +11,8 @@
 <header class="app-header">
   <div>
     <p class="eyebrow">ACUVUE EDUCATION RECOMMENDATION</p>
-    <h1>교육 · 인식 · 판매 인사이트 대시보드</h1>
-    <p>대시보드는 현재 현황을, 인사이트는 판매 저하 → 인식 원인 → 교육 제안을 자동으로 보여줍니다.</p>
+    <h1>교육 · 인식 · 피팅 인사이트 대시보드</h1>
+    <p>대시보드는 그룹 조건에 따라 인식 분석 후 필요한 교육을 제시, 인사이트는 피팅 저하의 원인이되는 인식을 분석해 교육 제안이 필요한 안경사를 자동으로 보여줍니다.</p>
   </div>
   <div class="header-actions">
     <label class="button primary" for="workbookInput">통합 엑셀 업로드</label>
@@ -32,15 +32,14 @@
     <div class="smart-search">
       <label for="smartQuery">스마트 검색 / 조건 검색</label>
       <div class="search-row">
-        <input id="smartQuery" placeholder="예: 3년차 중 난시 인식 Gap / 교육 미완료 / 성장률 음수" />
+        <input id="smartQuery" placeholder="예: 서울 지역의 gold 안경원 중 난시가 역성장하는 안경원의 3년차 안경사" />
         <button class="button primary" id="runQuery">찾기</button>
         <button class="button" id="clearQuery">초기화</button>
       </div>
       <div class="examples">
         <button data-query="MAX 멀티포컬 교육이 필요한 안경사">MAX 멀티포컬 교육 필요</button>
-        <button data-query="3년차 중 난시 인식 Gap">3년차 난시 인식 Gap</button>
-        <button data-query="교육 미완료 고우선순위 대상">교육 미완료 고우선순위</button>
-        <button data-query="성장률 음수">성장률 음수</button>
+        <button data-query="3년차 중 난시 인식 Gap">3년차 난시 인식 Gap 존재</button>
+        <button data-query="성장률 음수">난시 역성장</button>
       </div>
     </div>
     <div class="filters">
