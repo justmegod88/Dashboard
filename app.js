@@ -6,7 +6,7 @@
     master: [], content: [], edu: [], qm: [], per: [], sales: [], rec: [],
     filtered: [], query: '', targetIds: null, insights: [],
     masterById: new Map(), salesById: new Map(), salesByStore: new Map(),
-    eduById: new Map(), perById: new Map(), recById: new Map(), metricCache: new Map()
+    eduById: new Map(), perById: new Map(), recById: new Map(), metricCache: new Map(), gapFilter: null
   };
   window.S = S;
 
@@ -209,7 +209,7 @@
   function kpi(label, value, note) { return `<div class="kpi-card"><span>${label}</span><strong>${value}</strong><small>${note}</small></div>`; }
   function kpiGrowth(key, rows) { const sales = selectedSalesRows(rows); const cur = growth(sales, key); const all = growth(dedupeSalesRows(S.sales), key); const diff = cur != null && all != null ? cur - all : null; const avgPack = avgPackDeltaPerAcc(sales, key); return kpi(FITTING_COLUMNS[key].title, `<span class="${dclass(avgPack)}">${fmtPackPerAcc(avgPack)}</span>`, `<span>${fmtRate(cur)} <span class="kpi-sub">(vs PY)</span></span><br><span class="delta ${dclass(diff)}">${fmtPp(diff)} <span class="kpi-sub">(vs 전체평균)</span></span>`); }
 
-  function render() { const rows = filtered(); S.filtered = rows; const ms = rows.map(r => metrics(r.안경사ID)); const eduComplete = ms.filter(m => m.eduRate === 1).length; const reached = ms.filter(m => m.perc.length && m.gaps.length === 0).length; const salesForCurrentRows = selectedSalesRows(rows); if ($('kpiGrid')) $('kpiGrid').innerHTML = [kpi('전체 관리 안경사', rows.length.toLocaleString('ko-KR'), '현재 필터'), kpi('교육 완료 안경사', eduComplete.toLocaleString('ko-KR'), `${fmtPct(rows.length ? eduComplete / rows.length : null)} 완료`), kpi('인식 목표 도달 안경사', reached.toLocaleString('ko-KR'), `${fmtPct(rows.length ? reached / rows.length : null)} 도달`), kpiGrowth('ast', rows), kpiGrowth('mf', rows), kpiGrowth('max', rows)].join(''); if ($('gapCards')) { const cards = [['education', '교육 미완료', `${ms.filter(m => m.educationIncomplete).length}명`], ['perception', '인식 목표 미달', `${ms.filter(m => m.gaps.length).length}명`], ['sales ast', '난시 역성장', `${negativeAccCount(salesForCurrentRows, 'ast')} ACC`], ['sales mf', '멀티포컬 역성장', `${negativeAccCount(salesForCurrentRows, 'mf')} ACC`], ['sales max', 'MAX 역성장', `${negativeAccCount(salesForCurrentRows, 'max')} ACC`]]; $('gapCards').innerHTML = cards.map(c => `<div class="gap-card ${c[0]}"><span>${c[1]}</span><b>${c[2]}</b><small>현재 그룹 기준</small></div>`).join(''); } renderQuestionTop(rows); renderTopEdu(ms); renderSegment(rows, ms); }
+  function render() { const rows = filtered(); S.filtered = rows; const ms = rows.map(r => metrics(r.안경사ID)); const eduComplete = ms.filter(m => m.eduRate === 1).length; const reached = ms.filter(m => m.perc.length && m.gaps.length === 0).length; const salesForCurrentRows = selectedSalesRows(rows); if ($('kpiGrid')) $('kpiGrid').innerHTML = [kpi('전체 관리 안경사', rows.length.toLocaleString('ko-KR'), '현재 필터'), kpi('교육 완료 안경사', eduComplete.toLocaleString('ko-KR'), `${fmtPct(rows.length ? eduComplete / rows.length : null)} 완료`), kpi('인식 목표 도달 안경사', reached.toLocaleString('ko-KR'), `${fmtPct(rows.length ? reached / rows.length : null)} 도달`), kpiGrowth('ast', rows), kpiGrowth('mf', rows), kpiGrowth('max', rows)].join(''); if ($('gapCards')) renderGapCards(rows, ms); renderQuestionTop(rows); renderSegment(rows, ms); }
   function renderQuestionTop(rows) { if (!$('questionTop')) return; const ids = new Set(rows.map(r => r.안경사ID)); const counts = {}; S.per.forEach(p => { if (ids.has(p.안경사ID) && p.gap) counts[p.문항] = (counts[p.문항] || 0) + 1; }); $('questionTop').innerHTML = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 7).map((x, i) => `<div class="rank-item"><span class="rank-no">${i + 1}</span><b>${esc(x[0])}</b><span>${x[1]}명</span></div>`).join('') || '<div class="empty-state">인식 Gap 문항이 없습니다.</div>'; }
   function contentName(id) { const c = S.content.find(x => clean(get(x, ['교육ID'])) === clean(id)); return clean(get(c, ['교육명', '콘텐츠명'])) || clean(id); }
   function renderTopEdu(ms) { if (!$('topEducation')) return; const counts = {}; ms.forEach(m => { const name = clean(get(m.rec, ['추천교육명', '교육명'])) || contentName(get(m.rec, ['추천교육ID', '교육ID'])); if (name) counts[name] = (counts[name] || 0) + 1; }); $('topEducation').innerHTML = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map((x, i) => `<div class="rank-item"><span class="rank-no">${i + 1}</span><b>${esc(x[0])}</b><span>${x[1]}명</span></div>`).join('') || '<div class="empty-state">추천 교육 데이터가 없습니다.</div>'; }
@@ -252,4 +252,209 @@
   function renderExternal(rows = [], source = 'output/Competitor_Activity.csv') { if (!$('externalInsight')) return; $('externalInsight').innerHTML = rows.length ? `<div class="query-explanation">${esc(source)} · ${rows.length}건</div>` : '자동 연결 실패 또는 데이터 없음. 타사 CSV 업로드 버튼으로 파일을 선택하세요.'; }
   async function loadExternal() { try { const res = await fetch('output/Competitor_Activity.csv', { cache: 'no-store' }); if (!res.ok) throw new Error(); renderExternal(parseCsv(await res.text())); } catch (e) { renderExternal([]); } }
   document.addEventListener('DOMContentLoaded', () => { document.querySelectorAll('.tab').forEach(t => t.onclick = () => view(t.dataset.view)); if ($('workbookInput')) $('workbookInput').onchange = e => e.target.files[0] && upload(e.target.files[0]).catch(err => { console.error(err); alert('업로드 실패\n\n' + (err.message || err)); toast('업로드 실패'); }); if ($('runQuery')) $('runQuery').onclick = () => { S.query = $('smartQuery')?.value || ''; S.targetIds = null; render(); if ($('queryExplanation') && !S.query) $('queryExplanation').textContent = `검색 조건 적용: 없음 / 결과 ${S.filtered.length}명`; view('segment'); }; if ($('smartQuery')) $('smartQuery').onkeydown = e => { if (e.key === 'Enter') $('runQuery').click(); }; if ($('clearQuery')) $('clearQuery').onclick = resetAll; if ($('resetFilters')) $('resetFilters').onclick = resetAll; document.querySelectorAll('.examples button').forEach(b => b.onclick = () => { S.query = b.dataset.query; S.targetIds = null; if ($('smartQuery')) $('smartQuery').value = S.query; render(); view('segment'); }); if ($('downloadResults')) $('downloadResults').onclick = download; if ($('closeProfile')) $('closeProfile').onclick = () => { $('profilePanel').hidden = true; }; if ($('refreshInsights')) $('refreshInsights').onclick = () => { renderInsights(); toast('자동 인사이트 분석을 완료했습니다'); }; if ($('closeInsightDetail')) $('closeInsightDetail').onclick = () => { $('insightDetailPanel').hidden = true; }; if ($('competitorInput')) $('competitorInput').onchange = e => e.target.files[0] && e.target.files[0].text().then(t => renderExternal(parseCsv(t), e.target.files[0].name)); if ($('closeExternalDetail')) $('closeExternalDetail').onclick = () => { $('externalDetailPanel').hidden = true; }; render(); renderInsightPlaceholder(); loadExternal(); });
+
+  // Gap 카드 클릭 필터 + 인식 TOP + 추천 교육 TOP 연동 패치
+
+
+// 1) 현재 선택된 Gap 카드 상태 저장
+// S 선언부에 아래 속성을 추가하세요.
+// gapFilter: null,
+
+function setGapFilter(type, key = null) {
+  S.gapFilter = { type, key };
+  render();
+}
+
+function clearGapFilter() {
+  S.gapFilter = null;
+  render();
+}
+
+function rowsForSalesReverse(rows, key) {
+  const salesRows = selectedSalesRows(rows);
+  const reverseSalesRows = dedupeSalesRows(salesRows).filter(salesRow => {
+    const g = growth([salesRow], key);
+    return g != null && g < 0;
+  });
+
+  const stores = new Set(reverseSalesRows.map(storeKey).filter(Boolean));
+  if (!stores.size) return [];
+
+  // 판매 이슈는 ACC 단위지만, 교육/인식 분석 대상은 해당 ACC에 속한 개인 안경사입니다.
+  return rows.filter(row => stores.has(storeKey(row)));
+}
+
+function rowsForGapFilter(rows) {
+  if (!S.gapFilter) return rows;
+
+  if (S.gapFilter.type === 'education') {
+    return rows.filter(row => metrics(row.안경사ID).educationIncomplete);
+  }
+
+  if (S.gapFilter.type === 'perception') {
+    return rows.filter(row => metrics(row.안경사ID).gaps.length > 0);
+  }
+
+  if (S.gapFilter.type === 'sales' && S.gapFilter.key) {
+    return rowsForSalesReverse(rows, S.gapFilter.key);
+  }
+
+  return rows;
+}
+
+function gapFilterTitle() {
+  if (!S.gapFilter) return '현재 그룹';
+  if (S.gapFilter.type === 'education') return '교육 미완료 대상';
+  if (S.gapFilter.type === 'perception') return '인식 목표 미달 대상';
+  if (S.gapFilter.type === 'sales') return `${FITTING_COLUMNS[S.gapFilter.key].label} 역성장 ACC 소속 안경사`;
+  return '현재 그룹';
+}
+
+// 2) render() 안의 gapCards 생성부를 아래 방식으로 교체하세요.
+function renderGapCards(rows, ms) {
+  const salesForCurrentRows = selectedSalesRows(rows);
+  const cards = [
+    { cls: 'education', type: 'education', key: null, label: '교육 미완료', value: `${ms.filter(m => m.educationIncomplete).length}명` },
+    { cls: 'perception', type: 'perception', key: null, label: '인식 목표 미달', value: `${ms.filter(m => m.gaps.length).length}명` },
+    { cls: 'sales ast', type: 'sales', key: 'ast', label: '난시 역성장', value: `${negativeAccCount(salesForCurrentRows, 'ast')} ACC` },
+    { cls: 'sales mf', type: 'sales', key: 'mf', label: '멀티포컬 역성장', value: `${negativeAccCount(salesForCurrentRows, 'mf')} ACC` },
+    { cls: 'sales max', type: 'sales', key: 'max', label: 'MAX 역성장', value: `${negativeAccCount(salesForCurrentRows, 'max')} ACC` }
+  ];
+
+  $('gapCards').innerHTML = cards.map(c => {
+    const active = S.gapFilter && S.gapFilter.type === c.type && S.gapFilter.key === c.key ? ' active' : '';
+    return `<button class="gap-card ${c.cls}${active}" data-gap-type="${c.type}" data-gap-key="${c.key || ''}" type="button">
+      <span>${c.label}</span>
+      <b>${c.value}</b>
+      <small>클릭 시 아래 TOP 문항/교육이 이 대상으로 변경</small>
+    </button>`;
+  }).join('');
+
+  document.querySelectorAll('[data-gap-type]').forEach(btn => {
+    btn.onclick = () => {
+      const type = btn.dataset.gapType;
+      const key = btn.dataset.gapKey || null;
+      if (S.gapFilter && S.gapFilter.type === type && S.gapFilter.key === key) clearGapFilter();
+      else setGapFilter(type, key);
+    };
+  });
+}
+
+// 3) 인식 Gap TOP 문항 계산. 기존 renderQuestionTop(rows)를 이 함수로 교체하세요.
+function getTopGapQuestions(rows, limit = 7) {
+  const targetRows = rowsForGapFilter(rows);
+  const ids = new Set(targetRows.map(row => row.안경사ID));
+  const countByQuestion = new Map();
+  const scoreByQuestion = new Map();
+
+  S.per.forEach(p => {
+    if (!ids.has(p.안경사ID) || !p.gap) return;
+    const q = p.문항;
+    if (!q) return;
+    countByQuestion.set(q, (countByQuestion.get(q) || 0) + 1);
+    if (!scoreByQuestion.has(q)) scoreByQuestion.set(q, []);
+    scoreByQuestion.get(q).push(p.점수);
+  });
+
+  return [...countByQuestion.entries()]
+    .map(([q, count]) => ({ q, count, avgScore: avg(scoreByQuestion.get(q) || []) }))
+    .sort((a, b) => b.count - a.count || (a.avgScore ?? 99) - (b.avgScore ?? 99))
+    .slice(0, limit);
+}
+
+function renderQuestionTop(rows) {
+  if (!$('questionTop')) return;
+
+  const targetRows = rowsForGapFilter(rows);
+  const top = getTopGapQuestions(rows, 7);
+
+  const subtitle = document.querySelector('#questionTop')?.previousElementSibling;
+  if (subtitle && subtitle.tagName && subtitle.tagName.toLowerCase() === 'p') {
+    subtitle.textContent = `${gapFilterTitle()} 기준으로 가장 많이 부족한 문항입니다. 대상 ${targetRows.length}명`;
+  }
+
+  $('questionTop').innerHTML = top.length
+    ? top.map((x, i) => `<div class="rank-item">
+        <span class="rank-no">${i + 1}</span>
+        <b>${esc(x.q)}</b>
+        <span>${x.count}명</span>
+      </div>`).join('')
+    : '<div class="empty-state">선택 대상의 인식 Gap 문항이 없습니다.</div>';
+
+  renderRecommendedEducationTop(top.slice(0, 3));
+}
+
+// 4) 인식 TOP 3 문항 기반 추천 교육 TOP 생성.
+function educationTitle(row) {
+  return clean(get(row, ['교육명', '콘텐츠명', '추천교육명', '과정명', 'Title'])) || clean(get(row, ['교육ID', '콘텐츠ID', 'ID']));
+}
+
+function productKeyFromQuestion(questionText) {
+  if (/멀티포컬|다초점|노안|MF/i.test(questionText)) return 'mf';
+  if (/MAX|맥스|블루라이트|눈건강|자외선|실리콘/i.test(questionText)) return 'max';
+  if (/난시|토릭|ASD|프리즘|축|원주/i.test(questionText)) return 'ast';
+  return null;
+}
+
+function suggestedEducationTitle(questionText) {
+  if (/프리즘|한쪽.*난시|구면|수직/i.test(questionText)) return '난시 프리즘 및 디자인 관련 교육';
+  if (/난시|토릭|ASD|축|원주/i.test(questionText)) return '난시 피팅 및 디자인 관련 교육';
+  if (/멀티포컬|다초점|노안|적응|체크|follow|팔로우/i.test(questionText)) return '멀티포컬 상담 및 적응 관리 교육';
+  if (/블루라이트|눈건강|자외선|MAX|맥스/i.test(questionText)) return '블루라이트·눈건강 가치 전달 교육';
+  return '인식 Gap 보완 교육';
+}
+
+function overlapScore(a, b) {
+  const tokens = [...new Set(norm(a).match(/[a-z0-9가-힣]{2,}/g) || [])];
+  const text = norm(b);
+  return tokens.reduce((acc, token) => acc + (text.includes(token) ? 1 : 0), 0);
+}
+
+function findBestEducationForQuestion(questionText) {
+  const productKey = productKeyFromQuestion(questionText);
+  const fallbackTitle = suggestedEducationTitle(questionText);
+  const rows = (S.content || []).map(row => ({ row, title: educationTitle(row) })).filter(x => x.title);
+
+  const candidates = rows
+    .map(x => ({ ...x, score: overlapScore(questionText, x.title) + (productKey && INSIGHT[productKey].keywords.some(k => norm(x.title).includes(norm(k))) ? 2 : 0) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (candidates.length) {
+    return {
+      title: candidates[0].title,
+      status: '교육 리스트 매칭',
+      question: questionText
+    };
+  }
+
+  return {
+    title: fallbackTitle,
+    status: '현재 교육 리스트에 없음 · 제작 필요',
+    question: questionText
+  };
+}
+
+function renderRecommendedEducationTop(topQuestions) {
+  if (!$('topEducation')) return;
+
+  if (!topQuestions.length) {
+    $('topEducation').innerHTML = '<div class="empty-state">추천 교육 데이터가 없습니다.</div>';
+    return;
+  }
+
+  const recs = topQuestions.map(q => findBestEducationForQuestion(q.q));
+  $('topEducation').innerHTML = recs.map((rec, i) => `<div class="rank-item">
+    <span class="rank-no">${i + 1}</span>
+    <b>${esc(rec.title)}</b>
+    <span>${esc(rec.status)}</span>
+    <small style="display:block;grid-column:2 / 4;color:#667085;margin-top:4px;">연결 문항: ${esc(rec.question)}</small>
+  </div>`).join('');
+}
+
+
+
+function renderTopEdu(ms) { /* 추천 교육 TOP은 renderQuestionTop에서 갱신 */ }
+
+
 })();
