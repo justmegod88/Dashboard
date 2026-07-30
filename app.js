@@ -539,10 +539,15 @@
     }
     if ($('gapCards')) renderGapCards(rows, ms);
     renderQuestionTop(rows);
-    renderSegment(rows, ms);
+
+    // 상세 분석 표는 현재 Gap 카드 선택을 즉시 반영하되 화면 이동은 하지 않습니다.
+    const detailRows = rowsForGapFilter(rows);
+    const detailMetrics = detailRows.map(r => metrics(r.안경사ID));
+    renderSegment(detailRows, detailMetrics);
   }
 
   function getTopGapQuestions(rows, limit = 7) {
+    getTopGapQuestions._ids = new Map();
     const targetRows = rowsForGapFilter(rows);
     const ids = new Set(targetRows.map(row => row.안경사ID));
     const countByQuestion = new Map();
@@ -554,9 +559,17 @@
       countByQuestion.set(q, (countByQuestion.get(q) || 0) + 1);
       if (!scoreByQuestion.has(q)) scoreByQuestion.set(q, []);
       scoreByQuestion.get(q).push(p.점수);
+      if (!getTopGapQuestions._ids) getTopGapQuestions._ids = new Map();
+      if (!getTopGapQuestions._ids.has(q)) getTopGapQuestions._ids.set(q, new Set());
+      getTopGapQuestions._ids.get(q).add(p.안경사ID);
     });
     return [...countByQuestion.entries()]
-      .map(([q, count]) => ({ q, count, avgScore: avg(scoreByQuestion.get(q) || []) }))
+      .map(([q, count]) => ({
+        q,
+        count,
+        avgScore: avg(scoreByQuestion.get(q) || []),
+        targetIds: [...(getTopGapQuestions._ids?.get(q) || [])]
+      }))
       .sort((a, b) => b.count - a.count || (a.avgScore ?? 99) - (b.avgScore ?? 99))
       .slice(0, limit);
   }
@@ -570,8 +583,25 @@
       subtitle.textContent = `${gapFilterTitle()} 기준으로 가장 많이 부족한 문항입니다. 대상 ${targetRows.length}명`;
     }
     $('questionTop').innerHTML = top.length
-      ? top.map((x, i) => `<div class="rank-item"><span class="rank-no">${i + 1}</span><b>${esc(x.q)}</b><span>${x.count}명</span></div>`).join('')
+      ? top.map((x, i) => `<div class="rank-item">
+          <span class="rank-no">${i + 1}</span>
+          <b>${esc(x.q)}</b>
+          <span>${x.count}명 <button class="button gap-target-button" type="button" data-gap-question="${i}">대상자 보기</button></span>
+        </div>`).join('')
       : '<div class="empty-state">선택 대상의 인식 Gap 문항이 없습니다.</div>';
+
+    document.querySelectorAll('[data-gap-question]').forEach(button => {
+      button.onclick = () => {
+        const item = top[Number(button.dataset.gapQuestion)];
+        S.targetIds = new Set(item.targetIds || []);
+        S.query = '';
+        S.gapFilter = null;
+        render();
+        if ($('queryExplanation')) $('queryExplanation').textContent = `인식 Gap 문항 대상: ${item.q} / ${item.count}명`;
+        view('segment');
+      };
+    });
+
     renderRecommendedEducationTop(top.slice(0, 3));
   }
 
@@ -1160,12 +1190,20 @@
       button.gap-card { width: 100%; text-align: left; border: 0; cursor: pointer; font: inherit; }
       button.gap-card.active { outline: 3px solid rgba(0, 102, 204, .28); box-shadow: 0 0 0 5px rgba(0, 102, 204, .08); transform: translateY(-1px); }
       button.gap-card.active small { color: #0057a3; font-weight: 700; }
+      .detail-analysis-tab { opacity: .55; }
+      .detail-analysis-tab.active, .detail-analysis-tab:hover { opacity: 1; }
+      .gap-target-button { margin-left: 8px; padding: 4px 9px; font-size: 12px; line-height: 1.2; }
     `;
     document.head.appendChild(style);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     injectDynamicStyles();
+    const detailTab = document.querySelector('.tab[data-view="segment"]');
+    if (detailTab) {
+      detailTab.textContent = '안경사 상세 분석';
+      detailTab.classList.add('detail-analysis-tab');
+    }
     document.querySelectorAll('.tab').forEach(t => t.onclick = () => view(t.dataset.view));
     if ($('workbookInput')) $('workbookInput').onchange = e => e.target.files[0] && upload(e.target.files[0]).catch(err => { console.error(err); alert('업로드 실패\n\n' + (err.message || err)); toast('업로드 실패'); });
     if ($('runQuery')) $('runQuery').onclick = () => { S.query = $('smartQuery')?.value || ''; S.targetIds = null; S.gapFilter = null; render(); if ($('queryExplanation') && !S.query) $('queryExplanation').textContent = `검색 조건 적용: 없음 / 결과 ${S.filtered.length}명`; view('segment'); };
@@ -1182,237 +1220,5 @@
     render();
     renderInsightPlaceholder();
     loadExternal();
-  });
-})();
-(function(){
-  'use strict';
-
-  const $ = id => document.getElementById(id);
-  const clean = v => (v == null ? '' : String(v).trim());
-  const norm = s => clean(s).replace(/\u00a0/g,'').replace(/[\s_\-()./]/g,'').toLowerCase();
-  const esc = s => clean(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-  const num = v => {
-    if (v == null || v === '') return null;
-    const t = String(v).replace(/,/g,'').replace(/%/g,'');
-    const m = t.match(/[-+]?\d+(?:\.\d+)?/);
-    if (!m) return null;
-    const n = Number(m[0]);
-    return Number.isFinite(n) ? n : null;
-  };
-  const avg = arr => {
-    const vals = arr.map(num).filter(v => v != null && Number.isFinite(v));
-    return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
-  };
-  const sum = arr => {
-    const vals = arr.map(num).filter(v => v != null && Number.isFinite(v));
-    return vals.length ? vals.reduce((a,b)=>a+b,0) : null;
-  };
-  const month = () => Math.max(1, Math.min(12, new Date().getMonth()+1));
-  const annualize = v => v == null ? null : v / month() * 12;
-  const fmtRate = v => v == null ? '데이터 없음' : `${v>=0?'+':''}${v.toFixed(1)}%`;
-  const fmtScore = v => v == null ? '-' : `${Number(v).toFixed(1)}점`;
-
-  const COLS = {
-    mf: { label:'멀티포컬', py:['2025 멀티포컬  팩수','2025 멀티포컬 팩수','2025멀티포컬팩수','25년 멀티포컬  팩수','25년 멀티포컬 팩수','25년멀티포컬팩수'], cy:['2026 멀티포컬  팩수','2026 멀티포컬 팩수','2026멀티포컬팩수','26년 멀티포컬  팩수','26년 멀티포컬 팩수','26년멀티포컬팩수'], keys:['멀티포컬','다초점','노안','MF','적응','상담','팔로우','follow'] },
-    ast:{ label:'난시', py:['2025 난시 팩수','2025난시팩수','25년 난시 팩수','25년난시팩수'], cy:['2026 난시 팩수','2026난시팩수','26년 난시 팩수','26년난시팩수'], keys:['난시','토릭','ASD','프리즘','축','원주','구면'] },
-    max:{ label:'MAX', py:['2025 MAX  팩수','2025 MAX 팩수','2025MAX팩수','25년 MAX  팩수','25년 MAX 팩수','25년MAX팩수'], cy:['2026 MAX  팩수','2026 MAX 팩수','2026MAX팩수','26년 MAX  팩수','26년 MAX 팩수','26년MAX팩수'], keys:['MAX','맥스','블루라이트','눈건강','보호','자외선','실리콘','오아시스'] }
-  };
-
-  const CATS = [
-    { id:'mf_reverse', key:'mf', title:'멀티포컬 전년 대비 역성장', mode:'reverse' },
-    { id:'mf_under_avg', key:'mf', title:'멀티포컬 판매 평균 대비 낮음', mode:'under' },
-    { id:'ast_reverse', key:'ast', title:'난시 전년 대비 역성장', mode:'reverse' },
-    { id:'ast_under_avg', key:'ast', title:'난시 판매 평균 대비 낮음', mode:'under' },
-    { id:'max_reverse', key:'max', title:'MAX 전년 대비 역성장', mode:'reverse' },
-    { id:'max_under_avg', key:'max', title:'MAX 판매 평균 대비 낮음', mode:'under' }
-  ];
-
-  function get(row,names){
-    if(!row) return '';
-    const map={}; Object.keys(row).forEach(k=>map[norm(k)]=row[k]);
-    for(const n of names){ const v=map[norm(n)]; if(v!==undefined && clean(v)!=='') return v; }
-    return '';
-  }
-  function storeKey(row){
-    const code = clean(get(row,['안경원코드','매장코드','거래처코드','ShipTo','SoldTo','Outletnumber','Outlet Number','매장ID','매장번호','CustomerID']) || row?.안경원코드);
-    const name = clean(get(row,['안경원명','안경원','매장명','거래처명','OutletName','StoreName']) || row?.안경원명);
-    return code ? norm(code) : norm(name);
-  }
-  function uniqueSales(rows){
-    const m = new Map();
-    rows.forEach((r,i)=>{ const k=storeKey(r)||`row-${i}`; if(!m.has(k)) m.set(k,r); });
-    return [...m.values()];
-  }
-  function growthForSalesRows(rows,key){
-    const c=COLS[key];
-    const py=sum(rows.map(r=>get(r,c.py)));
-    const cy=annualize(sum(rows.map(r=>get(r,c.cy))));
-    if(py==null && cy==null) return null;
-    if(!py && cy) return 100;
-    return py ? (cy-py)/py*100 : null;
-  }
-  function salesRowsForMaster(masterRows){
-    const S = window.S || {};
-    const rows=[];
-    const byId = S.salesById || new Map();
-    const byStore = S.salesByStore || new Map();
-    masterRows.forEach(p=>{
-      const direct = byId.get(p.안경사ID) || [];
-      if(direct.length) rows.push(...direct);
-      else {
-        const sKey = storeKey(p);
-        if(sKey) rows.push(...(byStore.get(sKey)||[]));
-      }
-    });
-    return uniqueSales(rows);
-  }
-  function peopleInSalesStores(masterRows, salesRows){
-    const stores = new Set(uniqueSales(salesRows).map(storeKey).filter(Boolean));
-    return masterRows.filter(p=>stores.has(storeKey(p)));
-  }
-  function relevantPerRows(ids,key){
-    const S = window.S || {};
-    const keys = COLS[key].keys.map(k=>k.toLowerCase());
-    const rows=[];
-    (S.per||[]).forEach(p=>{
-      if(!ids.has(p.안경사ID) || !p.gap) return;
-      const text = `${p.문항||''} ${p.문항ID||''} ${p.제품군||''}`.toLowerCase();
-      if(p.제품군===key || keys.some(k=>text.includes(k))) rows.push(p);
-    });
-    return rows;
-  }
-  function topQuestions(people,key,limit=2){
-    const ids = new Set(people.map(p=>p.안경사ID));
-    const rows = relevantPerRows(ids,key);
-    const byQ = new Map();
-    rows.forEach(r=>{
-      if(!byQ.has(r.문항)) byQ.set(r.문항,[]);
-      byQ.get(r.문항).push(r.점수);
-    });
-    return [...byQ.entries()].map(([q, scores])=>({ q, avg:avg(scores), count:scores.length }))
-      .sort((a,b)=>b.count-a.count || (a.avg??99)-(b.avg??99)).slice(0,limit);
-  }
-  function suggestedEdu(q,key){
-    const text=q||'';
-    if(/프리즘|한쪽.*난시|구면|수직/i.test(text)) return '난시 프리즘 및 디자인 관련 교육';
-    if(key==='mf') return /적응|팔로우|follow/i.test(text) ? '멀티포컬 적응 관리 교육' : '멀티포컬 상담 기본 과정';
-    if(key==='ast') return '난시 피팅 및 디자인 관련 교육';
-    if(key==='max') return '블루라이트·눈건강 가치 전달 교육';
-    return '인식 Gap 보완 교육';
-  }
-  function focusGroup(people,key,topQ){
-    if(!people.length || !topQ) return '';
-    const dims = [['Tier','Tier'],['채널','채널'],['연차','연차'],['지역','지역']];
-    let best=null;
-    for(let i=0;i<dims.length;i++){
-      for(let j=i+1;j<dims.length;j++){
-        const [f1,l1]=dims[i], [f2,l2]=dims[j];
-        const groups=new Map();
-        people.forEach(p=>{
-          const k=`${clean(p[f1])} · ${clean(p[f2])}`;
-          if(!clean(p[f1])||!clean(p[f2])) return;
-          if(!groups.has(k)) groups.set(k,[]);
-          groups.get(k).push(p);
-        });
-        groups.forEach((members,label)=>{
-          if(members.length<2) return;
-          const ids=new Set(members.map(p=>p.안경사ID));
-          const scores = (window.S?.per||[]).filter(r=>ids.has(r.안경사ID)&&r.문항===topQ.q).map(r=>r.점수);
-          const sc=avg(scores);
-          if(sc==null) return;
-          if(!best || sc<best.score) best={label, score:sc, q:topQ.q, size:members.length};
-        });
-      }
-    }
-    if(!best) return '';
-    return `${best.label} · ${esc(best.q)} ${fmtScore(best.score)}`;
-  }
-  function buildInsight(cat, masterRows){
-    const key=cat.key;
-    const allSales = salesRowsForMaster(masterRows);
-    const overall = growthForSalesRows(allSales,key);
-    if(overall==null) return null;
-    const sales = uniqueSales(allSales).filter(row=>{
-      const g = growthForSalesRows([row],key);
-      if(g==null) return false;
-      if(cat.mode==='reverse') return g<0;
-      return overall!=null && g < overall - 3;
-    });
-    if(!sales.length) return null;
-    const people = peopleInSalesStores(masterRows,sales);
-    const qs=topQuestions(people,key,2);
-    const focus=focusGroup(people,key,qs[0]);
-    const recs=qs.map(x=>suggestedEdu(x.q,key)).slice(0,2);
-    return { ...cat, people, questionTop:qs, focus, recs, overall };
-  }
-  function buildInsights(){
-    const S = window.S || {};
-    const base = (S.filtered&&S.filtered.length?S.filtered:S.master)||[];
-    return CATS.map(c=>buildInsight(c,base)).filter(Boolean);
-  }
-  function renderInsightCard(item,idx){
-    const qHtml = item.questionTop.length ? item.questionTop.map((x,i)=>`<div class="insight-mini-row"><b>${i+1}. ${esc(x.q)}</b><span>${fmtScore(x.avg)}</span></div>`).join('') : '<div class="empty-state">관련 인식 Gap이 없습니다.</div>';
-    const recHtml = item.recs.length ? item.recs.map(r=>`<div class="recommend-card"><b>${esc(r)}</b></div>`).join('') : '<div class="empty-state">추천 교육 없음</div>';
-    return `<div class="insight-card insight-v3-card" data-v3-idx="${idx}">
-      <div class="type">인사이트 메뉴</div>
-      <h3>${esc(item.title)}</h3>
-      <div class="insight-steps compact-insight">
-        <div class="insight-step"><small>대상</small><b>${item.people.length.toLocaleString('ko-KR')}명</b></div>
-        <div class="insight-step"><small>인식 조사 분석 결과</small>${qHtml}</div>
-        <div class="insight-step"><small>집중 포커스 그룹</small>${item.focus ? esc(item.focus) : '두드러지는 포커스 그룹 없음'}</div>
-        <div class="insight-step rec"><small>추천 교육</small>${recHtml}</div>
-      </div>
-      <div class="insight-actions"><button class="button primary" data-v3-view="${idx}" type="button">대상 안경사 보기</button></div>
-    </div>`;
-  }
-  function activateSegment(rows,title){
-    const S = window.S || {};
-    S.targetIds = new Set(rows.map(r=>r.안경사ID));
-    S.query=''; S.gapFilter=null;
-    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-    const seg=document.getElementById('segment'); if(seg) seg.classList.add('active');
-    const tab=document.querySelector('.tab[data-view="segment"]'); if(tab) tab.classList.add('active');
-    const count=$('resultCount'); if(count) count.textContent=`${rows.length.toLocaleString('ko-KR')}명`;
-    const explain=$('queryExplanation'); if(explain) explain.textContent=`${title} 대상 안경사 ${rows.length}명`;
-    const body=$('segmentTable');
-    if(body){
-      body.innerHTML=rows.map(p=>`<tr><td><b>${esc(p.안경사명)}</b><small><br>${esc(p.안경사ID)}</small></td><td>${esc(p.안경원명)}<small><br>${esc(p.지역)} · ${esc(p.채널)}</small></td><td>${esc(p.연차)} / ${esc(p.Tier)}</td><td colspan="7">인사이트 대상자</td></tr>`).join('');
-    }
-  }
-  function renderV3Insights(){
-    const cards=buildInsights();
-    const box=$('insightCards');
-    if(!box) return;
-    box.innerHTML = cards.length ? cards.map(renderInsightCard).join('') : '<div class="empty-state">조건에 맞는 인사이트가 없습니다.</div>';
-    box.querySelectorAll('[data-v3-view]').forEach(btn=>{
-      btn.onclick=e=>{
-        e.stopPropagation();
-        const item=cards[+btn.dataset.v3View];
-        activateSegment(item.people,item.title);
-      };
-    });
-    box.querySelectorAll('.insight-v3-card').forEach(card=>{
-      card.onclick=()=>{
-        const item=cards[+card.dataset.v3Idx];
-        activateSegment(item.people,item.title);
-      };
-    });
-  }
-  function dimSegmentMenu(){
-    const style=document.createElement('style');
-    style.textContent=`.tab[data-view="segment"]{opacity:.42}.tab[data-view="segment"]::after{content:' 상세';font-size:11px;color:#98a2b3;margin-left:4px}.compact-insight .insight-step{padding:14px}.insight-mini-row{display:flex;justify-content:space-between;gap:12px;margin:6px 0}.insight-v3-card{cursor:pointer}`;
-    document.head.appendChild(style);
-  }
-  document.addEventListener('DOMContentLoaded',()=>{
-    dimSegmentMenu();
-    const btn=$('refreshInsights');
-    if(btn){
-      btn.addEventListener('click',e=>{
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        renderV3Insights();
-      },true);
-    }
   });
 })();
