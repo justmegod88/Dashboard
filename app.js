@@ -2001,3 +2001,227 @@
     observer.observe(document.body, { childList: true, subtree: true });
   });
 })();
+
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  function moveGapBesideLinkedPanel() {
+    const gapCards = $('gapCards');
+    const linkedPanel = $('linkedGapEducation');
+    if (!gapCards || !linkedPanel || !linkedPanel.parentElement) return;
+
+    const gapPanel = gapCards.closest('section, .panel, .card, .section-card') || gapCards.parentElement;
+    if (!gapPanel || gapPanel === linkedPanel) return;
+
+    // 이미 전체 폭인 연결 패널과 같은 부모에 배치하면, 좌측 2열에 갇히지 않습니다.
+    if (gapPanel.parentElement !== linkedPanel.parentElement || gapPanel.nextElementSibling !== linkedPanel) {
+      linkedPanel.parentElement.insertBefore(gapPanel, linkedPanel);
+    }
+
+    gapPanel.classList.add('gap-panel-same-width-as-linked');
+    linkedPanel.classList.add('linked-panel-tight-spacing');
+  }
+
+  function installExactLayoutFix() {
+    if ($('exact-gap-layout-fix')) return;
+    const style = document.createElement('style');
+    style.id = 'exact-gap-layout-fix';
+    style.textContent = `
+      /* 연결 패널과 같은 부모, 같은 폭으로 강제 */
+      .gap-panel-same-width-as-linked {
+        display: block !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        grid-column: 1 / -1 !important;
+        margin: 14px 0 8px !important;
+      }
+
+      .gap-panel-same-width-as-linked #gapCards {
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+      }
+
+      .gap-panel-same-width-as-linked #gapCards .gap-card {
+        box-sizing: border-box !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        min-height: 120px !important;
+      }
+
+      /* 두 패널 사이의 과도한 세로 간격 제거 */
+      #linkedGapEducation.linked-panel-tight-spacing {
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        grid-column: 1 / -1 !important;
+        margin: 0 0 18px !important;
+      }
+
+      @media (max-width: 1100px) {
+        .gap-panel-same-width-as-linked #gapCards {
+          grid-template-columns: repeat(5, minmax(160px, 1fr)) !important;
+          overflow-x: auto !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    installExactLayoutFix();
+    moveGapBesideLinkedPanel();
+
+    const observer = new MutationObserver(() => moveGapBesideLinkedPanel());
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+})();
+
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+
+  function applyFinalKpiAndGapLayout() {
+    const kpiGrid = $('kpiGrid');
+    const gapCards = $('gapCards');
+    const linkedPanel = $('linkedGapEducation');
+    if (!kpiGrid || !gapCards) return;
+
+    /* 성장 KPI 숫자를 일반 KPI 숫자와 동일한 DOM 스타일로 강제 */
+    const normalValue = document.querySelector('#kpiGrid .kpi-card strong');
+    const normalStyle = normalValue ? window.getComputedStyle(normalValue) : null;
+    document.querySelectorAll('#kpiGrid .growth-pack').forEach(value => {
+      value.style.setProperty('font-size', normalStyle?.fontSize || '28px', 'important');
+      value.style.setProperty('font-weight', normalStyle?.fontWeight || '800', 'important');
+      value.style.setProperty('line-height', normalStyle?.lineHeight || '1.1', 'important');
+      value.style.setProperty('font-family', normalStyle?.fontFamily || 'inherit', 'important');
+      value.style.setProperty('letter-spacing', normalStyle?.letterSpacing || 'normal', 'important');
+      value.style.setProperty('color', normalStyle?.color || '#071d3b', 'important');
+    });
+
+    const gapPanel = gapCards.closest('section, .panel, .card, .section-card') || gapCards.parentElement;
+    if (!gapPanel) return;
+
+    /* 전체 폭 전용 래퍼를 KPI 바로 다음에 생성 */
+    let fullRow = $('finalDashboardFullRow');
+    if (!fullRow) {
+      fullRow = document.createElement('div');
+      fullRow.id = 'finalDashboardFullRow';
+      fullRow.className = 'final-dashboard-full-row';
+    }
+
+    const dashboard = $('dashboard') || kpiGrid.closest('.view') || document.body;
+    let kpiRoot = kpiGrid;
+    while (kpiRoot.parentElement && kpiRoot.parentElement !== dashboard) {
+      kpiRoot = kpiRoot.parentElement;
+    }
+
+    if (fullRow.parentElement !== dashboard || kpiRoot.nextElementSibling !== fullRow) {
+      kpiRoot.insertAdjacentElement('afterend', fullRow);
+    }
+
+    if (gapPanel.parentElement !== fullRow) fullRow.appendChild(gapPanel);
+    if (linkedPanel && linkedPanel.parentElement !== fullRow) fullRow.appendChild(linkedPanel);
+
+    gapPanel.classList.add('final-gap-panel');
+    if (linkedPanel) linkedPanel.classList.add('final-linked-panel');
+  }
+
+  function installFinalStyles() {
+    if ($('final-kpi-gap-style-v2')) return;
+    const style = document.createElement('style');
+    style.id = 'final-kpi-gap-style-v2';
+    style.textContent = `
+      /* 성장 KPI 숫자: 일반 KPI 숫자와 동일 */
+      #kpiGrid .kpi-card .growth-kpi-line {
+        display: block !important;
+        width: 100% !important;
+      }
+      #kpiGrid .kpi-card .growth-pack {
+        display: block !important;
+        color: #071d3b !important;
+        font-size: 28px !important;
+        font-weight: 800 !important;
+        line-height: 1.1 !important;
+        letter-spacing: -0.4px !important;
+      }
+      #kpiGrid .kpi-card .growth-vs-py,
+      #kpiGrid .kpi-card .growth-vs-avg {
+        display: block !important;
+        margin: 5px 0 0 !important;
+        color: #47627f !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        line-height: 1.2 !important;
+      }
+
+      /* KPI 아래 전체 폭 행 */
+      #finalDashboardFullRow.final-dashboard-full-row {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        gap: 8px !important;
+        margin: 14px 0 0 !important;
+        padding: 0 !important;
+      }
+      #finalDashboardFullRow > * {
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+      }
+
+      /* 핵심 Gap 5개를 반드시 한 줄 전체 폭 */
+      #finalDashboardFullRow .final-gap-panel {
+        margin: 0 !important;
+        padding: 20px !important;
+      }
+      #finalDashboardFullRow .final-gap-panel #gapCards {
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+      }
+      #finalDashboardFullRow .final-gap-panel #gapCards .gap-card {
+        width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+      }
+
+      /* 핵심 Gap과 연결 패널 사이 간격 최소화 */
+      #finalDashboardFullRow .final-linked-panel {
+        margin: 0 !important;
+        padding-top: 18px !important;
+      }
+
+      @media (max-width: 1050px) {
+        #finalDashboardFullRow .final-gap-panel #gapCards {
+          grid-template-columns: repeat(5, minmax(160px, 1fr)) !important;
+          overflow-x: auto !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    installFinalStyles();
+    applyFinalKpiAndGapLayout();
+    const observer = new MutationObserver(() => applyFinalKpiAndGapLayout());
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+})();
