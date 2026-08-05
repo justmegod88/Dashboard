@@ -1459,13 +1459,87 @@
   function growth(rows,key){const p=PRODUCTS[key], py=sum(rows.map(r=>get(r,p.py))), cy=annualize(sum(rows.map(r=>get(r,p.cy)))); if(py==null&&cy==null)return null; if(!py&&cy)return 100; return py?(cy-py)/py*100:null;}
   function productPerception(p,key){const text=`${p.문항||''} ${p.문항ID||''} ${p.제품군||''}`.toLowerCase(); return p.제품군===key||PRODUCTS[key].keys.some(k=>text.includes(k));}
   function peopleForSales(master,sales){const stores=new Set(sales.map(storeKey).filter(Boolean)); return master.filter(p=>stores.has(storeKey(p)));}
-  function topPerceptions(people,key){const ids=new Set(people.map(p=>p.안경사ID)), main=new Map(), other=new Map(); (window.S?.per||[]).forEach(p=>{if(!ids.has(p.안경사ID)||!p.gap)return; const map=productPerception(p,key)?main:other; if(!map.has(p.문항))map.set(p.문항,[]); map.get(p.문항).push(p.점수);}); const make=map=>[...map].map(([q,a])=>({q,score:avg(a),count:a.length})).sort((a,b)=>b.count-a.count||(a.score??99)-(b.score??99)); return {main:make(main).slice(0,2),other:make(other).slice(0,1)};}
+  function topPerceptions(people,key){
+    const ids=new Set(people.map(p=>p.안경사ID));
+    const main=new Map(), other=new Map(), respondentIds=new Set();
+    (window.S?.per||[]).forEach(p=>{
+      if(!ids.has(p.안경사ID) || !productPerception(p,key)) return;
+      respondentIds.add(p.안경사ID);
+      if(!p.gap) return;
+      const map=main;
+      if(!map.has(p.문항)) map.set(p.문항,[]);
+      map.get(p.문항).push(p.점수);
+    });
+    // 제품 관련 문항 외의 저하 영역은 참고 정보로만 수집합니다.
+    (window.S?.per||[]).forEach(p=>{
+      if(!ids.has(p.안경사ID) || !p.gap || productPerception(p,key)) return;
+      if(!other.has(p.문항)) other.set(p.문항,[]);
+      other.get(p.문항).push(p.점수);
+    });
+    const make=map=>[...map]
+      .map(([q,a])=>({q,score:avg(a),count:a.length}))
+      .sort((a,b)=>b.count-a.count||(a.score??99)-(b.score??99));
+    return {
+      main:make(main).slice(0,2),
+      other:make(other).slice(0,1),
+      respondentIds:[...respondentIds],
+      respondentCount:respondentIds.size
+    };
+  }
   function focusGroup(people,question){if(!question)return ''; const dims=[['Tier','Tier'],['채널','채널'],['연차','연차'],['지역','지역']], candidates=[]; for(let i=0;i<dims.length;i++)for(let j=i+1;j<dims.length;j++){const [a]=dims[i],[b]=dims[j], groups=new Map(); people.forEach(p=>{if(!clean(p[a])||!clean(p[b]))return;const k=`${p[a]} · ${p[b]}`;(groups.get(k)||groups.set(k,[]).get(k)).push(p);}); groups.forEach((members,label)=>{if(members.length<2)return;const ids=new Set(members.map(x=>x.안경사ID));const sc=avg((window.S?.per||[]).filter(x=>ids.has(x.안경사ID)&&x.문항===question.q).map(x=>x.점수));if(sc!=null)candidates.push({label,score:sc});});} candidates.sort((a,b)=>a.score-b.score); return candidates[0]?`${candidates[0].label} · ${question.q} ${candidates[0].score.toFixed(1)}점`:'';}
-  function build(menu){const [key,mode,title]=menu,S=window.S||{},master=(S.filtered&&S.filtered.length?S.filtered:S.master)||[], all=salesForPeople(master), overall=growth(all,key); if(overall==null)return null; const targetSales=all.filter(r=>{const g=growth([r],key);return g!=null&&(mode==='reverse'?g<0:g<overall-3);}); if(!targetSales.length)return null; const people=peopleForSales(master,targetSales), per=topPerceptions(people,key), focus=focusGroup(people,per.main[0]); return {key,title,people,per,focus,edu:PRODUCTS[key].edu};}
-  function card(item,i){const main=item.per.main.length?item.per.main.map((x,j)=>`<div class="insight-result-main"><b>${j+1}. ${esc(x.q)}</b><span>${x.score==null?'-':x.score.toFixed(1)+'점'}</span></div>`).join(''):'<span>관련 제품 인식 Gap 없음</span>'; const other=item.per.other.length?`<div class="insight-result-other">참고: ${esc(item.per.other[0].q)} ${item.per.other[0].score?.toFixed(1)??'-'}점</div>`:''; return `<article class="insight-card restored-insight-card" data-card="${i}"><div class="type">인사이트 메뉴</div><h3>${esc(item.title)}</h3><div class="restored-grid"><section><small>대상</small><strong>${item.people.length.toLocaleString('ko-KR')}명</strong></section><section><small>인식 조사 분석 결과</small>${main}${other}</section><section><small>집중 포커스 그룹</small><div>${item.focus?esc(item.focus):'두드러지는 그룹 없음'}</div></section><section><small>추천 교육</small><div class="edu-line"><b>1.</b> ${esc(item.edu[0])}</div><div class="edu-line"><b>2.</b> ${esc(item.edu[1])}</div></section></div><div class="insight-actions"><button class="button primary" data-view-target="${i}" type="button">대상 안경사 보기</button></div></article>`;}
+  function build(menu){
+    const [key,mode,title]=menu,S=window.S||{};
+    const master=(S.filtered&&S.filtered.length?S.filtered:S.master)||[];
+    const all=salesForPeople(master), overall=growth(all,key);
+    if(overall==null)return null;
+    const targetSales=all.filter(r=>{
+      const g=growth([r],key);
+      return g!=null&&(mode==='reverse'?g<0:g<overall-3);
+    });
+    if(!targetSales.length)return null;
+    const people=peopleForSales(master,targetSales);
+    const per=topPerceptions(people,key);
+    const respondentSet=new Set(per.respondentIds||[]);
+    const respondentPeople=people.filter(p=>respondentSet.has(p.안경사ID));
+    const focus=focusGroup(respondentPeople,per.main[0]);
+    return {key,title,people,respondentPeople,per,focus,edu:PRODUCTS[key].edu};
+  }
+  function card(item,i){
+    const respondents=item.per.respondentCount||0;
+    const responseRate=item.people.length ? Math.round(respondents/item.people.length*100) : 0;
+    const main=!respondents
+      ? '<span class="insight-no-data">인식 조사 데이터 없음</span>'
+      : item.per.main.length
+        ? item.per.main.map((x,j)=>`<div class="insight-result-main"><b>${j+1}. ${esc(x.q)}</b><span>${x.score==null?'-':x.score.toFixed(1)+'점'}</span></div>`).join('')
+        : '<span>관련 제품에서 기준 미달 문항 없음</span>';
+    const other=respondents&&item.per.other.length
+      ? `<div class="insight-result-other">참고: ${esc(item.per.other[0].q)} ${item.per.other[0].score?.toFixed(1)??'-'}점</div>`
+      : '';
+    const focusText=!respondents
+      ? '인식 조사 데이터 없음'
+      : (item.focus?esc(item.focus):'두드러지는 그룹 없음');
+    const educationHtml=!respondents
+      ? '<div class="edu-line">인식 조사 후 교육 추천 필요</div>'
+      : `<div class="edu-line"><b>1.</b> ${esc(item.edu[0])}</div><div class="edu-line"><b>2.</b> ${esc(item.edu[1])}</div>`;
+    return `<article class="insight-card restored-insight-card" data-card="${i}">
+      <div class="type">인사이트 메뉴</div>
+      <h3>${esc(item.title)}</h3>
+      <div class="restored-grid">
+        <section class="insight-target-summary">
+          <small>판매 대상</small><strong>${item.people.length.toLocaleString('ko-KR')}명</strong>
+          <small class="respondent-label">인식 조사 응답자</small><strong class="respondent-count">${respondents.toLocaleString('ko-KR')}명</strong>
+          <span class="response-rate">응답률 ${responseRate}%</span>
+        </section>
+        <section><small>인식 조사 분석 결과${respondents?` · 응답자 ${respondents.toLocaleString('ko-KR')}명 기준`:''}</small>${main}${other}</section>
+        <section><small>집중 포커스 그룹</small><div>${focusText}</div></section>
+        <section><small>추천 교육</small>${educationHtml}</section>
+      </div>
+      <div class="insight-actions"><button class="button primary" data-view-target="${i}" type="button">판매 대상 안경사 보기</button></div>
+    </article>`;
+  }
   function showDetail(item){const S=window.S||{};S.targetIds=new Set(item.people.map(p=>p.안경사ID));S.query='';S.gapFilter=null;if(typeof window.render==='function')window.render();document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));$('segment')?.classList.add('active');document.querySelector('.tab[data-view="segment"]')?.classList.add('active');$('segment')?.scrollIntoView({behavior:'smooth',block:'start'});}
   function renderRestored(){const items=MENUS.map(build).filter(Boolean).slice(0,5),box=$('insightCards'); if(!box)return;box.innerHTML=items.length?items.map(card).join(''):'<div class="empty-state">조건에 맞는 자동 인사이트가 없습니다.</div>'; box.querySelectorAll('[data-view-target]').forEach(b=>b.onclick=e=>{e.stopPropagation();showDetail(items[+b.dataset.viewTarget]);}); box.querySelectorAll('[data-card]').forEach(c=>c.onclick=()=>showDetail(items[+c.dataset.card]));}
-  function styles(){if($('restored-insight-style'))return;const s=document.createElement('style');s.id='restored-insight-style';s.textContent=`.restored-insight-card{cursor:pointer}.restored-grid{display:grid;grid-template-columns:.8fr 1.65fr 1.15fr 1.15fr;gap:12px;margin-top:14px}.restored-grid>section{background:#f4f7fb;border-radius:14px;padding:18px;min-height:155px}.restored-grid small{display:block;color:#667085;font-weight:800;margin-bottom:10px}.restored-grid strong{font-size:22px}.insight-result-main{display:flex;justify-content:space-between;gap:8px;font-weight:800;margin:8px 0}.insight-result-other{font-size:13px;color:#667085;font-weight:400;margin-top:12px}.edu-line{font-weight:700;margin:8px 0}.tab[data-view="segment"]{opacity:.55}.tab[data-view="segment"].active,.tab[data-view="segment"]:hover{opacity:1}@media(max-width:1050px){.restored-grid{grid-template-columns:1fr 1fr}}@media(max-width:650px){.restored-grid{grid-template-columns:1fr}}`;document.head.appendChild(s);}
+  function styles(){if($('restored-insight-style'))return;const s=document.createElement('style');s.id='restored-insight-style';s.textContent=`.restored-insight-card{cursor:pointer}.restored-grid{display:grid;grid-template-columns:.8fr 1.65fr 1.15fr 1.15fr;gap:12px;margin-top:14px}.restored-grid>section{background:#f4f7fb;border-radius:14px;padding:18px;min-height:155px}.restored-grid small{display:block;color:#667085;font-weight:800;margin-bottom:10px}.restored-grid strong{font-size:22px}.insight-target-summary .respondent-label{margin-top:14px}.insight-target-summary .respondent-count{display:block;font-size:20px}.response-rate{display:block;margin-top:4px;color:#667085;font-size:12px;font-weight:700}.insight-no-data{display:block;color:#667085;font-weight:700}.insight-result-main{display:flex;justify-content:space-between;gap:8px;font-weight:800;margin:8px 0}.insight-result-other{font-size:13px;color:#667085;font-weight:400;margin-top:12px}.edu-line{font-weight:700;margin:8px 0}.tab[data-view="segment"]{opacity:.55}.tab[data-view="segment"].active,.tab[data-view="segment"]:hover{opacity:1}@media(max-width:1050px){.restored-grid{grid-template-columns:1fr 1fr}}@media(max-width:650px){.restored-grid{grid-template-columns:1fr}}`;document.head.appendChild(s);}
   document.addEventListener('DOMContentLoaded',()=>{styles();const t=document.querySelector('.tab[data-view="segment"]');if(t)t.textContent='안경사 상세 분석';const b=$('refreshInsights');if(b)b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();renderRestored();},true);});
 })();
 
@@ -2145,49 +2219,3 @@
 })();
 
 (function(){document.addEventListener('DOMContentLoaded',()=>{const sync=()=>{const b=document.querySelector('#kpiGrid .kpi-card strong'); if(!b)return; const st=getComputedStyle(b); document.querySelectorAll('.growth-pack').forEach(e=>{e.style.fontSize=st.fontSize;e.style.fontWeight=st.fontWeight;e.style.color=st.color;});}; sync(); new MutationObserver(sync).observe(document.body,{subtree:true,childList:true});});})();
-
-/* ===== AI insight 3-mode controller ===== */
-(function () {
-  'use strict';
-  const $ = id => document.getElementById(id);
-  const S0 = () => window.S || {};
-  const clean = v => v == null ? '' : String(v).trim();
-  const norm = v => clean(v).replace(/\u00a0/g,'').replace(/[\s_\-()./]/g,'').toLowerCase();
-  const esc = v => clean(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-  const number = v => { const m=clean(v).replace(/,/g,'').replace(/%/g,'').match(/[-+]?\d+(?:\.\d+)?/); return m?Number(m[0]):null; };
-  const avg = a => { const v=a.map(number).filter(Number.isFinite); return v.length?v.reduce((x,y)=>x+y,0)/v.length:null; };
-  const sum = a => { const v=a.map(number).filter(Number.isFinite); return v.length?v.reduce((x,y)=>x+y,0):null; };
-  const annualize = v => v==null?null:v/Math.max(1,new Date().getMonth()+1)*12;
-  const fmtPct = v => v==null?'데이터 없음':`${v>=0?'+':''}${v.toFixed(1)}%`;
-  const fmtPp = v => v==null?'데이터 없음':`${v>=0?'+':''}${v.toFixed(1)}%p`;
-  const PRODUCTS={
-    ast:{label:'난시',py:['2025 난시 팩수','2025난시팩수','25년 난시 팩수','25년난시팩수'],cy:['2026 난시 팩수','2026난시팩수','26년 난시 팩수','26년난시팩수']},
-    mf:{label:'멀티포컬',py:['2025 멀티포컬  팩수','2025 멀티포컬 팩수','2025멀티포컬팩수','25년 멀티포컬 팩수'],cy:['2026 멀티포컬  팩수','2026 멀티포컬 팩수','2026멀티포컬팩수','26년 멀티포컬 팩수']},
-    max:{label:'MAX',py:['2025 MAX  팩수','2025 MAX 팩수','2025MAX팩수','25년 MAX 팩수'],cy:['2026 MAX  팩수','2026 MAX 팩수','2026MAX팩수','26년 MAX 팩수']}
-  };
-  function get(row,names){const m={};Object.keys(row||{}).forEach(k=>m[norm(k)]=row[k]);for(const n of names){const v=m[norm(n)];if(v!==undefined&&clean(v)!=='')return v;}return '';}
-  function storeKey(r){return norm(get(r,['안경원코드','매장코드','거래처코드','ShipTo','SoldTo','Outletnumber','Outlet Number','매장ID','CustomerID'])||r?.안경원코드||get(r,['안경원명','안경원','매장명','거래처명'])||r?.안경원명);}
-  function uniqueSales(rows){const m=new Map();(rows||[]).forEach((r,i)=>{const k=storeKey(r)||`r${i}`;if(!m.has(k))m.set(k,r);});return [...m.values()];}
-  function salesForPeople(people){const S=S0(),out=[];(people||[]).forEach(p=>{const d=S.salesById?.get(p.안경사ID)||[];if(d.length)out.push(...d);else out.push(...(S.salesByStore?.get(storeKey(p))||[]));});return uniqueSales(out);}
-  function growth(rows,key){const p=PRODUCTS[key],py=sum((rows||[]).map(r=>get(r,p.py))),cy=annualize(sum((rows||[]).map(r=>get(r,p.cy))));if(py==null&&cy==null)return null;if(!py&&cy)return 100;return py?(cy-py)/py*100:null;}
-  function respondents(rows){const S=S0();return (rows||[]).filter(r=>(S.perById?.get(r.안경사ID)||[]).length>0);}
-  function baseRows(){const S=S0();return (S.filtered&&S.filtered.length?S.filtered:S.master)||[];}
-  function chainOf(p){const explicit=clean(p.체인||p.채널),name=clean(p.안경원명);const known=['다비치','으뜸50','으뜸플러스','글라스바바','아이패밀리','룩옵티컬','렌즈미','오렌즈','안경매니져'];return known.find(x=>name.includes(x)||explicit.includes(x))||explicit||'기타/독립';}
-  function groupMap(rows){const map=new Map();(rows||[]).forEach(r=>[['Tier',r.Tier],['연차',r.연차],['지역',r.지역],['체인',chainOf(r)]].forEach(([dim,v])=>{const value=clean(v);if(!value)return;const k=dim+'\u0000'+value;if(!map.has(k))map.set(k,{dim,value,rows:[]});map.get(k).rows.push(r);}));return [...map.values()];}
-  function setActive(btn){document.querySelectorAll('#aiInsightModeButtons [data-ai-mode]').forEach(b=>b.classList.toggle('active',b===btn));}
-  function setCopy(title,desc){if($('insightTitle'))$('insightTitle').textContent=title;if($('insightDesc'))$('insightDesc').textContent=desc;}
-  function showTargets(item){const S=S0();S.targetIds=new Set(item.ids);S.query='';S.gapFilter=null;document.querySelectorAll('#segmentTable tr[data-id]').forEach(tr=>tr.style.display=S.targetIds.has(tr.dataset.id)?'':'none');if($('resultCount'))$('resultCount').textContent=`${item.ids.length.toLocaleString('ko-KR')}명`;document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));$('segment')?.classList.add('active');document.querySelector('.tab[data-view="segment"]')?.classList.add('active');if($('queryExplanation'))$('queryExplanation').textContent=`${item.title} / 인식조사 응답자 ${item.ids.length}명`;}
-  function bind(items){document.querySelectorAll('[data-mode-target]').forEach(b=>b.onclick=()=>showTargets(items[+b.dataset.modeTarget]));}
-  function empty(text){$('insightCards').innerHTML=`<div class="empty-state">${esc(text)}</div>`;}
-
-  function perceptionItems(){const S=S0(),people=respondents(baseRows()),ids=new Set(people.map(p=>p.안경사ID)),per=(S.per||[]).filter(p=>ids.has(p.안경사ID)&&p.문항&&p.점수!=null),overall=new Map(),out=[];per.forEach(p=>{if(!overall.has(p.문항))overall.set(p.문항,[]);overall.get(p.문항).push(p.점수);});groupMap(people).forEach(g=>{if(g.rows.length<2)return;const gids=new Set(g.rows.map(r=>r.안경사ID)),byQ=new Map();per.forEach(p=>{if(gids.has(p.안경사ID)){if(!byQ.has(p.문항))byQ.set(p.문항,[]);byQ.get(p.문항).push(p);}});byQ.forEach((a,q)=>{if(a.length<2)return;const ga=avg(a.map(x=>x.점수)),oa=avg(overall.get(q)||[]),diff=ga-oa,gapRate=a.filter(x=>x.gap).length/a.length;if(diff<=-.2||gapRate>=.5)out.push({title:`${g.value} ${g.dim}에서 인식 이상 발견`,dim:g.dim,value:g.value,q,ga,oa,diff,gapRate,ids:g.rows.map(r=>r.안경사ID),size:g.rows.length,severity:Math.abs(Math.min(0,diff))*60+gapRate*30});});});return out.sort((a,b)=>b.severity-a.severity).slice(0,8);}
-  function renderPerception(){const items=perceptionItems();setCopy('인식 이상 그룹','판매 데이터 없이 인식조사 응답자의 Tier·연차·지역·체인별 특이 문항을 찾습니다.');if(!items.length)return empty('비교 가능한 인식 이상 그룹이 없습니다. 그룹별 응답자 2명 이상이 필요합니다.');$('insightCards').innerHTML=items.map((x,i)=>`<article class="insight-card three-ai-card"><div class="type">인식 데이터 전용</div><h3>${i+1}. ${esc(x.title)}</h3><div class="three-ai-grid"><section><small>그룹</small><b>${esc(x.dim)}: ${esc(x.value)}</b><span>인식조사 응답자 ${x.size}명</span></section><section><small>특이 인식 문항</small><b>${esc(x.q)}</b><span>그룹 ${x.ga.toFixed(1)}점 · 전체 ${x.oa.toFixed(1)}점</span></section><section><small>이상 정도</small><b class="negative">${x.diff.toFixed(1)}점 vs 전체</b><span>목표 미달 ${Math.round(x.gapRate*100)}%</span></section></div><div class="insight-actions"><button class="button primary" data-mode-target="${i}" type="button">대상 안경사 보기</button></div></article>`).join('');bind(items);}
-
-  function salesItems(){const people=baseRows(),all=salesForPeople(people),out=[];groupMap(people).forEach(g=>{if(g.rows.length<2)return;Object.keys(PRODUCTS).forEach(key=>{const overall=growth(all,key),rg=growth(salesForPeople(g.rows),key);if(overall==null||rg==null)return;const diff=rg-overall;if(Math.abs(diff)<3&&Math.abs(rg)<3)return;const survey=respondents(g.rows);if(!survey.length)return;out.push({title:`${g.value} ${g.dim}에서 ${PRODUCTS[key].label} ${rg>=0?'성장':'하락'}`,dim:g.dim,value:g.value,product:PRODUCTS[key].label,rg,overall,diff,ids:survey.map(r=>r.안경사ID),size:survey.length,severity:Math.abs(diff)+Math.abs(rg)*.25});});});return out.sort((a,b)=>b.severity-a.severity).slice(0,8);}
-  function renderSales(){const items=salesItems();setCopy('판매 성장·하락 그룹','판매 데이터로 성장·하락 그룹을 찾고, 대상자 수는 해당 그룹의 인식조사 응답자 수로 표시합니다.');if(!items.length)return empty('비교 가능한 판매 성장·하락 그룹이 없습니다.');$('insightCards').innerHTML=items.map((x,i)=>`<article class="insight-card three-ai-card"><div class="type">판매 데이터 전용</div><h3>${i+1}. ${esc(x.title)}</h3><div class="three-ai-grid"><section><small>그룹</small><b>${esc(x.dim)}: ${esc(x.value)}</b><span>인식조사 응답자 ${x.size}명</span></section><section><small>${esc(x.product)} 전년 대비</small><b class="${x.rg<0?'negative':'positive'}">${fmtPct(x.rg)}</b><span>연환산 기준</span></section><section><small>전체 평균과 차이</small><b class="${x.diff<0?'negative':'positive'}">${fmtPp(x.diff)}</b><span>전체 ${fmtPct(x.overall)}</span></section></div><div class="insight-actions"><button class="button primary" data-mode-target="${i}" type="button">대상 안경사 보기</button></div></article>`).join('');bind(items);}
-
-  function fixCombinedCounts(){const S=S0();const cards=[...document.querySelectorAll('#insightCards .insight-card')];cards.forEach((card,i)=>{const item=(S.insights||[])[i];if(!item)return;const count=(item.targetIds||[]).filter(id=>(S.perById?.get(id)||[]).length>0).length;const note=card.querySelector('.note');if(note)note.textContent=`인식조사 응답자 ${count}명`;});setCopy('판매 저하 + 인식 + 추천 교육','기존 인사이트 흐름을 유지하며, 대상자 수는 인식조사 설문 응답자 기준으로 표시합니다.');}
-  function install(){const original=$('refreshInsights'),wrap=$('aiInsightModeButtons');if(!original||!wrap)return;const combined=wrap.querySelector('[data-ai-mode="combined"]'),perception=wrap.querySelector('[data-ai-mode="perception"]'),sales=wrap.querySelector('[data-ai-mode="sales"]');combined.onclick=()=>{setActive(combined);original.click();fixCombinedCounts();};perception.onclick=()=>{setActive(perception);renderPerception();};sales.onclick=()=>{setActive(sales);renderSales();};}
-  function styles(){if($('three-ai-runtime-style'))return;const s=document.createElement('style');s.id='three-ai-runtime-style';s.textContent=`.three-ai-grid{display:grid;grid-template-columns:1fr 1.55fr 1fr;gap:12px;margin-top:14px}.three-ai-grid section{background:#f4f7fb;border-radius:14px;padding:17px;min-height:110px}.three-ai-grid small,.three-ai-grid span{display:block;color:#667085;margin-bottom:8px}.three-ai-grid span{margin:8px 0 0;font-size:13px}.three-ai-grid b{display:block;line-height:1.45}.positive{color:#087f5b}.negative{color:#c92a2a}@media(max-width:850px){.three-ai-grid{grid-template-columns:1fr}}`;document.head.appendChild(s);}
-  document.addEventListener('DOMContentLoaded',()=>{styles();install();});
-})();
