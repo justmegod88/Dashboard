@@ -6,6 +6,14 @@
   <title>ACUVUE 교육 추천 인사이트 대시보드</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    .insight-mode-toolbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;width:100%;margin-top:18px}
+    .insight-mode-btn{min-height:58px;padding:12px 16px;font-size:15px;font-weight:800;white-space:normal}
+    .insight-mode-btn.active{background:#0066cc;color:#fff;border-color:#0066cc;box-shadow:0 8px 20px rgba(0,102,204,.18)}
+    .insight-mode-copy{margin-top:12px;color:#667085;font-size:14px}
+    @media(max-width:900px){.insight-mode-toolbar{grid-template-columns:1fr}.insight-mode-btn{width:100%}}
+  </style>
 </head>
 <body>
 <header class="app-header">
@@ -64,14 +72,23 @@
 
   <section id="insight" class="view">
     <article class="panel insight-hero">
-      <div><p class="eyebrow dark">AUTO INSIGHT ENGINE</p><h2>인사이트</h2><p><b>1. 무엇이 낮은가</b> → <b>2. 어떤 인식이 낮은가</b> → <b>3. 교육 미완료 여부</b> → <b>4. 추천 교육</b> 순서로 자동 분석합니다.</p></div>
-      <button class="button primary" id="refreshInsights">AI 인사이트 생성</button>
+      <div>
+        <p class="eyebrow dark">AUTO INSIGHT ENGINE</p>
+        <h2>AI 교육 인사이트</h2>
+        <p>기존 판매·인식·교육 연결 분석, 인식 데이터 전용 분석, 판매 데이터 전용 분석 중 원하는 방식을 선택하세요.</p>
+        <div id="aiInsightModeButtons" class="insight-mode-toolbar" role="group" aria-label="AI 인사이트 분석 방식">
+          <button id="btnCombined" class="button primary insight-mode-btn active" data-ai-mode="combined" type="button">1. 판매 저하 + 인식 + 추천 교육</button>
+          <button id="btnPerception" class="button insight-mode-btn" data-ai-mode="perception" type="button">2. 인식 이상 그룹 찾기</button>
+          <button id="btnSales" class="button insight-mode-btn" data-ai-mode="sales" type="button">3. 판매 성장·하락 그룹 찾기</button>
+        </div>
+        <p class="insight-mode-copy">대상자 수는 인식조사 설문 응답자 기준으로 표시합니다.</p>
+      </div>
+      <button class="button primary" id="refreshInsights" type="button" hidden aria-hidden="true">기존 결합 인사이트 실행</button>
     </article>
-    <div class="insight-summary" id="insightSummary"><div class="kpi-card"><span>인사이트 상태</span><strong>대기</strong><small>AI 인사이트 생성 버튼을 눌러 계산하세요.</small></div></div>
-    <article class="panel"><div class="panel-head"><div><h2>자동 발견 인사이트 TOP 5</h2><p>판매 저하가 큰 그룹을 먼저 찾고, 그 그룹 안에서 인식 문항과 교육 미완료를 확인합니다.</p></div></div><div id="insightCards" class="insight-grid"><div class="empty-state">엑셀 업로드 후 <b>AI 인사이트 생성</b> 버튼을 누르면 판매 저하 → 인식 원인 → 교육 제안 순서로 자동 분석합니다.</div></div></article>
-    <article class="panel" id="insightDetailPanel" hidden><div class="panel-head"><div><h2>인사이트 상세</h2><p>증상, 원인 후보, 교육 제안을 함께 확인합니다.</p></div><button class="button ghost" id="closeInsightDetail">닫기</button></div><div id="insightDetail"></div></article>
+    <div class="insight-summary" id="insightSummary"><div class="kpi-card"><span>인사이트 상태</span><strong>대기</strong><small>위 3개 분석 버튼 중 하나를 선택하세요.</small></div></div>
+    <article class="panel"><div class="panel-head"><div><h2 id="insightTitle">AI 인사이트 결과</h2><p id="insightDesc">선택한 분석 방식의 결과를 표시합니다.</p></div></div><div id="insightCards" class="insight-grid"><div class="empty-state">엑셀 업로드 후 위의 분석 버튼을 선택하세요.</div></div></article>
+    <article class="panel" id="insightDetailPanel" hidden><div class="panel-head"><div><h2>인사이트 상세</h2><p>증상, 원인 후보, 대상자와 교육 제안을 확인합니다.</p></div><button class="button ghost" id="closeInsightDetail" type="button">닫기</button></div><div id="insightDetail"></div></article>
   </section>
-
   <section id="segment" class="view">
     <article class="panel"><div class="panel-head"><div><h2>안경사 분석</h2><p>행을 클릭하면 상세 카드가 열립니다.</p></div><span id="resultCount"></span></div><div id="segmentSummary"></div><div class="table-wrap"><table><thead><tr><th>안경사</th><th>안경원</th><th>연차/Tier</th><th>교육완료</th><th>인식 Gap</th><th>난시 성장률</th><th>MF 성장률</th><th>MAX 성장률</th><th>추천교육</th><th>우선순위</th></tr></thead><tbody id="segmentTable"></tbody></table></div></article>
     <article class="panel" id="profilePanel" hidden><div class="panel-head"><div><h2>Optician 360</h2><p>선택 대상의 Gap과 성장률입니다.</p></div><button class="button ghost" id="closeProfile">닫기</button></div><div id="profileContent"></div></article>
