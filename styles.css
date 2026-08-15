@@ -642,3 +642,64 @@ img,svg,canvas{max-width:100%}
   .gap-target-mini{grid-template-columns:1fr}
   .gap-target-mini span:last-child{grid-column:auto}
 }
+/* =========================================================
+   DETAIL-ONLY DRILL DOWN
+   Does not change Dashboard / Education Insight populations
+   ========================================================= */
+.detail-target-banner{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:12px 14px;
+  margin:0 0 12px;
+  border:1px solid #cfe5e2;
+  border-left:4px solid var(--teal);
+  border-radius:11px;
+  background:#f5fbfa;
+}
+.detail-target-copy{
+  min-width:0;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:5px 10px;
+}
+.detail-target-copy small{
+  flex:0 0 100%;
+  color:#66807e;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.03em;
+}
+.detail-target-copy b{
+  color:#1e4c4a;
+  font-size:13px;
+  line-height:1.4;
+}
+.detail-target-copy span{
+  color:#55706e;
+  font-size:11px;
+  font-weight:750;
+}
+.detail-clear-button{
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+
+@media(max-width:650px){
+  .detail-target-banner{
+    flex-direction:column;
+    align-items:stretch;
+    padding:11px;
+  }
+  .detail-target-copy{
+    display:grid;
+    gap:4px;
+  }
+  .detail-target-copy small{display:block}
+  .detail-clear-button{
+    width:100%;
+    min-height:40px;
+  }
+}

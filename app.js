@@ -9,7 +9,7 @@
 
   const S = {
     master: [], content: [], edu: [], qm: [], per: [], per25: [], per26: [], sales: [], rec: [],
-    filtered: [], query: '', targetIds: null, gapFilter: null, insights: [], insightsReady: false,
+    filtered: [], query: '', detailTargetIds: null, detailTargetLabel: '', gapFilter: null, insights: [], insightsReady: false,
     baseMonth: Math.max(1, Math.min(12, new Date().getMonth() + 1)),
     baseMonthSource: '현재 월 기본값',
     masterById: new Map(), salesById: new Map(), salesByStore: new Map(),
@@ -557,7 +557,7 @@
       const el = $(id);
       if (!el) return;
       el.innerHTML = '<option value="">전체</option>' + uniqueValues(field).map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
-      el.onchange = () => { S.query = ''; S.targetIds = null; S.gapFilter = null; render(); if (S.insightsReady) renderInsights(); };
+      el.onchange = () => { S.query = ''; S.detailTargetIds = null; S.detailTargetLabel = ''; S.gapFilter = null; render(); if (S.insightsReady) renderInsights(); };
     });
   }
 
@@ -651,8 +651,18 @@
         $('queryExplanation').textContent = `${labels || `검색어=${q}`} / 결과 ${rows.length}명 · 판매 기준 ${S.baseMonth}월 (${S.baseMonthSource})`;
       }
     }
-    if (S.targetIds) rows = rows.filter(r => S.targetIds.has(r.안경사ID));
     return rows;
+  }
+
+  function rowsForDetail(rows) {
+    if (S.detailTargetIds) {
+      return rows.filter(r => S.detailTargetIds.has(r.안경사ID));
+    }
+    return rowsForGapFilter(rows);
+  }
+
+  function detailTargetAccCount(rows) {
+    return new Set(rows.map(storeKey).filter(Boolean)).size;
   }
 
   function rowsForSalesReverse(rows, key) {
@@ -683,6 +693,11 @@
   function setGapFilter(type, key = null) {
     const same = S.gapFilter && S.gapFilter.type === type && S.gapFilter.key === key;
     S.gapFilter = same ? null : { type, key };
+
+    // 통합 대시보드에서 새 Drill-down을 시작하면 이전 상세 대상 선택은 해제
+    S.detailTargetIds = null;
+    S.detailTargetLabel = '';
+
     render();
   }
 
@@ -794,11 +809,10 @@
     box.querySelectorAll('[data-question-target]').forEach(button => {
       button.onclick = () => {
         const item = top[Number(button.dataset.questionTarget)];
-        S.targetIds = new Set(item.targetIds);
-        S.query = '';
+        S.detailTargetIds = new Set(item.targetIds);
+        S.detailTargetLabel = `인식 Gap · ${item.q}`;
         S.gapFilter = null;
         render();
-        if ($('queryExplanation')) $('queryExplanation').textContent = `인식 Gap 문항 대상: ${item.q} / ${item.count}명 · 판매 기준 ${S.baseMonth}월`;
         view('segment');
       };
     });
@@ -814,7 +828,29 @@
 
   function renderSegment(rows, ms) {
     $('resultCount').textContent = `${rows.length.toLocaleString('ko-KR')}명`;
-    $('segmentSummary').innerHTML = `<div class="three-col"><div>${kpiGrowth('ast', rows)}</div><div>${kpiGrowth('mf', rows)}</div><div>${kpiGrowth('max', rows)}</div></div>`;
+
+    const detailBanner = S.detailTargetIds
+      ? `<div class="detail-target-banner">
+          <div class="detail-target-copy">
+            <small>현재 상세 대상</small>
+            <b>${esc(S.detailTargetLabel || '선택 대상')}</b>
+            <span>👤 ${rows.length.toLocaleString('ko-KR')}명 · 🏪 ${detailTargetAccCount(rows).toLocaleString('ko-KR')} ACC</span>
+          </div>
+          <button class="button ghost detail-clear-button" id="clearDetailTarget" type="button">× 상세 대상 해제</button>
+        </div>`
+      : '';
+
+    $('segmentSummary').innerHTML = `${detailBanner}<div class="three-col"><div>${kpiGrowth('ast', rows)}</div><div>${kpiGrowth('mf', rows)}</div><div>${kpiGrowth('max', rows)}</div></div>`;
+
+    const clearDetailButton = $('clearDetailTarget');
+    if (clearDetailButton) {
+      clearDetailButton.onclick = () => {
+        S.detailTargetIds = null;
+        S.detailTargetLabel = '';
+        render();
+        view('segment');
+      };
+    }
     $('segmentTable').innerHTML = ms.map(m => {
       const p = m.p || {};
       const cell = key => {
@@ -1319,14 +1355,10 @@
         const plan = item?.gapPlans?.[gapIndex];
         if (!item || !plan) return;
 
-        S.targetIds = new Set(plan.targetPeople.map(p => p.안경사ID));
-        S.query = '';
+        S.detailTargetIds = new Set(plan.targetPeople.map(p => p.안경사ID));
+        S.detailTargetLabel = `${item.title} · ${plan.q}`;
         S.gapFilter = null;
         render();
-        if ($('queryExplanation')) {
-          $('queryExplanation').textContent =
-            `${item.title} · ${plan.q} · 대상 안경사 ${plan.targetPeople.length}명 (${plan.targetAccCount} ACC)`;
-        }
         view('segment');
       };
     });
@@ -1334,11 +1366,10 @@
     box.querySelectorAll('[data-insight-target]').forEach(btn => {
       btn.onclick = () => {
         const item = S.insights[Number(btn.dataset.insightTarget)];
-        S.targetIds = new Set(item.targetPeople.map(p => p.안경사ID));
-        S.query = '';
+        S.detailTargetIds = new Set(item.targetPeople.map(p => p.안경사ID));
+        S.detailTargetLabel = `${item.title} · 전체 교육 Opportunity`;
         S.gapFilter = null;
         render();
-        if ($('queryExplanation')) $('queryExplanation').textContent = `${item.title} · 전체 교육 Opportunity ${item.targetPeople.length}명 (${item.targetAccCount} ACC) · 판매 기준 ${S.baseMonth}월`;
         view('segment');
       };
     });
@@ -1359,10 +1390,10 @@
     ].join('');
     renderGapCards(rows, ms);
     renderLinkedGapEducation(rows);
-    const detailRows = rowsForGapFilter(rows);
+    const detailRows = rowsForDetail(rows);
     renderSegment(detailRows, detailRows.map(r => metrics(r.안경사ID)));
 
-    if (!S.query && !S.targetIds && $('queryExplanation')) {
+    if (!S.query && $('queryExplanation')) {
       $('queryExplanation').textContent = `현재 필터 결과 ${rows.length}명 · 판매 기준 ${S.baseMonth}월 (${S.baseMonthSource}) · 판매는 안경원(ACC) 단위로 중복 제거`;
     }
   }
@@ -1378,7 +1409,7 @@
 
   function download() {
     if (!window.XLSX) return;
-    const rows = rowsForGapFilter(S.filtered || []);
+    const rows = rowsForDetail(S.filtered || []);
     const productKey = S.gapFilter?.type === 'sales' ? S.gapFilter.key : null;
     const output = rows.map(p => {
       const m = metrics(p.안경사ID);
@@ -1413,7 +1444,7 @@
   }
 
   function resetSmartSearch() {
-    S.query = ''; S.targetIds = null; S.gapFilter = null;
+    S.query = ''; S.detailTargetIds = null; S.detailTargetLabel = ''; S.gapFilter = null;
     if ($('smartQuery')) $('smartQuery').value = '';
     render();
     if (S.insightsReady) renderInsights();
@@ -1421,7 +1452,7 @@
 
   function resetFilters() {
     ['regionFilter', 'yearsFilter', 'tierFilter', 'channelFilter', 'repFilter'].forEach(id => { if ($(id)) $(id).value = ''; });
-    S.query = ''; S.targetIds = null; S.gapFilter = null;
+    S.query = ''; S.detailTargetIds = null; S.detailTargetLabel = ''; S.gapFilter = null;
     if ($('smartQuery')) $('smartQuery').value = '';
     render();
     if (S.insightsReady) renderInsights();
@@ -1460,7 +1491,7 @@
     if ($('salesBaseMonth')) $('salesBaseMonth').value = String(S.baseMonth);
 
     rebuildIndexes(); buildFilters();
-    S.query = ''; S.targetIds = null; S.gapFilter = null; S.insights = []; S.insightsReady = false;
+    S.query = ''; S.detailTargetIds = null; S.detailTargetLabel = ''; S.gapFilter = null; S.insights = []; S.insightsReady = false;
     render();
     $('insightCards').innerHTML = '<div class="empty-state">데이터가 준비되었습니다. <b>교육 Opportunity 분석</b>을 눌러주세요.</div>';
     $('uploadStatus').textContent = `${file.name} · ${S.master.length}명 / ${dedupeSalesRows(S.sales).length} ACC · 인식25 ${S.per25.length ? 'O' : '-'} / 인식26 ${S.per26.length ? 'O' : '-'}`;
@@ -1473,13 +1504,13 @@
       console.error(err); alert(`업로드 실패\n\n${err.message || err}`); toast('업로드 실패');
     });
     $('runQuery').onclick = () => {
-      S.query = $('smartQuery').value || ''; S.targetIds = null; S.gapFilter = null; render(); if (S.insightsReady) renderInsights(); view('segment');
+      S.query = $('smartQuery').value || ''; S.detailTargetIds = null; S.detailTargetLabel = ''; S.gapFilter = null; render(); if (S.insightsReady) renderInsights(); view('segment');
     };
     $('smartQuery').onkeydown = e => { if (e.key === 'Enter') $('runQuery').click(); };
     $('clearQuery').onclick = resetSmartSearch;
     $('resetFilters').onclick = resetFilters;
     document.querySelectorAll('.examples button').forEach(b => {
-      b.onclick = () => { S.query = clean(b.dataset.query || b.textContent); $('smartQuery').value = S.query; S.targetIds = null; S.gapFilter = null; render(); if (S.insightsReady) renderInsights(); view('segment'); };
+      b.onclick = () => { S.query = clean(b.dataset.query || b.textContent); $('smartQuery').value = S.query; S.detailTargetIds = null; S.detailTargetLabel = ''; S.gapFilter = null; render(); if (S.insightsReady) renderInsights(); view('segment'); };
     });
     $('salesBaseMonth').value = String(S.baseMonth);
     $('salesBaseMonth').onchange = () => {
