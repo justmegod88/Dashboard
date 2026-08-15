@@ -979,6 +979,18 @@
     return (S.perById.get(id) || []).some(p => questionRelevance(p, key) > 0 && p.gap);
   }
 
+  function peopleWithQuestionGap(masterRows, key, questionText) {
+    if (!questionText) return [];
+    return masterRows.filter(person => {
+      const rows = S.perById.get(person.안경사ID) || [];
+      return rows.some(p =>
+        p.문항 === questionText &&
+        questionRelevance(p, key) > 0 &&
+        p.gap
+      );
+    });
+  }
+
   function personHasIncompleteRelatedEducation(id, key) {
     const rows = S.eduById.get(id) || [];
     if (!rows.length) return true;
@@ -1058,15 +1070,42 @@
         const primary = causeList[0] || null;
         const affectedDriver = salesDriver(affectedSales, key);
 
-        const targetPeople = affectedPeople.filter(p =>
+        // 인식 Gap마다 실제 대상자와 추천 교육을 별도로 계산
+        const gapPlans = causeList.map(g => {
+          const gapPeople = peopleWithQuestionGap(affectedPeople, key, g.q);
+          const gapAccCount = new Set(gapPeople.map(storeKey).filter(Boolean)).size;
+          const gapIncompleteCount = gapPeople.filter(p => personHasIncompleteRelatedEducation(p.안경사ID, key)).length;
+          const gapRecs = recommendedEducationPlan(gapPeople, key, [g], affectedDriver);
+          return {
+            ...g,
+            targetPeople: gapPeople,
+            targetAccCount: gapAccCount,
+            incompleteCount: gapIncompleteCount,
+            rec: gapRecs[0] || { title: driverFallbackEducation(key, affectedDriver?.type), status: 'Driver 기반 추천' }
+          };
+        });
+
+        // 카드 전체 Target은 Gap별 대상자의 합집합(안경사 중복 제거)
+        const uniqueGapTargets = new Map();
+        gapPlans.forEach(plan => plan.targetPeople.forEach(p => {
+          if (p?.안경사ID && !uniqueGapTargets.has(p.안경사ID)) uniqueGapTargets.set(p.안경사ID, p);
+        }));
+
+        // 관련 인식 Gap이 없을 때만 기존 판매 Driver + 교육이력 기준 Target을 fallback으로 사용
+        const fallbackTargets = affectedPeople.filter(p =>
           personHasLowRelatedPerception(p.안경사ID, key) ||
           personHasIncompleteRelatedEducation(p.안경사ID, key)
         );
-        const finalTargets = targetPeople.length ? targetPeople : affectedPeople;
+        const finalTargets = uniqueGapTargets.size
+          ? [...uniqueGapTargets.values()]
+          : (fallbackTargets.length ? fallbackTargets : affectedPeople);
+
         const targetAccCount = new Set(finalTargets.map(storeKey).filter(Boolean)).size;
         const affectedAccCount = dedupeSalesRows(affectedSales).length;
         const incompleteCount = finalTargets.filter(p => personHasIncompleteRelatedEducation(p.안경사ID, key)).length;
-        const recs = recommendedEducationPlan(finalTargets, key, causeList, affectedDriver);
+        const recs = causeList.length
+          ? []
+          : recommendedEducationPlan(finalTargets, key, causeList, affectedDriver);
         const focus = focusGroup(respondents, primary?.q);
 
         const packRisk = Math.max(0, -(affectedDriver.pack.rate || 0));
@@ -1112,6 +1151,7 @@
           targetAccCount,
           incompleteCount,
           causeList,
+          gapPlans,
           causeText,
           recs,
           focus,
@@ -1164,28 +1204,48 @@
         ? ` · 전체 평균 ${growthLabel(item.overallDriver.pack)}`
         : '';
 
-      const gapHtml = item.causeList.length
-        ? item.causeList.map((g, idx) => `
-          <div class="perception-gap-row">
+      const gapHtml = item.gapPlans?.length
+        ? item.gapPlans.map((g, idx) => `
+          <div class="perception-gap-row gap-plan-card">
             <div class="gap-bullet">●</div>
             <div class="gap-copy">
-              <b>${esc(g.q)}</b>
+              <div class="gap-question-line">
+                <b>${esc(g.q)}</b>
+                <span class="gap-number">Gap ${idx + 1}</span>
+              </div>
               <div class="gap-meta">
                 <span class="gap-score">${g.seg.toFixed(1)} / 목표 ${Number(g.target || 4).toFixed(1)}</span>
                 <span class="gap-years">${esc(gapYearText(g))}</span>
               </div>
+
+              <div class="gap-execution-row">
+                <div class="gap-target-mini">
+                  <span>👤 <b>${g.targetPeople.length}명</b></span>
+                  <span>🏪 <b>${g.targetAccCount} ACC</b></span>
+                  <span>🎓 미이수/미완료 <b>${g.incompleteCount}명</b></span>
+                </div>
+                <div class="gap-education-mini">
+                  <small>추천 교육</small>
+                  <b>→ ${esc(g.rec.title)}</b>
+                </div>
+              </div>
+
+              <button class="gap-target-link" type="button"
+                data-gap-target="${i}:${idx}">대상 안경사 보기 →</button>
             </div>
           </div>`).join('')
         : `<div class="no-related-gap">✓ ${esc(product)} 관련 문항 중 현재 목표 미달 인식 Gap이 없습니다.</div>`;
 
-      const actionHtml = item.recs.map((r, idx) => `
-        <div class="insight-action-row">
-          <span class="action-index">${idx === 0 ? '①' : '②'}</span>
-          <div>
-            <b>${esc(r.title)}</b>
-            <small>${item.causeList.length ? `관련 인식 Gap ${item.causeList.length}개 + ${esc(d.label)} 반영` : `${esc(d.label)} 기반 추천`}</small>
-          </div>
-        </div>`).join('');
+      const actionHtml = !item.gapPlans?.length
+        ? item.recs.map((r, idx) => `
+          <div class="insight-action-row">
+            <span class="action-index">${idx === 0 ? '①' : '②'}</span>
+            <div>
+              <b>${esc(r.title)}</b>
+              <small>${esc(d.label)} 기반 추천</small>
+            </div>
+          </div>`).join('')
+        : '';
 
       const fuMetrics = [
         '인식 재측정',
@@ -1218,25 +1278,27 @@
         <section class="insight-section cause-section">
           <div class="section-title">
             <span>●</span>
-            <b>관련 인식 Gap</b>
-            <em>${item.causeList.length}개</em>
+            <b>관련 인식 Gap · Target · 추천 교육</b>
+            <em>${item.gapPlans?.length || 0}개</em>
           </div>
           <div class="perception-gap-list">${gapHtml}</div>
         </section>
 
-        <section class="insight-section target-section">
-          <div class="section-title"><span>◎</span><b>교육 Target</b></div>
+        <section class="insight-section target-section total-target-section">
+          <div class="section-title"><span>◎</span><b>전체 교육 Opportunity</b></div>
           <div class="target-chips">
-            <span><b>👤 ${item.targetPeople.length}명</b> 안경사</span>
+            <span><b>👤 ${item.targetPeople.length}명</b> 고유 안경사</span>
             <span><b>🏪 ${item.targetAccCount} ACC</b></span>
             <span><b>🎓 ${item.incompleteCount}명</b> 교육 미이수/미완료</span>
           </div>
+          ${item.gapPlans?.length ? '<small class="dedupe-note">※ Gap별 대상자가 중복될 수 있어 전체 수치는 안경사/ACC 중복을 제거한 값입니다.</small>' : ''}
         </section>
 
+        ${!item.gapPlans?.length ? `
         <section class="insight-section action-section">
           <div class="section-title"><span>→</span><b>추천 Action</b></div>
           <div class="insight-action-list">${actionHtml}</div>
-        </section>
+        </section>` : ''}
 
         <div class="insight-bottom-row">
           <details class="insight-followup">
@@ -1250,6 +1312,25 @@
       </article>`;
     }).join('');
 
+    box.querySelectorAll('[data-gap-target]').forEach(btn => {
+      btn.onclick = () => {
+        const [insightIndex, gapIndex] = String(btn.dataset.gapTarget).split(':').map(Number);
+        const item = S.insights[insightIndex];
+        const plan = item?.gapPlans?.[gapIndex];
+        if (!item || !plan) return;
+
+        S.targetIds = new Set(plan.targetPeople.map(p => p.안경사ID));
+        S.query = '';
+        S.gapFilter = null;
+        render();
+        if ($('queryExplanation')) {
+          $('queryExplanation').textContent =
+            `${item.title} · ${plan.q} · 대상 안경사 ${plan.targetPeople.length}명 (${plan.targetAccCount} ACC)`;
+        }
+        view('segment');
+      };
+    });
+
     box.querySelectorAll('[data-insight-target]').forEach(btn => {
       btn.onclick = () => {
         const item = S.insights[Number(btn.dataset.insightTarget)];
@@ -1257,7 +1338,7 @@
         S.query = '';
         S.gapFilter = null;
         render();
-        if ($('queryExplanation')) $('queryExplanation').textContent = `${item.title} · 대상 안경사 ${item.targetPeople.length}명 (${item.targetAccCount} ACC) · 판매 기준 ${S.baseMonth}월`;
+        if ($('queryExplanation')) $('queryExplanation').textContent = `${item.title} · 전체 교육 Opportunity ${item.targetPeople.length}명 (${item.targetAccCount} ACC) · 판매 기준 ${S.baseMonth}월`;
         view('segment');
       };
     });
