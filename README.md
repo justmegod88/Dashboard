@@ -1,37 +1,32 @@
-# Pro-dashboard V4 AI Ready
+# ACUVUE Education Opportunity Dashboard
 
-## 핵심
-- API 없이 GitHub Actions로 경쟁사/안경원 게시글 크롤링
-- GitHub Secret의 OpenAI API Key로 AI 리포트 자동 생성
-- 대시보드가 `output/Competitor_Activity.csv`와 `output/ai_report.json` 자동 읽기
-- 실시간 ChatGPT/Copilot 연결용 Render 서버 예제 포함
+안경원 판매성과와 안경사 인식조사·교육 이력을 연결해 교육이 필요한 대상을 찾는 업무용 대시보드입니다.
 
-## GitHub Secret 설정
-1. GitHub repo 접속
-2. Settings
-3. Secrets and variables
-4. Actions
-5. New repository secret
-6. Name: `OPENAI_API_KEY`
-7. Secret: 본인 OpenAI API Key 붙여넣기
-8. Add secret
+## 핵심 흐름
+1. 판매 현상 확인 — 난시 / 멀티포컬 / MAX의 전년 대비 및 평균 대비 성과 확인
+2. 핵심 Gap 선택 — 교육 미완료 / 인식 목표 미달 / 제품별 역성장
+3. 인식 원인 확인 — 해당 안경원의 안경사 인식조사에서 부족 문항 확인
+4. 교육 추천 — 교육 콘텐츠 마스터와 매칭해 필요한 교육 제안
+5. 대상 실행 — 안경사 상세 목록 다운로드 및 교육 후 Follow-up
 
-## GitHub Actions 실행
-1. Actions 탭
-2. Competitor Monitor + AI Report 선택
-3. Run workflow
-4. 성공 후 `output/Competitor_Activity.csv`, `output/ai_report.json` 생성 확인
+## 판매 데이터 기준
+- 판매성과는 **안경원(ACC) 단위**로 중복 제거해 계산합니다.
+- 2026 YTD 팩수는 `판매 기준월`을 기준으로 연환산합니다.
+- 엑셀에서 기준월을 자동 감지하고, 화면에서 1~12월로 직접 조정할 수 있습니다.
+- 전년 판매가 0이고 금년 판매가 발생한 경우 성장률 `+100%`가 아니라 **신규 판매**로 표시합니다.
 
-## 실시간 GPT 연결
-정적 GitHub Pages에서는 API Key를 숨길 수 없으므로 Render/Cloudflare 같은 중간 서버가 필요합니다.
-`ai_realtime_server/server.py`를 Render에 배포하고, app.js의 `AI_ENDPOINT`에 Render 주소 + `/insight`를 넣으세요.
+## 주요 파일
+- `index.html` — 화면 구조
+- `styles.css` — 전체 디자인 및 반응형 스타일
+- `app.js` — 데이터 정규화, 필터, 판매 계산, 인식 Gap, 교육 추천, Opportunity 분석
 
-예:
-const AI_ENDPOINT = "https://your-render-service.onrender.com/insight";
+## 데이터 시트 예시
+- `01_안경사마스터`
+- `02_교육콘텐츠`
+- `03_교육참여`
+- `인식문항마스터`
+- `04_인식조사`
+- `06_피팅판매`
+- `AI추천결과` 또는 `교육추천결과` (선택)
 
-
-## 경쟁사 모니터링 운영 기준
-- 실행 주기: 매일 오전 8시(KST)
-- 저장 범위: 최근 7일
-- AI 요약: 직전 CSV와 URL을 비교해 `신규수집=1`인 글을 우선 분석
-- OpenAI API Key가 없으면 규칙 기반 요약으로 자동 대체
+판매 기준월은 `06_피팅판매`의 `기준월 / 판매기준월 / 데이터기준월 / 마감월 / BaseMonth` 열 또는 설정성 시트에서 자동 탐색합니다.

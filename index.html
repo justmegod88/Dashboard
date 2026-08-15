@@ -9,10 +9,10 @@
 </head>
 <body>
 <header class="app-header">
-  <div>
+  <div class="header-copy">
     <p class="eyebrow">ACUVUE EDUCATION RECOMMENDATION</p>
-    <h1>교육 · 인식 · 피팅 인사이트 대시보드</h1>
-    <p>교육여부, 콘택트렌즈 관련 인식과 피팅 데이터를 통해 안경사에게 가장 필요한 교육을 추천합니다.</p>
+    <h1>교육 · 인식 · 판매 인사이트 대시보드</h1>
+    <p>안경원 판매성과와 안경사 인식·교육 이력을 연결해, 누구에게 어떤 교육이 필요한지 찾습니다.</p>
   </div>
   <div class="header-actions">
     <label class="button primary" for="workbookInput">통합 엑셀 업로드</label>
@@ -21,67 +21,131 @@
     <span class="upload-status" id="uploadStatus">데이터 없음</span>
   </div>
 </header>
-<nav class="tabs">
-  <button class="tab active" data-view="overview">대시보드</button>
-  <button class="tab" data-view="insight">인사이트</button>
-  <button class="tab" data-view="segment">안경사 분석</button>
-  <button class="tab" data-view="external">타사 현황</button>
+
+<nav class="tabs" aria-label="대시보드 메뉴">
+  <button class="tab active" data-view="overview">통합 대시보드</button>
+  <button class="tab" data-view="insight">교육 인사이트</button>
+  <button class="tab" data-view="segment">안경사 상세 분석</button>
 </nav>
+
 <main>
   <section class="search-shell">
     <div class="smart-search">
       <label for="smartQuery">스마트 검색 / 조건 검색</label>
       <div class="search-row">
-        <input id="smartQuery" placeholder="예: 서울 지역의 gold 안경원 중 난시가 역성장하는 안경원의 3년차 안경사" />
+        <input id="smartQuery" placeholder="예: 서울 지역 VIP 안경원 중 난시 역성장 안경원의 3년차 안경사" />
         <button class="button primary" id="runQuery">찾기</button>
         <button class="button" id="clearQuery">초기화</button>
       </div>
       <div class="examples">
-        <button data-query="서울 지역 VIP 안경원 중 난시 역성장">서울 지역 VIP 안경원 중 난시 역성장</button>
-        <button data-query="3년차 중 MAX 역성장">3년차 중 MAX 역성장</button>
+        <button data-query="난시 역성장">난시 역성장</button>
         <button data-query="멀티포컬 역성장">멀티포컬 역성장</button>
+        <button data-query="MAX 역성장">MAX 역성장</button>
+        <button data-query="교육 미완료">교육 미완료</button>
+        <button data-query="인식 목표 미달">인식 목표 미달</button>
       </div>
     </div>
+
     <div class="filters">
       <label>지역<select id="regionFilter"><option value="">전체</option></select></label>
       <label>연차<select id="yearsFilter"><option value="">전체</option></select></label>
       <label>Tier<select id="tierFilter"><option value="">전체</option></select></label>
       <label>채널<select id="channelFilter"><option value="">전체</option></select></label>
       <label>담당영업사원<select id="repFilter"><option value="">전체</option></select></label>
-      <button class="button ghost" id="resetFilters">필터 초기화</button>
+      <label>판매 기준월
+        <select id="salesBaseMonth">
+          <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+          <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+          <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+          <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+        </select>
+      </label>
+      <button class="button ghost reset-filter" id="resetFilters">필터 초기화</button>
     </div>
-    <div id="queryExplanation" class="query-explanation">필터를 선택하거나 검색어를 입력하세요.</div>
+    <div id="queryExplanation" class="query-explanation">엑셀을 업로드하면 기준월을 자동 감지하고 분석을 시작합니다.</div>
   </section>
 
   <section id="overview" class="view active">
     <div class="kpi-grid" id="kpiGrid"></div>
-    <div class="two-col">
-      <article class="panel"><div class="panel-head"><div><h2>현재 그룹의 핵심 Gap</h2><p>현황 확인용 카드입니다.</p></div></div><div id="gapCards" class="gap-grid"></div></article>
-      <article class="panel"><div class="panel-head"><div><h2>인식 Gap TOP 문항</h2><p>현재 그룹에서 가장 많이 부족한 문항입니다.</p></div></div><div id="questionTop"></div></article>
-    </div>
-    <article class="panel"><div class="panel-head"><div><h2>추천 교육 TOP</h2><p>현재 그룹에 많이 추천된 교육입니다.</p></div></div><div id="topEducation"></div></article>
+
+    <article class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow dark">EDUCATION OPPORTUNITY</p>
+          <h2>현재 그룹의 핵심 Gap</h2>
+          <p>카드를 선택하면 해당 대상의 인식 문항과 추천 교육으로 바로 좁혀집니다.</p>
+        </div>
+      </div>
+      <div id="gapCards" class="gap-grid"></div>
+    </article>
+
+    <article class="panel linked-panel">
+      <div class="panel-head">
+        <div>
+          <h2>인식 Gap → 추천 교육</h2>
+          <p id="gapEducationSubtitle">선택한 대상에서 가장 많이 부족한 인식과 필요한 교육을 연결합니다.</p>
+        </div>
+      </div>
+      <div id="linkedGapEducationRows" class="linked-gap-education-rows"></div>
+    </article>
   </section>
 
   <section id="insight" class="view">
     <article class="panel insight-hero">
-      <div><p class="eyebrow dark">AUTO INSIGHT ENGINE</p><h2>인사이트</h2><p><b>1. 무엇이 낮은가</b> → <b>2. 어떤 인식이 낮은가</b> → <b>3. 교육 미완료 여부</b> → <b>4. 추천 교육</b> 순서로 자동 분석합니다.</p></div>
-      <button class="button primary" id="refreshInsights">AI 인사이트 생성</button>
+      <div>
+        <p class="eyebrow dark">EDUCATION OPPORTUNITY ENGINE</p>
+        <h2>교육 인사이트</h2>
+        <p><b>현상</b> → <b>원인</b> → <b>Target</b> → <b>Action</b> → <b>Follow-up</b> 순서로 자동 분석합니다.</p>
+      </div>
+      <button class="button primary" id="refreshInsights">교육 Opportunity 분석</button>
     </article>
-    <div class="insight-summary" id="insightSummary"><div class="kpi-card"><span>인사이트 상태</span><strong>대기</strong><small>AI 인사이트 생성 버튼을 눌러 계산하세요.</small></div></div>
-    <article class="panel"><div class="panel-head"><div><h2>자동 발견 인사이트 TOP 5</h2><p>판매 저하가 큰 그룹을 먼저 찾고, 그 그룹 안에서 인식 문항과 교육 미완료를 확인합니다.</p></div></div><div id="insightCards" class="insight-grid"><div class="empty-state">엑셀 업로드 후 <b>AI 인사이트 생성</b> 버튼을 누르면 판매 저하 → 인식 원인 → 교육 제안 순서로 자동 분석합니다.</div></div></article>
-    <article class="panel" id="insightDetailPanel" hidden><div class="panel-head"><div><h2>인사이트 상세</h2><p>증상, 원인 후보, 교육 제안을 함께 확인합니다.</p></div><button class="button ghost" id="closeInsightDetail">닫기</button></div><div id="insightDetail"></div></article>
+
+    <article class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>우선 실행 인사이트</h2>
+          <p>판매 저하 안경원을 먼저 찾고, 그 안경원 안경사의 인식·교육 데이터를 연결합니다.</p>
+        </div>
+      </div>
+      <div id="insightCards" class="insight-list">
+        <div class="empty-state">엑셀 업로드 후 <b>교육 Opportunity 분석</b>을 눌러주세요.</div>
+      </div>
+    </article>
   </section>
 
   <section id="segment" class="view">
-    <article class="panel"><div class="panel-head"><div><h2>안경사 분석</h2><p>행을 클릭하면 상세 카드가 열립니다.</p></div><span id="resultCount"></span></div><div id="segmentSummary"></div><div class="table-wrap"><table><thead><tr><th>안경사</th><th>안경원</th><th>연차/Tier</th><th>교육완료</th><th>인식 Gap</th><th>난시 성장률</th><th>MF 성장률</th><th>MAX 성장률</th><th>추천교육</th><th>우선순위</th></tr></thead><tbody id="segmentTable"></tbody></table></div></article>
-    <article class="panel" id="profilePanel" hidden><div class="panel-head"><div><h2>Optician 360</h2><p>선택 대상의 Gap과 성장률입니다.</p></div><button class="button ghost" id="closeProfile">닫기</button></div><div id="profileContent"></div></article>
-  </section>
+    <article class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>안경사 상세 분석</h2>
+          <p>판매는 안경원 단위, 인식·교육은 안경사 단위로 연결됩니다. 행을 클릭하면 상세 프로필이 열립니다.</p>
+        </div>
+        <span class="result-count" id="resultCount"></span>
+      </div>
+      <div id="segmentSummary"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>안경사</th><th>안경원</th><th>연차/Tier</th><th>교육완료</th><th>인식 Gap</th>
+              <th>난시</th><th>멀티포컬</th><th>MAX</th><th>추천교육</th><th>우선순위</th>
+            </tr>
+          </thead>
+          <tbody id="segmentTable"></tbody>
+        </table>
+      </div>
+    </article>
 
-  <section id="external" class="view">
-    <article class="panel"><div class="panel-head"><div><h2>타사 현황</h2><p>알콘·바슈롬·쿠퍼비전 관련 활동과 원본 링크를 확인합니다.</p></div><div class="header-actions"><label class="button" for="competitorInput">타사 CSV 업로드</label><input id="competitorInput" type="file" accept=".csv" hidden /><span class="badge neutral">보조지표</span></div></div><div id="externalInsight" class="empty-state">output/Competitor_Activity.csv 자동 연결을 시도합니다. 안 되면 CSV를 직접 업로드하세요.</div></article>
-    <article class="panel" id="externalDetailPanel" hidden><div class="panel-head"><div><h2>타사 활동 상세</h2></div><button class="button ghost" id="closeExternalDetail">닫기</button></div><div id="externalDetail" class="external-detail"></div></article>
+    <article class="panel" id="profilePanel" hidden>
+      <div class="panel-head">
+        <div><h2>Optician 360</h2><p>선택 안경사의 교육·인식과 소속 안경원 판매 현황입니다.</p></div>
+        <button class="button ghost" id="closeProfile">닫기</button>
+      </div>
+      <div id="profileContent"></div>
+    </article>
   </section>
 </main>
+
 <div id="toast" class="toast"></div>
 <script src="app.js"></script>
 </body>
