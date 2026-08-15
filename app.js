@@ -648,7 +648,7 @@
       else rows = rows.filter(r => Object.values(r).some(v => norm(v).includes(norm(q))));
       if ($('queryExplanation')) {
         const labels = conditions.map(c => `[${c.label}]`).join(' ');
-        $('queryExplanation').textContent = `${labels || `검색어=${q}`} / 결과 ${rows.length}명 · 판매 기준 ${S.baseMonth}월 (${S.baseMonthSource})`;
+        $('queryExplanation').textContent = `공통 분석 조건 · ${labels || `검색어=${q}`} / 결과 ${rows.length}명 · 판매 기준 ${S.baseMonth}월 (${S.baseMonthSource})`;
       }
     }
     return rows;
@@ -1394,7 +1394,7 @@
     renderSegment(detailRows, detailRows.map(r => metrics(r.안경사ID)));
 
     if (!S.query && $('queryExplanation')) {
-      $('queryExplanation').textContent = `현재 필터 결과 ${rows.length}명 · 판매 기준 ${S.baseMonth}월 (${S.baseMonthSource}) · 판매는 안경원(ACC) 단위로 중복 제거`;
+      $('queryExplanation').textContent = `공통 분석 조건 · 현재 필터 결과 ${rows.length}명 · 판매 기준 ${S.baseMonth}월 (${S.baseMonthSource}) · 판매는 안경원(ACC) 단위로 중복 제거`;
     }
   }
   window.render = render;
@@ -1462,8 +1462,6 @@
     if (id === 'insight' && S.insightsReady) renderInsights();
     document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === id));
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === id));
-    const searchShell = document.querySelector('.search-shell');
-    if (searchShell) searchShell.hidden = (id === 'insight');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -1504,13 +1502,26 @@
       console.error(err); alert(`업로드 실패\n\n${err.message || err}`); toast('업로드 실패');
     });
     $('runQuery').onclick = () => {
-      S.query = $('smartQuery').value || ''; S.detailTargetIds = null; S.detailTargetLabel = ''; S.gapFilter = null; render(); if (S.insightsReady) renderInsights(); view('segment');
+      S.query = $('smartQuery').value || '';
+      S.detailTargetIds = null;
+      S.detailTargetLabel = '';
+      S.gapFilter = null;
+      render();
+      if (S.insightsReady) renderInsights();
     };
     $('smartQuery').onkeydown = e => { if (e.key === 'Enter') $('runQuery').click(); };
     $('clearQuery').onclick = resetSmartSearch;
     $('resetFilters').onclick = resetFilters;
     document.querySelectorAll('.examples button').forEach(b => {
-      b.onclick = () => { S.query = clean(b.dataset.query || b.textContent); $('smartQuery').value = S.query; S.detailTargetIds = null; S.detailTargetLabel = ''; S.gapFilter = null; render(); if (S.insightsReady) renderInsights(); view('segment'); };
+      b.onclick = () => {
+        S.query = clean(b.dataset.query || b.textContent);
+        $('smartQuery').value = S.query;
+        S.detailTargetIds = null;
+        S.detailTargetLabel = '';
+        S.gapFilter = null;
+        render();
+        if (S.insightsReady) renderInsights();
+      };
     });
     $('salesBaseMonth').value = String(S.baseMonth);
     $('salesBaseMonth').onchange = () => {
