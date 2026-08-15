@@ -8,12 +8,12 @@
   const esc = v => clean(v).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
 
   const S = {
-    master: [], content: [], edu: [], qm: [], per: [], sales: [], rec: [],
+    master: [], content: [], edu: [], qm: [], per: [], per25: [], per26: [], sales: [], rec: [],
     filtered: [], query: '', targetIds: null, gapFilter: null, insights: [],
     baseMonth: Math.max(1, Math.min(12, new Date().getMonth() + 1)),
     baseMonthSource: '현재 월 기본값',
     masterById: new Map(), salesById: new Map(), salesByStore: new Map(),
-    eduById: new Map(), perById: new Map(), recById: new Map(), metricCache: new Map()
+    eduById: new Map(), perById: new Map(), per25ById: new Map(), recById: new Map(), metricCache: new Map()
   };
   window.S = S;
 
@@ -22,7 +22,8 @@
     content: ['02_교육콘텐츠', '교육콘텐츠마스터'],
     edu: ['03_교육참여', '교육참여이력', '교육이력'],
     qm: ['인식문항마스터', '문항마스터'],
-    per: ['04_인식조사', '인식조사', 'Sheet1'],
+    per25: ['04_인식조사_2025', '04_2025인식조사', '2025인식조사', '2025 인식조사', '25년인식조사', '25년 인식조사', '인식조사2025', '인식조사_2025'],
+    per26: ['04_인식조사_2026', '04_2026인식조사', '2026인식조사', '2026 인식조사', '26년인식조사', '26년 인식조사', '인식조사2026', '인식조사_2026', '04_인식조사', '인식조사', 'Sheet1'],
     rec: ['AI추천결과', '교육추천결과', '08_교육추천']
   };
 
@@ -35,17 +36,29 @@
     ast: {
       label: '난시', title: '난시 성장 (pack/ACC)',
       py: ['2025 난시 팩수', '2025난시팩수', '25년 난시 팩수', '25년난시팩수'],
-      cy: ['2026 난시 팩수', '2026난시팩수', '26년 난시 팩수', '26년난시팩수']
+      cy: ['2026 난시 팩수', '2026난시팩수', '26년 난시 팩수', '26년난시팩수'],
+      wearerPy: ['2025 난시 착용자', '2025 난시 착용자수', '2025 난시 웨어러', '2025 난시 wearer', '25년 난시 착용자', '25년 난시 착용자수', '25년 난시 웨어러'],
+      wearerCy: ['2026 난시 착용자', '2026 난시 착용자수', '2026 난시 웨어러', '2026 난시 wearer', '26년 난시 착용자', '26년 난시 착용자수', '26년 난시 웨어러'],
+      newPy: ['2025 난시 신규', '2025 난시 신규착용자', '2025 난시 신규 착용자', '2025 난시 신규웨어러', '2025 난시 신규 웨어러', '2025 난시 new wearer', '25년 난시 신규', '25년 난시 신규착용자', '25년 난시 신규 웨어러'],
+      newCy: ['2026 난시 신규', '2026 난시 신규착용자', '2026 난시 신규 착용자', '2026 난시 신규웨어러', '2026 난시 신규 웨어러', '2026 난시 new wearer', '26년 난시 신규', '26년 난시 신규착용자', '26년 난시 신규 웨어러']
     },
     mf: {
       label: '멀티포컬', title: '멀티포컬 성장 (pack/ACC)',
       py: ['2025 멀티포컬  팩수', '2025 멀티포컬 팩수', '2025멀티포컬팩수', '25년 멀티포컬  팩수', '25년 멀티포컬 팩수', '25년멀티포컬팩수'],
-      cy: ['2026 멀티포컬  팩수', '2026 멀티포컬 팩수', '2026멀티포컬팩수', '26년 멀티포컬  팩수', '26년 멀티포컬 팩수', '26년멀티포컬팩수']
+      cy: ['2026 멀티포컬  팩수', '2026 멀티포컬 팩수', '2026멀티포컬팩수', '26년 멀티포컬  팩수', '26년 멀티포컬 팩수', '26년멀티포컬팩수'],
+      wearerPy: ['2025 멀티포컬 착용자', '2025 멀티포컬 착용자수', '2025 멀티포컬 웨어러', '2025 MF 착용자', '2025 MF 웨어러', '25년 멀티포컬 착용자', '25년 멀티포컬 착용자수', '25년 멀티포컬 웨어러'],
+      wearerCy: ['2026 멀티포컬 착용자', '2026 멀티포컬 착용자수', '2026 멀티포컬 웨어러', '2026 MF 착용자', '2026 MF 웨어러', '26년 멀티포컬 착용자', '26년 멀티포컬 착용자수', '26년 멀티포컬 웨어러'],
+      newPy: ['2025 멀티포컬 신규', '2025 멀티포컬 신규착용자', '2025 멀티포컬 신규 착용자', '2025 멀티포컬 신규웨어러', '2025 멀티포컬 신규 웨어러', '2025 MF 신규', '2025 MF 신규 웨어러', '25년 멀티포컬 신규', '25년 멀티포컬 신규착용자', '25년 멀티포컬 신규 웨어러'],
+      newCy: ['2026 멀티포컬 신규', '2026 멀티포컬 신규착용자', '2026 멀티포컬 신규 착용자', '2026 멀티포컬 신규웨어러', '2026 멀티포컬 신규 웨어러', '2026 MF 신규', '2026 MF 신규 웨어러', '26년 멀티포컬 신규', '26년 멀티포컬 신규착용자', '26년 멀티포컬 신규 웨어러']
     },
     max: {
       label: 'MAX', title: 'MAX 성장 (pack/ACC)',
       py: ['2025 MAX  팩수', '2025 MAX 팩수', '2025MAX팩수', '25년 MAX  팩수', '25년 MAX 팩수', '25년MAX팩수'],
-      cy: ['2026 MAX  팩수', '2026 MAX 팩수', '2026MAX팩수', '26년 MAX  팩수', '26년 MAX 팩수', '26년MAX팩수']
+      cy: ['2026 MAX  팩수', '2026 MAX 팩수', '2026MAX팩수', '26년 MAX  팩수', '26년 MAX 팩수', '26년MAX팩수'],
+      wearerPy: ['2025 MAX 착용자', '2025 MAX 착용자수', '2025 MAX 웨어러', '2025 맥스 착용자', '2025 맥스 웨어러', '25년 MAX 착용자', '25년 MAX 착용자수', '25년 MAX 웨어러'],
+      wearerCy: ['2026 MAX 착용자', '2026 MAX 착용자수', '2026 MAX 웨어러', '2026 맥스 착용자', '2026 맥스 웨어러', '26년 MAX 착용자', '26년 MAX 착용자수', '26년 MAX 웨어러'],
+      newPy: ['2025 MAX 신규', '2025 MAX 신규착용자', '2025 MAX 신규 착용자', '2025 MAX 신규웨어러', '2025 MAX 신규 웨어러', '2025 맥스 신규', '25년 MAX 신규', '25년 MAX 신규착용자', '25년 MAX 신규 웨어러'],
+      newCy: ['2026 MAX 신규', '2026 MAX 신규착용자', '2026 MAX 신규 착용자', '2026 MAX 신규웨어러', '2026 MAX 신규 웨어러', '2026 맥스 신규', '26년 MAX 신규', '26년 MAX 신규착용자', '26년 MAX 신규 웨어러']
     }
   };
 
@@ -270,7 +283,7 @@
 
   function rebuildIndexes() {
     S.masterById = new Map(); S.salesById = new Map(); S.salesByStore = new Map();
-    S.eduById = new Map(); S.perById = new Map(); S.recById = new Map(); S.metricCache = new Map();
+    S.eduById = new Map(); S.perById = new Map(); S.per25ById = new Map(); S.recById = new Map(); S.metricCache = new Map();
 
     S.master.forEach(r => { if (r.안경사ID) S.masterById.set(r.안경사ID, r); });
     S.sales.forEach(r => {
@@ -291,10 +304,15 @@
       if (!S.eduById.has(id)) S.eduById.set(id, []);
       S.eduById.get(id).push(r);
     });
-    S.per.forEach(r => {
+    S.per26.forEach(r => {
       if (!S.perById.has(r.안경사ID)) S.perById.set(r.안경사ID, []);
       S.perById.get(r.안경사ID).push(r);
     });
+    S.per25.forEach(r => {
+      if (!S.per25ById.has(r.안경사ID)) S.per25ById.set(r.안경사ID, []);
+      S.per25ById.get(r.안경사ID).push(r);
+    });
+    S.per = S.per26;
     S.rec.forEach(r => {
       const id = clean(get(r, ['안경사ID', '안경사 ID', 'ID']));
       if (id && !S.recById.has(id)) S.recById.set(id, r);
@@ -344,6 +362,87 @@
     }
     const rate = py ? ((cyAnnualized - py) / py) * 100 : null;
     return { status: rate == null ? 'none' : 'normal', rate, py, cyYtd: cyYtd || 0, cyAnnualized };
+  }
+
+  function countGrowthInfo(rows, key, metric) {
+    const col = FITTING_COLUMNS[key];
+    const pyCols = metric === 'wearer' ? col.wearerPy : col.newPy;
+    const cyCols = metric === 'wearer' ? col.wearerCy : col.newCy;
+    const unique = dedupeSalesRows(rows);
+    const py = sum(unique, r => get(r, pyCols || []));
+    const cyYtd = sum(unique, r => get(r, cyCols || []));
+    if (py == null && cyYtd == null) return { status: 'none', rate: null, py: null, cyYtd: null, cyAnnualized: null };
+    const cyAnnualized = annualize(cyYtd || 0);
+    if ((py == null || py === 0) && (cyYtd || 0) > 0) return { status: 'new', rate: null, py: py || 0, cyYtd: cyYtd || 0, cyAnnualized };
+    if ((py || 0) === 0 && (cyYtd || 0) === 0) return { status: 'flat', rate: 0, py: py || 0, cyYtd: cyYtd || 0, cyAnnualized: 0 };
+    const rate = py ? ((cyAnnualized - py) / py) * 100 : null;
+    return { status: rate == null ? 'none' : 'normal', rate, py, cyYtd: cyYtd || 0, cyAnnualized };
+  }
+
+  function metricRateLabel(info) {
+    if (!info || info.status === 'none') return '데이터 없음';
+    if (info.status === 'new') return '신규 발생';
+    return fmtRate(info.rate);
+  }
+
+  function packPerWearerInfo(rows, key) {
+    const pack = growthInfo(rows, key);
+    const wearer = countGrowthInfo(rows, key, 'wearer');
+    if (pack.py == null || wearer.py == null || !wearer.py || pack.cyAnnualized == null || wearer.cyAnnualized == null || !wearer.cyAnnualized) {
+      return { py: null, cy: null, rate: null };
+    }
+    const py = pack.py / wearer.py;
+    const cy = pack.cyAnnualized / wearer.cyAnnualized;
+    return { py, cy, rate: py ? ((cy - py) / py) * 100 : null };
+  }
+
+  function salesDriver(rows, key) {
+    const pack = growthInfo(rows, key);
+    const wearer = countGrowthInfo(rows, key, 'wearer');
+    const newWearer = countGrowthInfo(rows, key, 'new');
+    const intensity = packPerWearerInfo(rows, key);
+    const pr = pack.rate, wr = wearer.rate, nr = newWearer.rate;
+
+    let type = 'mixed', label = '복합 요인', reason = '팩수·착용자·신규 지표를 함께 확인할 필요가 있습니다.';
+    if (nr != null && nr <= -5 && wr != null && wr <= -3) {
+      type = 'acquisition'; label = '신규 유입 약화';
+      reason = '신규 착용자 감소가 전체 착용자와 판매 감소로 이어지는 패턴입니다.';
+    } else if (nr != null && nr >= -2 && wr != null && wr <= -5) {
+      type = 'retention'; label = '착용자 유지 약화';
+      reason = '신규 유입은 유지되지만 전체 착용자가 감소해 적응·Follow-up·재방문 관리 이슈 가능성이 있습니다.';
+    } else if (pr != null && pr <= -2 && wr != null && wr >= -3 && intensity.rate != null && intensity.rate <= -3) {
+      type = 'intensity'; label = '착용자당 구매량 감소';
+      reason = '착용자 규모보다 팩수가 더 크게 감소해 재구매·제품가치 전달·구매주기 이슈 가능성이 있습니다.';
+    } else if (pr != null && pr >= 0 && nr != null && nr <= -5) {
+      type = 'future-risk'; label = '신규 Pipeline 약화';
+      reason = '현재 팩수는 유지되지만 신규 착용자가 줄어 향후 성장 위험 신호가 있습니다.';
+    } else if (nr != null && nr <= -5) {
+      type = 'acquisition'; label = '신규 유입 약화';
+      reason = '신규 착용자 감소가 가장 뚜렷한 선행 신호입니다.';
+    } else if (wr != null && wr <= -5) {
+      type = 'retention'; label = '착용자 기반 감소';
+      reason = '전체 착용자 수 감소가 판매 저하와 함께 나타납니다.';
+    } else if (intensity.rate != null && intensity.rate <= -3) {
+      type = 'intensity'; label = '착용자당 구매량 감소';
+      reason = '착용자 대비 팩수 효율이 전년보다 낮아졌습니다.';
+    }
+
+    return { type, label, reason, pack, wearer, newWearer, intensity };
+  }
+
+  function driverEducationKeywords(type) {
+    if (type === 'acquisition' || type === 'future-risk') return ['신규', '상담', '추천', '대상', '전환', '발굴', '첫', '스크립트'];
+    if (type === 'retention') return ['적응', 'follow', '팔로우', '재방문', '관리', '불편', '유지'];
+    if (type === 'intensity') return ['가치', '재구매', '제품', '사용', '착용', '혜택', '상담'];
+    return [];
+  }
+
+  function driverFallbackEducation(key, type) {
+    const product = FITTING_COLUMNS[key].label;
+    if (type === 'acquisition' || type === 'future-risk') return `${product} 신규 착용자 발굴·상담 전환 교육`;
+    if (type === 'retention') return `${product} 적응 관리·Follow-up 교육`;
+    if (type === 'intensity') return `${product} 제품 가치·재구매 상담 교육`;
+    return INSIGHT[key].eduFallback[0];
   }
 
   function packDelta(rows, key) {
@@ -714,46 +813,102 @@
 
   function lowQuestionsForRows(masterRows, key, maxCount = 3) {
     const ids = new Set(masterRows.map(r => r.안경사ID));
-    const segByQ = new Map();
-    const allByQ = new Map();
+    const seg26ByQ = new Map();
+    const all26ByQ = new Map();
+    const seg25ByQ = new Map();
     const infoByQ = new Map();
-    S.per.forEach(p => {
+
+    S.per26.forEach(p => {
       if (questionRelevance(p, key) <= 0 || !p.문항) return;
-      if (!allByQ.has(p.문항)) allByQ.set(p.문항, []);
-      allByQ.get(p.문항).push(p.점수);
+      if (!all26ByQ.has(p.문항)) all26ByQ.set(p.문항, []);
+      all26ByQ.get(p.문항).push(p.점수);
       infoByQ.set(p.문항, { target: p.목표값 || 4 });
       if (ids.has(p.안경사ID)) {
-        if (!segByQ.has(p.문항)) segByQ.set(p.문항, []);
-        segByQ.get(p.문항).push(p.점수);
+        if (!seg26ByQ.has(p.문항)) seg26ByQ.set(p.문항, []);
+        seg26ByQ.get(p.문항).push(p.점수);
       }
     });
-    return [...segByQ.entries()].map(([q, vals]) => {
-      const seg = avg(vals); const all = avg(allByQ.get(q) || []); const target = infoByQ.get(q)?.target || 4;
+
+    S.per25.forEach(p => {
+      if (questionRelevance(p, key) <= 0 || !p.문항 || !ids.has(p.안경사ID)) return;
+      if (!seg25ByQ.has(p.문항)) seg25ByQ.set(p.문항, []);
+      seg25ByQ.get(p.문항).push(p.점수);
+    });
+
+    return [...seg26ByQ.entries()].map(([q, vals]) => {
+      const seg = avg(vals);
+      const all = avg(all26ByQ.get(q) || []);
+      const prev = avg(seg25ByQ.get(q) || []);
+      const target = infoByQ.get(q)?.target || 4;
       const diff = seg != null && all != null ? seg - all : null;
       const targetGap = seg != null ? seg - target : null;
-      const severity = Math.max(0, -(diff || 0)) * 40 + Math.max(0, -(targetGap || 0)) * 25 + vals.length;
-      return { q, seg, all, diff, targetGap, count: vals.length, severity };
-    }).filter(x => x.seg != null && ((x.diff != null && x.diff <= -0.2) || (x.targetGap != null && x.targetGap < 0)))
-      .sort((a, b) => b.severity - a.severity).slice(0, maxCount);
+      const change = seg != null && prev != null ? seg - prev : null;
+      const prevGap = prev != null ? prev - target : null;
+
+      let trendType = 'current-gap', trendLabel = '2026 현재 Gap';
+      if (change != null && seg < target && change <= -0.2) { trendType = 'worsening'; trendLabel = '현재 미달 + 전년 대비 악화'; }
+      else if (change != null && seg < target && prev < target && Math.abs(change) < 0.2) { trendType = 'persistent'; trendLabel = '2년 연속 지속 Gap'; }
+      else if (change != null && seg < target && change >= 0.2) { trendType = 'recovering'; trendLabel = '개선 중이나 아직 미달'; }
+      else if (change != null && seg >= target && change <= -0.3) { trendType = 'early-warning'; trendLabel = '현재 도달이나 하락 추세'; }
+
+      const severity =
+        Math.max(0, -(diff || 0)) * 35 +
+        Math.max(0, -(targetGap || 0)) * 30 +
+        Math.max(0, -(change || 0)) * 60 +
+        (trendType === 'persistent' ? 12 : 0) +
+        (trendType === 'early-warning' ? 8 : 0) +
+        vals.length;
+
+      return { q, seg, all, prev, change, diff, targetGap, prevGap, target, count: vals.length, severity, trendType, trendLabel };
+    }).filter(x => {
+      const currentIssue = x.seg != null && ((x.diff != null && x.diff <= -0.2) || (x.targetGap != null && x.targetGap < 0));
+      const trendIssue = x.change != null && x.change <= -0.3;
+      return currentIssue || trendIssue;
+    }).sort((a, b) => b.severity - a.severity).slice(0, maxCount);
   }
+
+  function perceptionTrendText(item) {
+    if (!item) return '인식 데이터에서 뚜렷한 원인 후보가 확인되지 않음';
+    const current = item.seg == null ? '-' : item.seg.toFixed(1);
+    const prev = item.prev == null ? null : item.prev.toFixed(1);
+    const change = item.change == null ? null : `${item.change >= 0 ? '+' : ''}${item.change.toFixed(1)}`;
+    const yearText = prev == null ? `2026 ${current}점` : `2025 ${prev} → 2026 ${current}점 (${change})`;
+    return `${item.q} · ${yearText} · ${item.trendLabel}`;
+  }
+
 
   function completedEducationTitles(rows) {
     const ids = new Set(rows.map(r => r.안경사ID));
     return new Set(S.edu.filter(r => ids.has(clean(get(r, ['안경사ID', '안경사 ID', 'ID']))) && eduDone(r)).map(educationTitle).filter(Boolean).map(norm));
   }
 
-  function recommendedEducationPlan(rows, key, primaryCause) {
+  function recommendedEducationPlan(rows, key, primaryCause, driver) {
     const completed = completedEducationTitles(rows);
     const question = primaryCause?.q || `${FITTING_COLUMNS[key].label} 관련 인식`;
-    const first = findBestEducationForQuestion(question, completed);
+    const driverKeywords = driverEducationKeywords(driver?.type);
+    const contentRows = (S.content || []).map(row => ({ row, title: educationTitle(row) })).filter(x => x.title);
+
+    const scored = contentRows.map(x => {
+      let scoreValue = overlapScore(question, x.title);
+      if (educationRelated(x.title, key)) scoreValue += 3;
+      driverKeywords.forEach(k => { if (clean(x.title).toLowerCase().includes(String(k).toLowerCase())) scoreValue += 2; });
+      if (completed.has(norm(x.title))) scoreValue -= 8;
+      return { ...x, score: scoreValue };
+    }).filter(x => x.score > 0).sort((a, b) => b.score - a.score);
+
+    const first = scored.length
+      ? { title: scored[0].title, status: '인식·판매 Driver 매칭' }
+      : { title: driverFallbackEducation(key, driver?.type), status: 'Driver 기반 추천' };
+
     const blocked = new Set([...completed, norm(first.title)]);
-    const second = (() => {
-      const contentCandidates = (S.content || []).map(educationTitle).filter(Boolean)
-        .filter(title => educationRelated(title, key) && !blocked.has(norm(title)));
-      if (contentCandidates.length) return { title: contentCandidates[0], status: '교육 리스트 매칭' };
-      const fallback = INSIGHT[key].eduFallback.find(x => !blocked.has(norm(x))) || INSIGHT[key].eduFallback[1];
-      return { title: fallback, status: '보완 교육' };
-    })();
+    const secondCandidate = scored.find(x => !blocked.has(norm(x.title)));
+    const second = secondCandidate
+      ? { title: secondCandidate.title, status: '교육 리스트 매칭' }
+      : (() => {
+          const fallback = INSIGHT[key].eduFallback.find(x => !blocked.has(norm(x))) || driverFallbackEducation(key, driver?.type);
+          return { title: fallback, status: '보완 교육' };
+        })();
+
     return [first, second];
   }
 
@@ -804,42 +959,64 @@
     const insights = [];
 
     ['ast', 'mf', 'max'].forEach(key => {
-      const overall = growthInfo(allSales, key);
-      if (overall.status === 'none') return;
+      const overallDriver = salesDriver(allSales, key);
+      const overall = overallDriver.pack;
+      if (overall.status === 'none' && overallDriver.wearer.status === 'none' && overallDriver.newWearer.status === 'none') return;
 
       const affectedSales = dedupeSalesRows(allSales).filter(row => {
-        const info = growthInfo([row], key);
-        if (info.rate == null) return false;
-        const reverse = info.rate <= -2;
-        const underAvg = overall.rate != null && info.rate <= overall.rate - 3;
-        return reverse || underAvg;
+        const pack = growthInfo([row], key);
+        const wearer = countGrowthInfo([row], key, 'wearer');
+        const newWearer = countGrowthInfo([row], key, 'new');
+        const packIssue = pack.rate != null && (pack.rate <= -2 || (overall.rate != null && pack.rate <= overall.rate - 3));
+        const wearerIssue = wearer.rate != null && wearer.rate <= -5;
+        const newIssue = newWearer.rate != null && newWearer.rate <= -5;
+        return packIssue || wearerIssue || newIssue;
       });
       if (!affectedSales.length) return;
 
       const affectedPeople = peopleInSalesAccounts(baseRows, affectedSales);
       if (!affectedPeople.length) return;
+
       const respondents = affectedPeople.filter(p => (S.perById.get(p.안경사ID) || []).some(x => questionRelevance(x, key) > 0));
       const causeList = lowQuestionsForRows(respondents.length ? respondents : affectedPeople, key, 3);
       const primary = causeList[0] || null;
-      const targetPeople = affectedPeople.filter(p => personHasLowRelatedPerception(p.안경사ID, key) || personHasIncompleteRelatedEducation(p.안경사ID, key));
+      const affectedDriver = salesDriver(affectedSales, key);
+
+      const targetPeople = affectedPeople.filter(p =>
+        personHasLowRelatedPerception(p.안경사ID, key) ||
+        personHasIncompleteRelatedEducation(p.안경사ID, key)
+      );
       const finalTargets = targetPeople.length ? targetPeople : affectedPeople;
       const incompleteCount = finalTargets.filter(p => personHasIncompleteRelatedEducation(p.안경사ID, key)).length;
-      const recs = recommendedEducationPlan(finalTargets, key, primary);
-      const affectedInfo = growthInfo(affectedSales, key);
+      const recs = recommendedEducationPlan(finalTargets, key, primary, affectedDriver);
       const focus = focusGroup(respondents, primary?.q);
-      const avgGap = primary?.diff != null ? Math.abs(primary.diff) : 0;
-      const priority = Math.max(0, -(affectedInfo.rate || 0)) * 10 + affectedSales.length * 4 + avgGap * 30 + incompleteCount;
+
+      const packRisk = Math.max(0, -(affectedDriver.pack.rate || 0));
+      const wearerRisk = Math.max(0, -(affectedDriver.wearer.rate || 0));
+      const newRisk = Math.max(0, -(affectedDriver.newWearer.rate || 0));
+      const trendRisk = Math.max(0, -(primary?.change || 0)) * 20;
+      const priority = packRisk * 8 + wearerRisk * 5 + newRisk * 7 + trendRisk + affectedSales.length * 4 + incompleteCount;
+
       const causeText = primary
-        ? `${primary.q} · 대상 평균 ${primary.seg.toFixed(1)}점${primary.all != null ? ` / 전체 ${primary.all.toFixed(1)}점` : ''}`
-        : `${INSIGHT[key].focus}에서 뚜렷한 저하 문항은 아직 확인되지 않음`;
-      const narrative = primary
-        ? `${FITTING_COLUMNS[key].label} 판매 저하 ${affectedSales.length}개 안경원에서 근무하는 ${affectedPeople.length}명 중 인식조사 응답자 ${respondents.length}명을 분석한 결과, ‘${primary.q}’가 ${primary.all != null ? `전체 평균보다 ${Math.abs(primary.diff || 0).toFixed(1)}점 낮게` : '목표보다 낮게'} 나타났습니다.${focus ? ` 특히 ${focus}에서 Gap이 두드러집니다.` : ''}`
-        : `${FITTING_COLUMNS[key].label} 판매 저하 ${affectedSales.length}개 안경원에서 ${affectedPeople.length}명의 교육 Opportunity가 확인됐지만, 제품 관련 인식 데이터에서는 뚜렷한 원인 문항이 확인되지 않았습니다.`;
+        ? perceptionTrendText(primary)
+        : `${INSIGHT[key].focus}에서 현재/전년 추세상 뚜렷한 저하 문항은 아직 확인되지 않음`;
+
+      const perceptionEvidence = primary?.change != null
+        ? (primary.change <= -0.2
+            ? `관련 인식도 전년 대비 악화되어 교육 원인 후보의 근거가 강화됩니다.`
+            : primary.change >= 0.2
+              ? `관련 인식은 개선 중이므로 판매 저하를 인식 하나만으로 설명하기 어렵습니다.`
+              : `관련 인식은 전년과 유사한 수준으로 지속되고 있습니다.`)
+        : `2025 인식 데이터가 없거나 동일 문항 매칭이 되지 않아 현재 인식 기준으로 판단합니다.`;
+
+      const narrative = `${FITTING_COLUMNS[key].label} ${affectedSales.length}개 안경원의 판매 구조를 보면 ${affectedDriver.label} 패턴이 우선 확인됩니다. ` +
+        `${primary ? `인식에서는 ‘${primary.q}’가 ${primary.prev != null ? `2025 ${primary.prev.toFixed(1)}점에서 2026 ${primary.seg.toFixed(1)}점으로 ${primary.change >= 0 ? '+' : ''}${primary.change.toFixed(1)}점 변화했습니다.` : `2026 ${primary.seg.toFixed(1)}점으로 확인됩니다.`}` : ''} ` +
+        perceptionEvidence + (focus ? ` 특히 ${focus}에서 Gap이 두드러집니다.` : '');
 
       insights.push({
         key, title: `${FITTING_COLUMNS[key].label} 교육 Opportunity`, narrative,
         affectedSales, affectedPeople, respondents, targetPeople: finalTargets, incompleteCount,
-        causeList, causeText, recs, focus, priority, affectedInfo, overall
+        causeList, causeText, recs, focus, priority, driver: affectedDriver, overallDriver
       });
     });
 
@@ -855,22 +1032,39 @@
     }
     box.innerHTML = S.insights.map((item, i) => {
       const product = FITTING_COLUMNS[item.key].label;
-      const symptom = `${item.affectedSales.length} ACC · ${growthLabel(item.affectedInfo)} vs PY · ${fmtPackPerAcc(avgPackDeltaPerAcc(item.affectedSales, item.key))}`;
-      const target = `${item.targetPeople.length}명 교육 대상 · 인식 응답 ${item.respondents.length}명 · 교육 미완료/확인 필요 ${item.incompleteCount}명`;
-      const action = item.recs.map((r, idx) => `${idx + 1}. ${esc(r.title)}`).join('<br>');
-      const follow = `교육 이수 확인 → 인식 재측정 → ${product} 판매 성장률/팩·ACC 재확인`;
+      const d = item.driver;
+      const salesBits = [
+        `팩 ${growthLabel(d.pack)}`,
+        d.wearer.status !== 'none' ? `웨어러 ${metricRateLabel(d.wearer)}` : null,
+        d.newWearer.status !== 'none' ? `신규 ${metricRateLabel(d.newWearer)}` : null
+      ].filter(Boolean);
+      const symptom = `${item.affectedSales.length} ACC · ${salesBits.join(' · ')}`;
+      const primary = item.causeList[0] || null;
+      const perceptionLine = primary
+        ? `${perceptionTrendText(primary)}${primary.all != null ? ` · 2026 전체 평균 ${primary.all.toFixed(1)}점` : ''}`
+        : '제품 관련 인식에서 뚜렷한 원인 후보 없음';
+      const target = `${item.targetPeople.length}명 교육 대상 · 2026 인식 응답 ${item.respondents.length}명 · 교육 미완료/확인 필요 ${item.incompleteCount}명`;
+      const action = item.recs.map((r, idx) => `${idx + 1}. ${esc(r.title)} <span class="rec-status">${esc(r.status)}</span>`).join('<br>');
+      const followMetrics = [
+        '2026 인식 재측정',
+        d.newWearer.status !== 'none' ? '신규 착용자' : null,
+        d.wearer.status !== 'none' ? '웨어러' : null,
+        '팩수'
+      ].filter(Boolean).join(' → ');
+      const follow = `교육 이수 확인 → ${followMetrics} 재확인`;
+
       return `<article class="insight-card">
         <div class="type">EDUCATION OPPORTUNITY <span class="priority-chip">우선순위 ${i + 1}</span></div>
         <h3>${esc(item.title)}</h3>
         <p class="insight-narrative">${esc(item.narrative)}</p>
         <div class="insight-flow">
-          <div class="flow-step"><small>1. 현상</small><b>${esc(symptom)}</b><p>전체 기준: ${esc(growthLabel(item.overall))}</p></div>
-          <div class="flow-step"><small>2. 원인</small><b>${esc(item.causeText)}</b><p>${item.focus ? `집중 그룹: ${esc(item.focus)}` : '추가 세부 그룹 확인 필요'}</p></div>
+          <div class="flow-step"><small>1. 현상</small><b>${esc(symptom)}</b><p>${esc(d.label)} · ${esc(d.reason)}</p></div>
+          <div class="flow-step"><small>2. 원인</small><b>${esc(perceptionLine)}</b><p>${item.focus ? `집중 그룹: ${esc(item.focus)}` : '25→26 인식 변화와 판매 Driver를 함께 판단'}</p></div>
           <div class="flow-step"><small>3. Target</small><b>${esc(target)}</b><p>판매는 안경원, 교육/인식은 안경사 기준</p></div>
-          <div class="flow-step"><small>4. Action</small><b>${action}</b><p>현재 교육 리스트 우선 매칭</p></div>
-          <div class="flow-step"><small>5. Follow-up</small><b>${esc(follow)}</b><p>교육 효과를 인식과 판매로 다시 확인</p></div>
+          <div class="flow-step"><small>4. Action</small><b>${action}</b><p>${esc(d.label)} + 인식 Gap에 맞춰 교육 우선순위 결정</p></div>
+          <div class="flow-step"><small>5. Follow-up</small><b>${esc(follow)}</b><p>교육 후 인식과 신규·웨어러·팩수 변화를 함께 확인</p></div>
         </div>
-        <div class="coverage-note">※ 판매 기준월 ${S.baseMonth}월 · ${esc(S.baseMonthSource)}</div>
+        <div class="coverage-note">※ 판매 기준월 ${S.baseMonth}월 · ${esc(S.baseMonthSource)} · 2025 인식 ${S.per25.length ? '연결됨' : '미연결'} · 2026 인식 ${S.per26.length ? '연결됨' : '미연결'}</div>
         <div class="insight-actions"><button class="button primary" type="button" data-insight-target="${i}">교육 대상 안경사 보기</button></div>
       </article>`;
     }).join('');
@@ -939,9 +1133,14 @@
       });
       ['ast', 'mf', 'max'].forEach(key => {
         const label = FITTING_COLUMNS[key].label;
+        const storeSales = rowsFor(p.안경사ID);
+        const wearer = countGrowthInfo(storeSales, key, 'wearer');
+        const newWearer = countGrowthInfo(storeSales, key, 'new');
         row[`${label}_연환산팩증감`] = m.growths[key].pack;
         row[`${label}_성장구분`] = growthLabel(m.growths[key].info);
-        row[`${label}_성장률`] = m.growths[key].info.rate;
+        row[`${label}_팩성장률`] = m.growths[key].info.rate;
+        row[`${label}_웨어러성장률`] = wearer.rate;
+        row[`${label}_신규성장률`] = newWearer.rate;
       });
       return row;
     });
@@ -982,7 +1181,9 @@
     S.content = sheet(wb, aliases.content);
     S.edu = sheet(wb, aliases.edu);
     S.qm = normQm(sheet(wb, aliases.qm));
-    S.per = normPer(sheet(wb, aliases.per));
+    S.per25 = normPer(sheet(wb, aliases.per25));
+    S.per26 = normPer(sheet(wb, aliases.per26));
+    S.per = S.per26;
     S.sales = loadFittingSalesSheet(wb);
     S.rec = sheet(wb, aliases.rec);
 
@@ -994,8 +1195,8 @@
     S.query = ''; S.targetIds = null; S.gapFilter = null; S.insights = [];
     render();
     $('insightCards').innerHTML = '<div class="empty-state">데이터가 준비되었습니다. <b>교육 Opportunity 분석</b>을 눌러주세요.</div>';
-    $('uploadStatus').textContent = `${file.name} · ${S.master.length}명 / ${dedupeSalesRows(S.sales).length} ACC`;
-    toast(`업로드 완료 · 판매 기준 ${S.baseMonth}월`);
+    $('uploadStatus').textContent = `${file.name} · ${S.master.length}명 / ${dedupeSalesRows(S.sales).length} ACC · 인식25 ${S.per25.length ? 'O' : '-'} / 인식26 ${S.per26.length ? 'O' : '-'}`;
+    toast(`업로드 완료 · 판매 기준 ${S.baseMonth}월 · 25→26 인식/신규·웨어러 분석 준비`);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
