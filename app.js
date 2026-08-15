@@ -65,17 +65,17 @@
   const INSIGHT = {
     ast: {
       focus: '난시 관련 인식',
-      keywords: ['난시', '토릭', 'asd', '조기교정', '교정', '피팅', '축', '원주', '프리즘', '구면'],
+      keywords: ['난시', '토릭', 'asd', '축안정', '축 안정', '원주도수', '실린더', 'cylinder'],
       eduFallback: ['난시 조기교정 인식 강화 교육', '난시 피팅·상담 실전 교육']
     },
     mf: {
       focus: '멀티포컬 관련 인식',
-      keywords: ['멀티포컬', '다초점', '노안', 'mf', '상담', '적응', 'follow', '팔로우'],
+      keywords: ['멀티포컬', '다초점', '노안', 'mf', '가입도', 'presbyopia'],
       eduFallback: ['노안·멀티포컬 상담 기본 교육', '멀티포컬 실전 피팅·Follow-up 교육']
     },
     max: {
-      focus: 'MAX·눈건강 관련 인식',
-      keywords: ['max', '맥스', '블루라이트', '눈건강', '보호', '자외선', '실리콘', '오아시스', '피로'],
+      focus: 'MAX·눈건강·블루라이트 관련 인식',
+      keywords: ['max', '맥스', '블루라이트', '청색광', '눈건강', '눈 건강', '자외선', 'uv', 'oasys max', '오아시스 맥스'],
       eduFallback: ['블루라이트·눈건강 가치 전달 교육', 'ACUVUE OASYS MAX 상담 스크립트 교육']
     }
   };
@@ -192,9 +192,9 @@
 
   function infer(text) {
     const q = clean(text);
-    if (/블루라이트|실리콘|기술|MAX|맥스|눈건강|오아시스/i.test(q)) return 'max';
-    if (/멀티포컬|다초점|노안|\bMF\b/i.test(q)) return 'mf';
-    if (/난시|토릭|ASD|프리즘|원주|축/i.test(q)) return 'ast';
+    if (/블루라이트|청색광|MAX|맥스|눈건강|눈 건강|자외선|\bUV\b|OASYS MAX|오아시스 맥스/i.test(q)) return 'max';
+    if (/멀티포컬|다초점|노안|\bMF\b|가입도|presbyopia/i.test(q)) return 'mf';
+    if (/난시|토릭|ASD|축안정|축 안정|원주도수|실린더|cylinder/i.test(q)) return 'ast';
     return 'other';
   }
 
@@ -869,7 +869,7 @@
     view('segment');
   }
 
-  function lowQuestionsForRows(masterRows, key, maxCount = 3) {
+  function lowQuestionsForRows(masterRows, key, maxCount = 999) {
     const ids = new Set(masterRows.map(r => r.안경사ID));
     const seg26ByQ = new Map();
     const all26ByQ = new Map();
@@ -919,19 +919,23 @@
 
       return { q, seg, all, prev, change, diff, targetGap, prevGap, target, count: vals.length, severity, trendType, trendLabel };
     }).filter(x => {
-      const currentIssue = x.seg != null && ((x.diff != null && x.diff <= -0.2) || (x.targetGap != null && x.targetGap < 0));
-      const trendIssue = x.change != null && x.change <= -0.3;
-      return currentIssue || trendIssue;
-    }).sort((a, b) => b.severity - a.severity).slice(0, maxCount);
+      // 교육 인사이트의 원인 문항은 '평균 이하'가 아니라 절대 목표 기준으로만 판단.
+      // 역문항은 normPer 단계에서 역코딩되므로 동일하게 보정점수 < 목표값으로 판정됨.
+      return x.seg != null && x.targetGap != null && x.targetGap < 0;
+    }).sort((a, b) => {
+      const gapA = Math.abs(a.targetGap || 0);
+      const gapB = Math.abs(b.targetGap || 0);
+      return gapB - gapA || b.severity - a.severity;
+    }).slice(0, maxCount);
   }
 
   function perceptionTrendText(item) {
-    if (!item) return '인식 데이터에서 뚜렷한 원인 후보가 확인되지 않음';
-    const current = item.seg == null ? '-' : item.seg.toFixed(1);
-    const prev = item.prev == null ? null : item.prev.toFixed(1);
-    const change = item.change == null ? null : `${item.change >= 0 ? '+' : ''}${item.change.toFixed(1)}`;
-    const yearText = prev == null ? `2026 ${current}점` : `2025 ${prev} → 2026 ${current}점 (${change})`;
-    return `${item.q} · ${yearText} · ${item.trendLabel}`;
+    if (!item) return '관련 인식 Gap 없음';
+    if (item.prev == null || item.seg == null) return `${item.q} · 2026 기준`;
+    const delta = item.seg - item.prev;
+    const arrow = delta < 0 ? '▼' : delta > 0 ? '▲' : '→';
+    const amount = Math.abs(delta).toFixed(1);
+    return `${item.q} · 2025 → 2026 ${arrow}${amount}`;
   }
 
 
@@ -940,28 +944,29 @@
     return new Set(S.edu.filter(r => ids.has(clean(get(r, ['안경사ID', '안경사 ID', 'ID']))) && eduDone(r)).map(educationTitle).filter(Boolean).map(norm));
   }
 
-  function recommendedEducationPlan(rows, key, primaryCause, driver) {
+  function recommendedEducationPlan(rows, key, causes, driver) {
     const completed = completedEducationTitles(rows);
-    const question = primaryCause?.q || `${FITTING_COLUMNS[key].label} 관련 인식`;
+    const causeItems = Array.isArray(causes) ? causes.filter(Boolean) : (causes ? [causes] : []);
+    const questions = causeItems.map(x => x.q).filter(Boolean);
     const driverKeywords = driverEducationKeywords(driver?.type);
     const contentRows = (S.content || []).map(row => ({ row, title: educationTitle(row) })).filter(x => x.title);
 
     const scored = contentRows.map(x => {
-      let scoreValue = overlapScore(question, x.title);
-      if (educationRelated(x.title, key)) scoreValue += 3;
+      let scoreValue = questions.reduce((sumValue, q) => sumValue + overlapScore(q, x.title), 0);
+      if (educationRelated(x.title, key)) scoreValue += 4;
       driverKeywords.forEach(k => { if (clean(x.title).toLowerCase().includes(String(k).toLowerCase())) scoreValue += 2; });
       if (completed.has(norm(x.title))) scoreValue -= 8;
       return { ...x, score: scoreValue };
     }).filter(x => x.score > 0).sort((a, b) => b.score - a.score);
 
     const first = scored.length
-      ? { title: scored[0].title, status: '인식·판매 Driver 매칭' }
+      ? { title: scored[0].title, status: '인식 Gap·판매 Driver 매칭' }
       : { title: driverFallbackEducation(key, driver?.type), status: 'Driver 기반 추천' };
 
     const blocked = new Set([...completed, norm(first.title)]);
     const secondCandidate = scored.find(x => !blocked.has(norm(x.title)));
     const second = secondCandidate
-      ? { title: secondCandidate.title, status: '교육 리스트 매칭' }
+      ? { title: secondCandidate.title, status: '관련 Gap 보완' }
       : (() => {
           const fallback = INSIGHT[key].eduFallback.find(x => !blocked.has(norm(x))) || driverFallbackEducation(key, driver?.type);
           return { title: fallback, status: '보완 교육' };
@@ -1049,7 +1054,7 @@
         const respondents = affectedPeople.filter(p =>
           (S.perById.get(p.안경사ID) || []).some(x => questionRelevance(x, key) > 0)
         );
-        const causeList = lowQuestionsForRows(respondents.length ? respondents : affectedPeople, key, 3);
+        const causeList = lowQuestionsForRows(respondents.length ? respondents : affectedPeople, key, 999);
         const primary = causeList[0] || null;
         const affectedDriver = salesDriver(affectedSales, key);
 
@@ -1061,7 +1066,7 @@
         const targetAccCount = new Set(finalTargets.map(storeKey).filter(Boolean)).size;
         const affectedAccCount = dedupeSalesRows(affectedSales).length;
         const incompleteCount = finalTargets.filter(p => personHasIncompleteRelatedEducation(p.안경사ID, key)).length;
-        const recs = recommendedEducationPlan(finalTargets, key, primary, affectedDriver);
+        const recs = recommendedEducationPlan(finalTargets, key, causeList, affectedDriver);
         const focus = focusGroup(respondents, primary?.q);
 
         const packRisk = Math.max(0, -(affectedDriver.pack.rate || 0));
@@ -1120,53 +1125,131 @@
     return insights.sort((a, b) => b.priority - a.priority);
   }
 
+  function insightMetricChip(label, info) {
+    if (!info || info.status === 'none') {
+      return `<div class="insight-metric neutral"><span>${esc(label)}</span><strong>— 데이터 없음</strong></div>`;
+    }
+    if (info.status === 'new') {
+      return `<div class="insight-metric positive"><span>${esc(label)}</span><strong>＋ 신규 발생</strong></div>`;
+    }
+    const rate = info.rate;
+    const cls = rate < 0 ? 'negative' : rate > 0 ? 'positive' : 'neutral';
+    const arrow = rate < 0 ? '▼' : rate > 0 ? '▲' : '—';
+    return `<div class="insight-metric ${cls}"><span>${esc(label)}</span><strong>${arrow} ${esc(fmtRate(rate))}</strong></div>`;
+  }
+
+  function gapYearText(g) {
+    if (!g) return '';
+    if (g.prev == null || g.seg == null) return '2026 기준';
+    const delta = g.seg - g.prev;
+    const arrow = delta < 0 ? '▼' : delta > 0 ? '▲' : '→';
+    const amount = Math.abs(delta).toFixed(1);
+    return `2025 → 2026 ${arrow}${amount}`;
+  }
+
   function renderInsights() {
     S.insightsReady = true;
     S.insights = generateInsights();
     const box = $('insightCards');
+
     if (!S.insights.length) {
       box.innerHTML = '<div class="empty-state">현재 조건에서 우선 실행할 교육 Opportunity가 없습니다.</div>';
       return;
     }
+
     box.innerHTML = S.insights.map((item, i) => {
       const product = FITTING_COLUMNS[item.key].label;
       const d = item.driver;
-      const salesBits = [
-        `팩 ${growthLabel(d.pack)}`,
-        d.wearer.status !== 'none' ? `웨어러 ${metricRateLabel(d.wearer)}` : null,
-        d.newWearer.status !== 'none' ? `신규 ${metricRateLabel(d.newWearer)}` : null
-      ].filter(Boolean);
-      const avgCompare = item.mode === 'under' && item.overallDriver?.pack?.rate != null ? ` · 전체 평균 ${growthLabel(item.overallDriver.pack)}` : '';
-      const symptom = `${item.affectedAccCount} ACC · ${salesBits.join(' · ')}${avgCompare}`;
-      const primary = item.causeList[0] || null;
-      const perceptionLine = primary
-        ? `${perceptionTrendText(primary)}${primary.all != null ? ` · 2026 전체 평균 ${primary.all.toFixed(1)}점` : ''}`
-        : '제품 관련 인식에서 뚜렷한 원인 후보 없음';
-      const target = `대상 안경사 ${item.targetPeople.length}명 (${item.targetAccCount} ACC) · 2026 인식 응답 ${item.respondents.length}명 · 교육 미이수/미완료 ${item.incompleteCount}명`;
-      const action = item.recs.map((r, idx) => `${idx + 1}. ${esc(r.title)} <span class="rec-status">${esc(r.status)}</span>`).join('<br>');
-      const followMetrics = [
-        '2026 인식 재측정',
-        d.newWearer.status !== 'none' ? '신규 착용자' : null,
-        d.wearer.status !== 'none' ? '웨어러' : null,
-        '팩수'
-      ].filter(Boolean).join(' → ');
-      const follow = `교육 이수 확인 → ${followMetrics} 재확인`;
+      const overallText = item.mode === 'under' && item.overallDriver?.pack?.rate != null
+        ? ` · 전체 평균 ${growthLabel(item.overallDriver.pack)}`
+        : '';
 
-      return `<article class="insight-card">
-        <div class="type">EDUCATION OPPORTUNITY <span class="priority-chip">우선순위 ${i + 1}</span></div>
-        <h3>${esc(item.title)}</h3>
-        <p class="insight-narrative">${esc(item.narrative)}</p>
-        <div class="insight-flow">
-          <div class="flow-step"><small>1. 현상</small><b>${esc(symptom)}</b><p>${esc(d.label)} · ${esc(d.reason)}</p></div>
-          <div class="flow-step"><small>2. 원인</small><b>${esc(perceptionLine)}</b><p>${item.focus ? `집중 그룹: ${esc(item.focus)}` : '25→26 인식 변화와 판매 Driver를 함께 판단'}</p></div>
-          <div class="flow-step"><small>3. Target</small><b>${esc(target)}</b><p>판매는 안경원, 교육/인식은 안경사 기준</p></div>
-          <div class="flow-step"><small>4. Action</small><b>${action}</b><p>${esc(d.label)} + 인식 Gap에 맞춰 교육 우선순위 결정</p></div>
-          <div class="flow-step"><small>5. Follow-up</small><b>${esc(follow)}</b><p>교육 후 인식과 신규·웨어러·팩수 변화를 함께 확인</p></div>
+      const gapHtml = item.causeList.length
+        ? item.causeList.map((g, idx) => `
+          <div class="perception-gap-row">
+            <div class="gap-bullet">●</div>
+            <div class="gap-copy">
+              <b>${esc(g.q)}</b>
+              <div class="gap-meta">
+                <span class="gap-score">${g.seg.toFixed(1)} / 목표 ${Number(g.target || 4).toFixed(1)}</span>
+                <span class="gap-years">${esc(gapYearText(g))}</span>
+              </div>
+            </div>
+          </div>`).join('')
+        : `<div class="no-related-gap">✓ ${esc(product)} 관련 문항 중 현재 목표 미달 인식 Gap이 없습니다.</div>`;
+
+      const actionHtml = item.recs.map((r, idx) => `
+        <div class="insight-action-row">
+          <span class="action-index">${idx === 0 ? '①' : '②'}</span>
+          <div>
+            <b>${esc(r.title)}</b>
+            <small>${item.causeList.length ? `관련 인식 Gap ${item.causeList.length}개 + ${esc(d.label)} 반영` : `${esc(d.label)} 기반 추천`}</small>
+          </div>
+        </div>`).join('');
+
+      const fuMetrics = [
+        '인식 재측정',
+        d.newWearer.status !== 'none' ? '신규' : null,
+        d.wearer.status !== 'none' ? '웨어러' : null,
+        'PACK'
+      ].filter(Boolean).join(' → ');
+
+      return `<article class="insight-card compact-insight">
+        <div class="insight-card-head">
+          <div>
+            <div class="type">EDUCATION OPPORTUNITY <span class="priority-chip">우선순위 ${i + 1}</span></div>
+            <h3>${esc(item.title)}</h3>
+          </div>
+          <div class="account-badge">${item.affectedAccCount} ACC</div>
         </div>
+
+        <div class="diagnosis-strip">
+          <span class="diagnosis-icon">⚠</span>
+          <div><small>핵심 진단</small><b>${esc(d.label)}</b><span>${esc(d.reason)}</span></div>
+        </div>
+
+        <div class="insight-metrics">
+          ${insightMetricChip('PACK', d.pack)}
+          ${insightMetricChip('WEARER', d.wearer)}
+          ${insightMetricChip('NEW', d.newWearer)}
+        </div>
+        ${item.mode === 'under' ? `<div class="average-compare">전체 평균 대비 비교${esc(overallText)}</div>` : ''}
+
+        <section class="insight-section cause-section">
+          <div class="section-title">
+            <span>●</span>
+            <b>관련 인식 Gap</b>
+            <em>${item.causeList.length}개</em>
+          </div>
+          <div class="perception-gap-list">${gapHtml}</div>
+        </section>
+
+        <section class="insight-section target-section">
+          <div class="section-title"><span>◎</span><b>교육 Target</b></div>
+          <div class="target-chips">
+            <span><b>👤 ${item.targetPeople.length}명</b> 안경사</span>
+            <span><b>🏪 ${item.targetAccCount} ACC</b></span>
+            <span><b>🎓 ${item.incompleteCount}명</b> 교육 미이수/미완료</span>
+          </div>
+        </section>
+
+        <section class="insight-section action-section">
+          <div class="section-title"><span>→</span><b>추천 Action</b></div>
+          <div class="insight-action-list">${actionHtml}</div>
+        </section>
+
+        <div class="insight-bottom-row">
+          <details class="insight-followup">
+            <summary>↻ F/U 관리</summary>
+            <div>교육 이수 확인 후 ${esc(fuMetrics)} 재확인</div>
+          </details>
+          <button class="button primary" type="button" data-insight-target="${i}">교육 대상 안경사 보기</button>
+        </div>
+
         <div class="coverage-note">※ 판매 기준월 ${S.baseMonth}월 · ${esc(S.baseMonthSource)} · 2025 인식 ${S.per25.length ? '연결됨' : '미연결'} · 2026 인식 ${S.per26.length ? '연결됨' : '미연결'}</div>
-        <div class="insight-actions"><button class="button primary" type="button" data-insight-target="${i}">교육 대상 안경사 보기</button></div>
       </article>`;
     }).join('');
+
     box.querySelectorAll('[data-insight-target]').forEach(btn => {
       btn.onclick = () => {
         const item = S.insights[Number(btn.dataset.insightTarget)];
