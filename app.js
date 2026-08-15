@@ -9,7 +9,7 @@
 
   const S = {
     master: [], content: [], edu: [], qm: [], per: [], per25: [], per26: [], sales: [], rec: [],
-    filtered: [], query: '', detailTargetIds: null, detailTargetLabel: '', gapFilter: null, insights: [], insightsReady: false,
+    filtered: [], query: '', detailTargetIds: null, detailTargetLabel: '', gapFilter: null, insights: [], insightsReady: false, operationCycle: '', operationStatusFilter: 'all',
     baseMonth: Math.max(1, Math.min(12, new Date().getMonth() + 1)),
     baseMonthSource: '현재 월 기본값',
     masterById: new Map(), salesById: new Map(), salesByStore: new Map(),
@@ -1375,6 +1375,473 @@
     });
   }
 
+
+  const OP_STORAGE_KEY = 'ACUVUE_EDUCATION_JOURNEY_CYCLES_V1';
+
+  function currentOperationCycleKey(date = new Date()) {
+    const year = date.getFullYear();
+    const half = date.getMonth() < 6 ? 'H1' : 'H2';
+    return `${year} ${half}`;
+  }
+
+  function loadOperationStore() {
+    try {
+      const raw = localStorage.getItem(OP_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && typeof parsed === 'object' ? parsed : { cycles: {} };
+    } catch (e) {
+      return { cycles: {} };
+    }
+  }
+
+  function saveOperationStore(store) {
+    try {
+      localStorage.setItem(OP_STORAGE_KEY, JSON.stringify(store || { cycles: {} }));
+      return true;
+    } catch (e) {
+      console.warn('운영관리 저장 실패', e);
+      return false;
+    }
+  }
+
+  function ensureOperationCycleOptions() {
+    const select = $('operationCycleSelect');
+    if (!select) return;
+    const store = loadOperationStore();
+    const current = currentOperationCycleKey();
+    const keys = [...new Set([current, ...Object.keys(store.cycles || {})])]
+      .sort((a, b) => b.localeCompare(a, 'ko', { numeric: true }));
+    const preferred = S.operationCycle && keys.includes(S.operationCycle) ? S.operationCycle : current;
+    select.innerHTML = keys.map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join('');
+    select.value = preferred;
+    S.operationCycle = preferred;
+  }
+
+  function selectedOperationCycle() {
+    const store = loadOperationStore();
+    const key = $('operationCycleSelect')?.value || S.operationCycle || currentOperationCycleKey();
+    S.operationCycle = key;
+    return store.cycles?.[key] || null;
+  }
+
+  function commonFilterSummary() {
+    const parts = [];
+    if (S.query) parts.push(`검색: ${S.query}`);
+    [['regionFilter','지역'],['yearsFilter','연차'],['tierFilter','Tier'],['channelFilter','채널'],['repFilter','담당']].forEach(([id,label]) => {
+      const value = $(id)?.value;
+      if (value) parts.push(`${label}: ${value}`);
+    });
+    return parts.length ? parts.join(' · ') : '전체';
+  }
+
+  function operationCompletedRows(id) {
+    return completedEducationRowsForPerson(id);
+  }
+
+  function operationEducationMatch(id, title) {
+    const targetNorm = norm(title);
+    if (!targetNorm) return null;
+    const rows = operationCompletedRows(id);
+    let fuzzy = null;
+    for (const row of rows) {
+      const actual = educationDisplayTitle(row);
+      const actualNorm = norm(actual);
+      if (!actualNorm) continue;
+      if (actualNorm === targetNorm || actualNorm.includes(targetNorm) || targetNorm.includes(actualNorm)) return row;
+      if (!fuzzy && overlapScore(title, actual) >= 2) fuzzy = row;
+    }
+    return fuzzy;
+  }
+
+  function parseOperationDate(value) {
+    if (value == null || value === '') return null;
+    const raw = clean(value);
+    if (/^\d{5}(?:\.\d+)?$/.test(raw)) {
+      const serial = Number(raw);
+      if (Number.isFinite(serial)) return new Date((serial - 25569) * 86400 * 1000);
+    }
+    const normalized = raw.replace(/[.\/]/g, '-').replace(/\s.*$/, '');
+    const d = new Date(normalized);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  function operationDateLabel(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '-';
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  }
+
+  function addDays(date, days) {
+    const d = new Date(date.getTime());
+    d.setDate(d.getDate() + Number(days || 0));
+    return d;
+  }
+
+  function operationEducationPool(keys, id) {
+    const completed = new Set(operationCompletedRows(id).map(r => norm(educationDisplayTitle(r))).filter(Boolean));
+    const out = [];
+    const seen = new Set();
+    const add = title => {
+      const t = clean(title); const n = norm(t);
+      if (!t || !n || seen.has(n) || completed.has(n)) return;
+      seen.add(n); out.push(t);
+    };
+    (keys || []).forEach(key => {
+      (S.content || []).map(educationTitle).filter(Boolean).filter(t => educationRelated(t, key)).forEach(add);
+      (INSIGHT[key]?.eduFallback || []).forEach(add);
+    });
+    return out;
+  }
+
+  function buildOperationCohortFromInsights() {
+    const people = new Map();
+    const ensure = (person, sourceLabel, key) => {
+      const id = person?.안경사ID;
+      if (!id) return null;
+      if (!people.has(id)) {
+        people.set(id, {
+          id,
+          name: person.안경사명 || '', storeCode: person.안경원코드 || '', storeName: person.안경원명 || '',
+          region: person.지역 || '', tier: person.Tier || '', channel: person.채널 || '', rep: person.담당영업사원 || '',
+          sourceLabels: [], productKeys: [], gaps: [], candidates: []
+        });
+      }
+      const entry = people.get(id);
+      if (sourceLabel && !entry.sourceLabels.includes(sourceLabel)) entry.sourceLabels.push(sourceLabel);
+      if (key && !entry.productKeys.includes(key)) entry.productKeys.push(key);
+      return entry;
+    };
+
+    (S.insights || []).forEach((item, insightIndex) => {
+      (item.targetPeople || []).forEach(p => ensure(p, item.title, item.key));
+      if (item.gapPlans?.length) {
+        item.gapPlans.forEach((plan, gapIndex) => {
+          (plan.targetPeople || []).forEach(person => {
+            const entry = ensure(person, item.title, item.key);
+            if (!entry) return;
+            if (plan.q && !entry.gaps.includes(plan.q)) entry.gaps.push(plan.q);
+            const title = plan.rec?.title;
+            if (title) entry.candidates.push({ title, key: item.key, gap: plan.q || '', priority: insightIndex * 100 + gapIndex });
+          });
+        });
+      } else {
+        (item.targetPeople || []).forEach(person => {
+          const entry = ensure(person, item.title, item.key);
+          (item.recs || []).forEach((r, recIndex) => {
+            if (r?.title) entry.candidates.push({ title: r.title, key: item.key, gap: '', priority: insightIndex * 100 + 80 + recIndex });
+          });
+        });
+      }
+    });
+
+    return [...people.values()].map(entry => {
+      const seen = new Set();
+      const steps = [];
+      entry.candidates.sort((a, b) => a.priority - b.priority).forEach(c => {
+        const n = norm(c.title);
+        if (!n || seen.has(n) || operationEducationMatch(entry.id, c.title)) return;
+        seen.add(n);
+        steps.push({ title: c.title, productKey: c.key || '', sourceGap: c.gap || '' });
+      });
+      const pool = operationEducationPool(entry.productKeys, entry.id);
+      pool.forEach(title => {
+        if (steps.length >= 2) return;
+        const n = norm(title);
+        if (seen.has(n) || operationEducationMatch(entry.id, title)) return;
+        seen.add(n);
+        steps.push({ title, productKey: entry.productKeys[0] || '', sourceGap: '' });
+      });
+      return {
+        id: entry.id, name: entry.name, storeCode: entry.storeCode, storeName: entry.storeName,
+        region: entry.region, tier: entry.tier, channel: entry.channel, rep: entry.rep,
+        sourceLabels: entry.sourceLabels.slice(0, 4), productKeys: entry.productKeys,
+        gaps: entry.gaps.slice(0, 10), steps: steps.slice(0, 3), addedType: 'semester'
+      };
+    }).filter(x => x.steps.length);
+  }
+
+  function operationJourneyState(entry, cycle) {
+    const cadence = Number(cycle?.cadenceDays || 14);
+    const created = parseOperationDate(cycle?.createdAt) || new Date();
+    const steps = (entry.steps || []).map(step => {
+      const matched = operationEducationMatch(entry.id, step.title);
+      return {
+        ...step,
+        done: !!matched,
+        completedDate: matched ? parseOperationDate(educationDate(matched)) : null
+      };
+    });
+    const doneCount = steps.filter(s => s.done).length;
+    const nextIndex = steps.findIndex(s => !s.done);
+    const status = steps.length && doneCount >= steps.length ? 'complete' : doneCount > 0 ? 'progress' : 'not_started';
+    let dueDate = null;
+    let nextTitle = '';
+    if (nextIndex >= 0) {
+      nextTitle = steps[nextIndex].title;
+      if (nextIndex === 0) dueDate = created;
+      else {
+        const prior = steps[nextIndex - 1];
+        dueDate = prior.completedDate ? addDays(prior.completedDate, cadence) : addDays(created, cadence * nextIndex);
+      }
+    }
+    const now = new Date(); now.setHours(0,0,0,0);
+    if (dueDate) dueDate.setHours(0,0,0,0);
+    const due = status !== 'complete' && !!dueDate && dueDate <= now;
+    return { steps, doneCount, total: steps.length, nextIndex, nextTitle, dueDate, due, status };
+  }
+
+  function operationStatusLabel(state) {
+    if (state.status === 'complete') return 'Journey 완료';
+    if (state.status === 'progress') return '진행중';
+    return '미시작';
+  }
+
+  function operationStatusClass(state) {
+    if (state.status === 'complete') return 'complete';
+    if (state.due) return 'due';
+    if (state.status === 'progress') return 'progress';
+    return 'not-started';
+  }
+
+  function freezeCurrentOperationCycle() {
+    if (!S.master.length) return alert('먼저 통합 엑셀을 업로드해주세요.');
+    if (!S.insightsReady) {
+      S.insightsReady = true;
+      S.insights = generateInsights();
+      renderInsights();
+    }
+    if (!S.insights.length) return alert('현재 조건에서 확정할 교육 Opportunity가 없습니다.');
+
+    ensureOperationCycleOptions();
+    const key = $('operationCycleSelect')?.value || currentOperationCycleKey();
+    const store = loadOperationStore();
+    if (store.cycles?.[key]) {
+      const ok = confirm(`${key} 운영 대상이 이미 저장되어 있습니다. 현재 인사이트 기준으로 다시 확정할까요?`);
+      if (!ok) return;
+    }
+    const cohort = buildOperationCohortFromInsights();
+    if (!cohort.length) return alert('운영 Journey로 확정할 대상이 없습니다.');
+    const now = new Date();
+    store.cycles = store.cycles || {};
+    store.cycles[key] = {
+      key,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      cadenceDays: Number($('operationCadence')?.value || 14),
+      baseMonth: S.baseMonth,
+      filterSummary: commonFilterSummary(),
+      baselineMasterIds: S.master.map(p => p.안경사ID).filter(Boolean),
+      cohort
+    };
+    saveOperationStore(store);
+    S.operationCycle = key;
+    renderOperations(S.filtered?.length ? S.filtered : filtered());
+    toast(`${key} 운영 대상 ${cohort.length}명 확정`);
+  }
+
+  function newPersonOperationPlan(person) {
+    const id = person.안경사ID;
+    const perRows = (S.perById.get(id) || []).filter(p => p.gap);
+    const relevantGaps = perRows.filter(p => ['ast','mf','max'].some(k => questionRelevance(p, k) > 0));
+    const keys = [];
+    const steps = [];
+    const seen = new Set();
+    const addStep = (title, key, gap='') => {
+      const n = norm(title);
+      if (!title || !n || seen.has(n) || operationEducationMatch(id, title)) return;
+      seen.add(n); steps.push({ title, productKey: key || '', sourceGap: gap });
+    };
+
+    relevantGaps.forEach(g => {
+      const key = ['ast','mf','max'].find(k => questionRelevance(g, k) > 0);
+      if (key && !keys.includes(key)) keys.push(key);
+      const rec = findBestEducationForQuestion(g.문항);
+      addStep(rec.title, key, g.문항);
+    });
+
+    if (!keys.length) {
+      ['ast','mf','max'].forEach(key => {
+        const rate = metrics(id).growths[key]?.info?.rate;
+        if (rate != null && rate < 0) keys.push(key);
+      });
+    }
+    operationEducationPool(keys, id).forEach(title => { if (steps.length < 2) addStep(title, keys[0] || '', ''); });
+    return {
+      keys,
+      steps: steps.slice(0, 3),
+      gaps: relevantGaps.map(g => g.문항).slice(0, 8),
+      source: relevantGaps.length ? '2026 인식 Gap 기반' : keys.length ? '소속 ACC 판매 기반' : '자동 배정 근거 부족'
+    };
+  }
+
+  function addRollingPersonToCycle(id) {
+    const person = S.masterById.get(id);
+    const cycle = selectedOperationCycle();
+    if (!person || !cycle) return;
+    const plan = newPersonOperationPlan(person);
+    if (!plan.steps.length) return alert('현재 데이터만으로 자동 배정할 교육 근거가 부족합니다.');
+    const store = loadOperationStore();
+    const key = cycle.key;
+    const target = store.cycles[key];
+    if (!target) return;
+    if ((target.cohort || []).some(x => x.id === id)) return;
+    target.cohort.push({
+      id, name: person.안경사명 || '', storeCode: person.안경원코드 || '', storeName: person.안경원명 || '',
+      region: person.지역 || '', tier: person.Tier || '', channel: person.채널 || '', rep: person.담당영업사원 || '',
+      sourceLabels: [`월별 신규 안경사 · ${plan.source}`], productKeys: plan.keys, gaps: plan.gaps,
+      steps: plan.steps, addedType: 'rolling', addedAt: new Date().toISOString()
+    });
+    target.updatedAt = new Date().toISOString();
+    saveOperationStore(store);
+    renderOperations(S.filtered?.length ? S.filtered : filtered());
+    toast(`${person.안경사명 || id} Journey 추가 완료`);
+  }
+
+  function renderOperations(commonRows) {
+    ensureOperationCycleOptions();
+    const cycle = selectedOperationCycle();
+    const kpiBox = $('operationKpiGrid');
+    const list = $('operationJourneyList');
+    const intake = $('rollingIntakeList');
+    const intakeCount = $('rollingIntakeCount');
+    if (!kpiBox || !list || !intake) return;
+
+    if (!cycle) {
+      if ($('operationCycleNote')) $('operationCycleNote').textContent = `${S.operationCycle || currentOperationCycleKey()} · 아직 운영 대상이 확정되지 않았습니다.`;
+      kpiBox.innerHTML = '';
+      list.innerHTML = '<div class="empty-state">교육 인사이트를 실행한 뒤 <b>현재 인사이트 운영 대상 확정</b>을 눌러주세요.</div>';
+      intake.innerHTML = '<div class="empty-state">운영 Cycle을 먼저 확정해주세요.</div>';
+      if (intakeCount) intakeCount.textContent = '';
+      if ($('operationCadence')) $('operationCadence').value = '14';
+      return;
+    }
+
+    if ($('operationCadence')) $('operationCadence').value = String(cycle.cadenceDays || 14);
+    const created = parseOperationDate(cycle.createdAt);
+    if ($('operationCycleNote')) {
+      $('operationCycleNote').innerHTML = `<b>${esc(cycle.key)}</b> · 최초 확정 ${esc(created ? `${created.getFullYear()}.${created.getMonth()+1}.${created.getDate()}` : '-')} · ${cycle.cohort.length}명 · 기준 ${esc(cycle.filterSummary || '전체')}`;
+    }
+
+    const allowedIds = new Set((commonRows || []).map(p => p.안경사ID));
+    const cohortRows = (cycle.cohort || []).filter(x => !commonRows || allowedIds.has(x.id));
+    const stateRows = cohortRows.map(entry => ({ entry, state: operationJourneyState(entry, cycle) }));
+    const notStarted = stateRows.filter(x => x.state.status === 'not_started').length;
+    const progress = stateRows.filter(x => x.state.status === 'progress').length;
+    const complete = stateRows.filter(x => x.state.status === 'complete').length;
+    const due = stateRows.filter(x => x.state.due).length;
+
+    const baseline = new Set(cycle.baselineMasterIds || []);
+    const cohortIds = new Set((cycle.cohort || []).map(x => x.id));
+    const pendingNew = (commonRows || []).filter(p => !baseline.has(p.안경사ID) && !cohortIds.has(p.안경사ID));
+
+    kpiBox.innerHTML = [
+      ['운영 대상', `${stateRows.length}명`, `${new Set(cohortRows.map(x => storeKey(S.masterById.get(x.id) || x)).filter(Boolean)).size} ACC`],
+      ['미시작', `${notStarted}명`, '1차 교육 전달 필요'],
+      ['진행중', `${progress}명`, '다음 교육 대기/진행'],
+      ['Journey 완료', `${complete}명`, `${fmtPct(stateRows.length ? complete / stateRows.length : null)} 완료`],
+      ['다음 전달', `${due}명`, '오늘 기준 전달 시점 도래'],
+      ['신규 안경사', `${pendingNew.length}명`, 'Rolling Intake 대기']
+    ].map(([label,value,sub]) => `<div class="operation-kpi-card"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(sub)}</small></div>`).join('');
+
+    const statusFilter = S.operationStatusFilter || 'all';
+    let visible = stateRows;
+    if (statusFilter === 'not_started') visible = visible.filter(x => x.state.status === 'not_started');
+    if (statusFilter === 'progress') visible = visible.filter(x => x.state.status === 'progress');
+    if (statusFilter === 'complete') visible = visible.filter(x => x.state.status === 'complete');
+    if (statusFilter === 'due') visible = visible.filter(x => x.state.due);
+
+    document.querySelectorAll('[data-op-status]').forEach(btn => btn.classList.toggle('active', btn.dataset.opStatus === statusFilter));
+
+    if (!visible.length) {
+      list.innerHTML = '<div class="empty-state">현재 조건에 해당하는 Journey 대상이 없습니다.</div>';
+    } else {
+      list.innerHTML = visible.map(({entry,state}) => {
+        const current = S.masterById.get(entry.id) || entry;
+        const statusCls = operationStatusClass(state);
+        const stepHtml = state.steps.map((s, idx) => `
+          <div class="journey-step ${s.done ? 'done' : (idx === state.nextIndex ? 'next' : '')}">
+            <span>${s.done ? '✓' : idx + 1}</span>
+            <div><b>${esc(s.title)}</b><small>${s.done ? `완료${s.completedDate ? ` · ${operationDateLabel(s.completedDate)}` : ''}` : idx === state.nextIndex ? '다음 교육' : '예정'}</small></div>
+          </div>`).join('');
+        const nextText = state.status === 'complete' ? 'Journey 완료' : state.nextTitle || '-';
+        const dueText = state.status === 'complete' ? '완료' : state.due ? `지금 전달 · ${operationDateLabel(state.dueDate)}` : `예정 ${operationDateLabel(state.dueDate)}`;
+        return `<div class="journey-person-card">
+          <div class="journey-person-head">
+            <div><b>${esc(current.안경사명 || entry.name || entry.id)}</b><span>${esc(current.안경원명 || entry.storeName || '')} · ${esc(current.지역 || entry.region || '-')}</span></div>
+            <span class="journey-status ${statusCls}">${esc(operationStatusLabel(state))} · ${state.doneCount}/${state.total}</span>
+          </div>
+          <div class="journey-source">${esc((entry.sourceLabels || []).join(' · ') || '교육 Opportunity')}</div>
+          <div class="journey-steps">${stepHtml}</div>
+          <div class="journey-next">
+            <div><small>다음 Action</small><b>${esc(nextText)}</b></div>
+            <span class="next-due ${state.due ? 'due' : ''}">${esc(dueText)}</span>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    if (intakeCount) intakeCount.textContent = `${pendingNew.length}명`;
+    if (!pendingNew.length) {
+      intake.innerHTML = '<div class="empty-state">현재 공통 조건에서 새로 추가된 안경사가 없습니다.</div>';
+    } else {
+      intake.innerHTML = pendingNew.map(person => {
+        const plan = newPersonOperationPlan(person);
+        const gapCount = (S.perById.get(person.안경사ID) || []).filter(x => x.gap).length;
+        const eduCount = completedEducationRowsForPerson(person.안경사ID).length;
+        const recText = plan.steps.length ? plan.steps.map(x => x.title).slice(0,2).join(' · ') : '자동 배정 근거 부족';
+        return `<div class="rolling-person-card">
+          <div class="rolling-person-copy">
+            <b>${esc(person.안경사명 || person.안경사ID)}</b>
+            <span>${esc(person.안경원명 || '-')} · ${esc(person.지역 || '-')} · ${esc(person.Tier || '-')}</span>
+            <div class="rolling-tags"><em>인식 Gap ${gapCount}개</em><em>교육 ${eduCount}건</em><em>${esc(plan.source)}</em></div>
+            <small>추천: ${esc(recText)}</small>
+          </div>
+          <button class="button ${plan.steps.length ? 'primary' : 'ghost'}" type="button" data-add-rolling="${esc(person.안경사ID)}" ${plan.steps.length ? '' : 'disabled'}>${plan.steps.length ? 'Journey 추가' : '확인 필요'}</button>
+        </div>`;
+      }).join('');
+      intake.querySelectorAll('[data-add-rolling]').forEach(btn => {
+        btn.onclick = () => addRollingPersonToCycle(btn.dataset.addRolling);
+      });
+    }
+  }
+
+  function downloadOperationList() {
+    if (!window.XLSX) return alert('XLSX 라이브러리가 필요합니다.');
+    const cycle = selectedOperationCycle();
+    if (!cycle) return alert('먼저 운영 대상을 확정해주세요.');
+    const hasFilteredRows = Array.isArray(S.filtered);
+    const allowed = new Set((S.filtered || []).map(p => p.안경사ID));
+    const rows = (cycle.cohort || []).filter(x => !hasFilteredRows || allowed.has(x.id)).map(entry => {
+      const state = operationJourneyState(entry, cycle);
+      const person = S.masterById.get(entry.id) || entry;
+      const row = {
+        운영Cycle: cycle.key,
+        안경사ID: entry.id,
+        안경사명: person.안경사명 || entry.name || '',
+        안경원코드: person.안경원코드 || entry.storeCode || '',
+        안경원명: person.안경원명 || entry.storeName || '',
+        지역: person.지역 || entry.region || '',
+        Tier: person.Tier || entry.tier || '',
+        Journey상태: operationStatusLabel(state),
+        완료수: state.doneCount,
+        총교육수: state.total,
+        다음교육: state.nextTitle || '',
+        다음전달예정: state.dueDate ? `${state.dueDate.getFullYear()}-${String(state.dueDate.getMonth()+1).padStart(2,'0')}-${String(state.dueDate.getDate()).padStart(2,'0')}` : '',
+        전달대상여부: state.due ? 'Y' : 'N',
+        인사이트출처: (entry.sourceLabels || []).join(' | '),
+        관련인식Gap: (entry.gaps || []).join(' | ')
+      };
+      state.steps.forEach((step, i) => {
+        row[`교육${i+1}`] = step.title;
+        row[`교육${i+1}_완료`] = step.done ? 'Y' : 'N';
+        row[`교육${i+1}_완료일`] = step.completedDate ? `${step.completedDate.getFullYear()}-${String(step.completedDate.getMonth()+1).padStart(2,'0')}-${String(step.completedDate.getDate()).padStart(2,'0')}` : '';
+      });
+      return row;
+    });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), '교육운영관리');
+    XLSX.writeFile(wb, `ACUVUE_${cycle.key.replace(/\s/g,'_')}_교육운영관리.xlsx`);
+  }
+
   function render() {
     const rows = filtered();
     S.filtered = rows;
@@ -1392,6 +1859,7 @@
     renderLinkedGapEducation(rows);
     const detailRows = rowsForDetail(rows);
     renderSegment(detailRows, detailRows.map(r => metrics(r.안경사ID)));
+    renderOperations(rows);
 
     if (!S.query && $('queryExplanation')) {
       $('queryExplanation').textContent = `공통 분석 조건 · 현재 필터 결과 ${rows.length}명 · 판매 기준 ${S.baseMonth}월 (${S.baseMonthSource}) · 판매는 안경원(ACC) 단위로 중복 제거`;
@@ -1460,6 +1928,7 @@
 
   function view(id) {
     if (id === 'insight' && S.insightsReady) renderInsights();
+    if (id === 'operations') renderOperations(S.filtered?.length ? S.filtered : filtered());
     document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === id));
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === id));
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1535,6 +2004,19 @@
     $('downloadResults').onclick = download;
     $('closeProfile').onclick = () => { $('profilePanel').hidden = true; };
     $('refreshInsights').onclick = () => { renderInsights(); toast('교육 Opportunity 분석 완료'); };
+    if ($('freezeOperation')) $('freezeOperation').onclick = freezeCurrentOperationCycle;
+    if ($('downloadOperation')) $('downloadOperation').onclick = downloadOperationList;
+    if ($('operationCycleSelect')) $('operationCycleSelect').onchange = () => { S.operationCycle = $('operationCycleSelect').value; S.operationStatusFilter = 'all'; renderOperations(S.filtered?.length ? S.filtered : filtered()); };
+    if ($('operationCadence')) $('operationCadence').onchange = () => {
+      const cycle = selectedOperationCycle();
+      if (!cycle) return;
+      const store = loadOperationStore();
+      const key = cycle.key;
+      if (store.cycles?.[key]) { store.cycles[key].cadenceDays = Number($('operationCadence').value || 14); store.cycles[key].updatedAt = new Date().toISOString(); saveOperationStore(store); }
+      renderOperations(S.filtered?.length ? S.filtered : filtered());
+    };
+    document.querySelectorAll('[data-op-status]').forEach(btn => { btn.onclick = () => { S.operationStatusFilter = btn.dataset.opStatus || 'all'; renderOperations(S.filtered?.length ? S.filtered : filtered()); }; });
+    ensureOperationCycleOptions();
     render();
   });
 })();

@@ -25,6 +25,7 @@
 <nav class="tabs" aria-label="대시보드 메뉴">
   <button class="tab active" data-view="overview">통합 대시보드</button>
   <button class="tab" data-view="insight">교육 인사이트</button>
+  <button class="tab" data-view="operations">교육 운영관리</button>
   <button class="tab" data-view="segment">안경사 상세 분석</button>
 </nav>
 
@@ -109,6 +110,66 @@
       </div>
       <div id="insightCards" class="insight-list">
         <div class="empty-state">엑셀 업로드 후 <b>교육 Opportunity 분석</b>을 눌러주세요.</div>
+      </div>
+    </article>
+  </section>
+
+  <section id="operations" class="view">
+    <article class="panel operation-hero">
+      <div>
+        <p class="eyebrow dark">EDUCATION JOURNEY MANAGEMENT</p>
+        <h2>교육 운영관리</h2>
+        <p>반기 인사이트에서 확정한 대상자를 고정하고, 월별 교육 완료 데이터로 2~3개 교육 Journey의 진행 상태를 관리합니다.</p>
+      </div>
+      <div class="operation-controls">
+        <label>운영 Cycle
+          <select id="operationCycleSelect"></select>
+        </label>
+        <label>교육 간격
+          <select id="operationCadence">
+            <option value="7">1주</option>
+            <option value="10">10일</option>
+            <option value="14" selected>2주</option>
+          </select>
+        </label>
+        <button class="button primary" id="freezeOperation" type="button">현재 인사이트 운영 대상 확정</button>
+        <button class="button" id="downloadOperation" type="button">운영 리스트 다운로드</button>
+      </div>
+      <div id="operationCycleNote" class="operation-cycle-note">교육 인사이트를 실행한 뒤 운영 대상을 확정하세요.</div>
+      <div class="operation-rule-note">※ 공통 검색/필터는 운영 대상 <b>조회 범위만</b> 좁힙니다. 한 번 확정된 반기 Cohort 자체는 바뀌지 않습니다.</div>
+    </article>
+
+    <div id="operationKpiGrid" class="operation-kpi-grid"></div>
+
+    <article class="panel">
+      <div class="panel-head operation-panel-head">
+        <div>
+          <h2>Journey 진행 현황</h2>
+          <p>완료 데이터를 기준으로 다음에 전달할 교육과 진행 상태를 자동으로 업데이트합니다.</p>
+        </div>
+        <div class="operation-status-filters" id="operationStatusFilters">
+          <button class="active" data-op-status="all">전체</button>
+          <button data-op-status="not_started">미시작</button>
+          <button data-op-status="progress">진행중</button>
+          <button data-op-status="complete">완료</button>
+          <button data-op-status="due">다음 전달</button>
+        </div>
+      </div>
+      <div id="operationJourneyList" class="operation-journey-list">
+        <div class="empty-state">운영 대상이 아직 확정되지 않았습니다.</div>
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>월별 신규 안경사 · Rolling Intake</h2>
+          <p>반기 Cohort 확정 이후 새로 추가된 안경사를 찾아, 인식 Gap 또는 소속 ACC 판매 상태를 기준으로 Journey에 추가합니다.</p>
+        </div>
+        <span class="result-count" id="rollingIntakeCount"></span>
+      </div>
+      <div id="rollingIntakeList" class="rolling-intake-list">
+        <div class="empty-state">운영 Cycle을 먼저 확정해주세요.</div>
       </div>
     </article>
   </section>
