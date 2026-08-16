@@ -15,10 +15,11 @@
     <p>안경원 판매성과와 안경사 인식·교육 이력을 연결해, 누구에게 어떤 교육이 필요한지 찾습니다.</p>
   </div>
   <div class="header-actions">
-    <label class="button primary" for="workbookInput">통합 엑셀 업로드</label>
+    <label class="button primary" for="workbookInput">Excel 업로드 / 교체</label>
     <input id="workbookInput" type="file" accept=".xlsx,.xls" hidden />
     <button class="button" id="downloadResults">현재 대상 다운로드</button>
-    <span class="upload-status" id="uploadStatus">데이터 없음</span>
+    <button class="button ghost" id="deleteSavedWorkbook" type="button">저장 데이터 삭제</button>
+    <span class="upload-status" id="uploadStatus">저장된 데이터 확인 중…</span>
   </div>
 </header>
 

@@ -1940,9 +1940,100 @@
     clearTimeout(toast._timer); toast._timer = setTimeout(() => el.classList.remove('show'), 2200);
   }
 
-  async function upload(file) {
+
+  const LOCAL_DATA_DB = 'ACUVUE_DASHBOARD_LOCAL_DATA';
+  const LOCAL_DATA_DB_VERSION = 1;
+  const LOCAL_DATA_STORE = 'raw_workbook';
+  const LOCAL_DATA_KEY = 'current';
+
+  function openLocalDataDb() {
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) {
+        reject(new Error('이 브라우저는 IndexedDB를 지원하지 않습니다.'));
+        return;
+      }
+      const req = indexedDB.open(LOCAL_DATA_DB, LOCAL_DATA_DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(LOCAL_DATA_STORE)) {
+          db.createObjectStore(LOCAL_DATA_STORE, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('로컬 데이터베이스를 열 수 없습니다.'));
+    });
+  }
+
+  async function saveRawWorkbookToBrowser(meta, arrayBuffer) {
+    const db = await openLocalDataDb();
+    try {
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(LOCAL_DATA_STORE, 'readwrite');
+        tx.objectStore(LOCAL_DATA_STORE).put({
+          id: LOCAL_DATA_KEY,
+          name: meta.name || 'uploaded.xlsx',
+          type: meta.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          lastModified: Number(meta.lastModified || Date.now()),
+          savedAt: Date.now(),
+          size: Number(meta.size || arrayBuffer.byteLength || 0),
+          buffer: arrayBuffer
+        });
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error || new Error('원본 Excel 저장에 실패했습니다.'));
+        tx.onabort = () => reject(tx.error || new Error('원본 Excel 저장이 중단되었습니다.'));
+      });
+    } finally {
+      db.close();
+    }
+    try {
+      if (navigator.storage?.persist) await navigator.storage.persist();
+    } catch (_) {}
+  }
+
+  async function getSavedRawWorkbook() {
+    const db = await openLocalDataDb();
+    try {
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(LOCAL_DATA_STORE, 'readonly');
+        const req = tx.objectStore(LOCAL_DATA_STORE).get(LOCAL_DATA_KEY);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error || new Error('저장된 Excel을 불러올 수 없습니다.'));
+      });
+    } finally {
+      db.close();
+    }
+  }
+
+  async function deleteSavedRawWorkbook() {
+    const db = await openLocalDataDb();
+    try {
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(LOCAL_DATA_STORE, 'readwrite');
+        tx.objectStore(LOCAL_DATA_STORE).delete(LOCAL_DATA_KEY);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error || new Error('저장 데이터 삭제에 실패했습니다.'));
+      });
+    } finally {
+      db.close();
+    }
+  }
+
+  function savedDataTimeText(value) {
+    if (!value) return '';
+    try {
+      return new Intl.DateTimeFormat('ko-KR', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      }).format(new Date(value));
+    } catch (_) {
+      return '';
+    }
+  }
+
+  async function applyWorkbookBuffer(arrayBuffer, meta = {}, options = {}) {
     if (!window.XLSX) throw new Error('XLSX 라이브러리가 로드되지 않았습니다.');
-    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: false });
+
+    const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: false });
     S.master = normMaster(sheet(wb, aliases.master));
     S.content = sheet(wb, aliases.content);
     S.edu = sheet(wb, aliases.edu);
@@ -1954,15 +2045,68 @@
     S.rec = sheet(wb, aliases.rec);
 
     const detected = detectSalesBaseMonth(wb, S.sales);
-    S.baseMonth = detected.month; S.baseMonthSource = detected.source;
+    S.baseMonth = detected.month;
+    S.baseMonthSource = detected.source;
     if ($('salesBaseMonth')) $('salesBaseMonth').value = String(S.baseMonth);
 
-    rebuildIndexes(); buildFilters();
-    S.query = ''; S.detailTargetIds = null; S.detailTargetLabel = ''; S.gapFilter = null; S.insights = []; S.insightsReady = false;
+    rebuildIndexes();
+    buildFilters();
+
+    S.query = '';
+    S.detailTargetIds = null;
+    S.detailTargetLabel = '';
+    S.gapFilter = null;
+    S.insights = [];
+    S.insightsReady = false;
+
     render();
     $('insightCards').innerHTML = '<div class="empty-state">데이터가 준비되었습니다. <b>교육 Opportunity 분석</b>을 눌러주세요.</div>';
-    $('uploadStatus').textContent = `${file.name} · ${S.master.length}명 / ${dedupeSalesRows(S.sales).length} ACC · 인식25 ${S.per25.length ? 'O' : '-'} / 인식26 ${S.per26.length ? 'O' : '-'}`;
-    toast(`업로드 완료 · 판매 기준 ${S.baseMonth}월 · 25→26 인식/신규·웨어러 분석 준비`);
+
+    const fileName = meta.name || '저장된 Excel';
+    const dataSummary = `${S.master.length.toLocaleString('ko-KR')}명 / ${dedupeSalesRows(S.sales).length.toLocaleString('ko-KR')} ACC · 인식25 ${S.per25.length ? 'O' : '-'} / 인식26 ${S.per26.length ? 'O' : '-'}`;
+
+    if (options.saveOriginal) {
+      await saveRawWorkbookToBrowser(meta, arrayBuffer);
+      const savedAt = savedDataTimeText(Date.now());
+      $('uploadStatus').textContent = `💾 브라우저 저장 완료 · ${fileName} · ${dataSummary}${savedAt ? ` · ${savedAt}` : ''}`;
+      toast(`업로드 + 로컬 저장 완료 · 판매 기준 ${S.baseMonth}월`);
+    } else {
+      const savedAt = savedDataTimeText(meta.savedAt);
+      $('uploadStatus').textContent = `💾 저장 데이터 자동 로드 · ${fileName} · ${dataSummary}${savedAt ? ` · 저장 ${savedAt}` : ''}`;
+      toast(`저장된 Excel 자동 로드 · 판매 기준 ${S.baseMonth}월`);
+    }
+  }
+
+  async function restoreSavedWorkbook() {
+    if (!('indexedDB' in window)) {
+      $('uploadStatus').textContent = '데이터 없음 · Excel을 업로드해주세요.';
+      return false;
+    }
+    try {
+      const saved = await getSavedRawWorkbook();
+      if (!saved?.buffer) {
+        $('uploadStatus').textContent = '데이터 없음 · Excel을 최초 1회 업로드해주세요.';
+        return false;
+      }
+      $('uploadStatus').textContent = `저장된 Excel 불러오는 중… · ${saved.name || ''}`;
+      await applyWorkbookBuffer(saved.buffer, saved, { saveOriginal: false });
+      return true;
+    } catch (err) {
+      console.error('저장된 Excel 자동 로드 실패:', err);
+      $('uploadStatus').textContent = '저장 데이터 로드 실패 · Excel을 다시 업로드해주세요.';
+      return false;
+    }
+  }
+
+  async function upload(file) {
+    if (!file) return;
+    const arrayBuffer = await file.arrayBuffer();
+    await applyWorkbookBuffer(arrayBuffer, {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified: file.lastModified
+    }, { saveOriginal: true });
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -1970,6 +2114,25 @@
     $('workbookInput').onchange = e => e.target.files[0] && upload(e.target.files[0]).catch(err => {
       console.error(err); alert(`업로드 실패\n\n${err.message || err}`); toast('업로드 실패');
     });
+    const deleteSavedWorkbookButton = $('deleteSavedWorkbook');
+    if (deleteSavedWorkbookButton) {
+      deleteSavedWorkbookButton.onclick = async () => {
+        const ok = confirm(
+          '이 PC/브라우저에 저장된 원본 Excel을 삭제할까요?\n\n' +
+          'GitHub의 대시보드 파일은 삭제되지 않습니다.\n' +
+          '삭제 후에는 Excel을 다시 업로드해야 합니다.'
+        );
+        if (!ok) return;
+        try {
+          await deleteSavedRawWorkbook();
+          toast('브라우저 저장 데이터 삭제 완료');
+          setTimeout(() => window.location.reload(), 450);
+        } catch (err) {
+          console.error(err);
+          alert(`저장 데이터 삭제 실패\n\n${err.message || err}`);
+        }
+      };
+    }
     $('runQuery').onclick = () => {
       S.query = $('smartQuery').value || '';
       S.detailTargetIds = null;
@@ -2018,5 +2181,8 @@
     document.querySelectorAll('[data-op-status]').forEach(btn => { btn.onclick = () => { S.operationStatusFilter = btn.dataset.opStatus || 'all'; renderOperations(S.filtered?.length ? S.filtered : filtered()); }; });
     ensureOperationCycleOptions();
     render();
+
+    // 같은 PC/같은 브라우저에서는 최초 1회 업로드한 원본 Excel을 자동 복원합니다.
+    restoreSavedWorkbook();
   });
 })();

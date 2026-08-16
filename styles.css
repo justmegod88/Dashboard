@@ -786,3 +786,31 @@ img,svg,canvas{max-width:100%}
 @media(max-width:390px){
   .operation-controls,.operation-kpi-grid{grid-template-columns:1fr}
 }
+/* =========================================================
+   LOCAL RAW EXCEL STORAGE
+   ========================================================= */
+#deleteSavedWorkbook{
+  border-color:#d9e1e7;
+  color:#6b7d8d;
+}
+#deleteSavedWorkbook:hover{
+  border-color:#e3b9b9;
+  color:#a54848;
+  background:#fff8f8;
+}
+.upload-status{
+  max-width:560px;
+  line-height:1.45;
+}
+@media(max-width:650px){
+  .header-actions{
+    grid-template-columns:1fr 1fr;
+  }
+  .header-actions #deleteSavedWorkbook{
+    grid-column:1 / -1;
+    width:100%;
+  }
+  .upload-status{
+    max-width:none;
+  }
+}
