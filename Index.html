@@ -1706,6 +1706,14 @@ img,svg,canvas{max-width:100%}
     return (S.perEffectiveById.get(id) || []).some(p => (!productKey || questionRelevance(p, productKey) > 0) && p.gap);
   }
 
+  // "우수 안경사" 판별용: 관련 인식 문항에 전부 목표를 충족했는지 확인.
+  // 응답 데이터 자체가 없으면 "우수"라고 판단할 근거가 없으므로 false를 반환한다(=lowPerceptionForPerson의 단순 반대가 아님).
+  function personMeetsPerceptionTarget(id, productKey) {
+    const rows = (S.perEffectiveById.get(id) || []).filter(p => !productKey || questionRelevance(p, productKey) > 0);
+    if (!rows.length) return false;
+    return rows.every(p => !p.gap);
+  }
+
   function smartDimensionValue(field, q) {
     const rawQ = clean(q);
     const nq = norm(rawQ);
@@ -1758,6 +1766,30 @@ img,svg,canvas{max-width:100%}
           const m = metrics(r.안경사ID);
           if (product) return m.growths[product].info.rate != null && m.growths[product].info.rate < 0;
           return ['ast', 'mf', 'max'].some(k => m.growths[k].info.rate != null && m.growths[k].info.rate < 0);
+        }
+      });
+    }
+    // "역성장"과 겹치지 않도록 "성장"만 단독으로 쓰인 경우만 긍정 성장 조건으로 인식
+    if (/성장|호조|상승세/i.test(q) && !/역성장/i.test(q)) {
+      conditions.push({
+        label: product ? `${FITTING_COLUMNS[product].label} 성장` : '제품 성장',
+        test: r => {
+          const m = metrics(r.안경사ID);
+          if (product) return m.growths[product].info.rate != null && m.growths[product].info.rate > 0;
+          return ['ast', 'mf', 'max'].some(k => m.growths[k].info.rate != null && m.growths[k].info.rate > 0);
+        }
+      });
+    }
+    // "우수/베스트프랙티스": 판매 성장 + 인식 목표 충족을 동시에 만족하는 사람 (교육 대상이 아니라 참고용 그룹)
+    if (/우수|베스트|모범|탑\s?안경사|best\s?practice/i.test(q)) {
+      conditions.push({
+        label: product ? `${FITTING_COLUMNS[product].label} 우수(성장+인식 목표달성)` : '우수 안경사(성장+인식 목표달성)',
+        test: r => {
+          const m = metrics(r.안경사ID);
+          const growthOk = product
+            ? (m.growths[product].info.rate != null && m.growths[product].info.rate > 0)
+            : ['ast', 'mf', 'max'].some(k => m.growths[k].info.rate != null && m.growths[k].info.rate > 0);
+          return growthOk && personMeetsPerceptionTarget(r.안경사ID, product);
         }
       });
     }
