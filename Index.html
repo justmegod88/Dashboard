@@ -1,0 +1,3356 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ACUVUE 교육 추천 인사이트 대시보드</title>
+  <style>
+:root{
+  --navy:#15365d;--blue:#2469a7;--teal:#009c9c;--ink:#172334;--muted:#697789;
+  --bg:#f3f6fa;--panel:#fff;--line:#dce4ed;--green:#16865b;--amber:#d78616;
+  --red:#bc3f48;--purple:#7761c5;--shadow:0 8px 25px rgba(26,53,87,.08)
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,"Noto Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select{font:inherit}
+.app-header{background:linear-gradient(125deg,#102c4f,#1f6598);color:#fff;padding:28px clamp(20px,4vw,60px);display:flex;gap:30px;align-items:center;justify-content:space-between}
+.header-copy{max-width:850px}.app-header h1{margin:2px 0 8px;font-size:clamp(25px,3vw,39px);letter-spacing:-.04em}.app-header p{margin:0;opacity:.88;line-height:1.55}
+.eyebrow{font-size:12px;letter-spacing:.16em;font-weight:850}.eyebrow.dark{color:var(--teal);opacity:1;margin:0 0 5px}
+.header-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.button{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:10px 14px;font-weight:780;cursor:pointer;transition:.18s ease}.button:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(18,45,78,.08)}.button.primary{background:var(--teal);border-color:var(--teal);color:#fff}.button.ghost{background:transparent}.upload-status{font-size:12px;background:rgba(255,255,255,.14);padding:9px 11px;border-radius:8px}
+.upload-status.error{background:rgba(255,120,120,.28);white-space:pre-line;line-height:1.5}
+.base-month-hint{display:block;margin-top:5px;color:var(--muted);font-weight:600}
+.base-month-hint.warn{color:var(--amber)}
+.tabs{display:flex;overflow:auto;background:#fff;border-bottom:1px solid var(--line);padding:0 clamp(15px,4vw,60px);position:sticky;top:0;z-index:20}.tab{padding:15px 18px;border:0;background:transparent;white-space:nowrap;font-weight:780;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent}.tab.active{color:var(--blue);border-bottom-color:var(--teal)}
+main{max-width:1600px;margin:auto;padding:22px clamp(15px,3vw,40px) 60px}.search-shell,.panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow)}.search-shell{padding:18px;margin-bottom:18px}.smart-search label{display:block;font-weight:820;margin-bottom:7px}.search-row{display:flex;gap:8px}.search-row input{flex:1;border:1px solid var(--line);border-radius:9px;padding:12px;font-size:15px}.examples{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.examples button{border:0;background:#edf4fb;color:#225d91;border-radius:999px;padding:7px 10px;font-weight:760;cursor:pointer}.filters{display:grid;grid-template-columns:repeat(6,minmax(115px,1fr)) auto;gap:10px;margin-top:16px;align-items:end}.filters label{font-size:12px;color:var(--muted);font-weight:720}.filters select{display:block;width:100%;margin-top:5px;border:1px solid var(--line);border-radius:8px;padding:9px;background:#fff}.reset-filter{height:39px}.query-explanation{margin-top:12px;padding:10px 12px;background:#f1f8f8;border-left:4px solid var(--teal);font-size:13px;line-height:1.5}
+.view{display:none}.view.active{display:block}.kpi-grid{display:grid;grid-template-columns:repeat(6,minmax(145px,1fr));gap:12px;margin-bottom:16px}.kpi-card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:16px;box-shadow:var(--shadow);min-width:0}.kpi-card span.label{display:block;color:var(--muted);font-size:12px}.kpi-card strong{font-size:27px;display:block;margin:7px 0;letter-spacing:-.04em;line-height:1.1}.kpi-card small{color:var(--muted);display:block;line-height:1.45}.metric-note{margin-top:5px}.negative{color:var(--red)!important}.positive{color:var(--green)!important}.new-sale{color:var(--blue)!important}.neutral{color:var(--muted)!important}
+.panel{padding:19px;margin-bottom:16px}.panel h2{margin:0 0 5px;font-size:19px;letter-spacing:-.02em}.panel p{color:var(--muted);margin:0;line-height:1.5}.panel-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:16px;align-items:flex-start}
+.gap-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.gap-card{border:1px solid var(--line);text-align:left;padding:16px;border-radius:13px;background:#f8fafc;cursor:pointer;transition:.18s ease}.gap-card:hover{transform:translateY(-2px);box-shadow:0 7px 18px rgba(18,45,78,.08)}.gap-card.active{outline:2px solid var(--teal);background:#f2fbfb}.gap-card span{font-size:13px;color:var(--muted);font-weight:760}.gap-card b{display:block;font-size:24px;margin:7px 0}.gap-card small{color:var(--muted)}.gap-card.education{border-top:4px solid var(--blue)}.gap-card.perception{border-top:4px solid var(--amber)}.gap-card.ast{border-top:4px solid #f28b41}.gap-card.mf{border-top:4px solid #4b8fdd}.gap-card.max{border-top:4px solid var(--purple)}
+.linked-panel{overflow:hidden}.linked-gap-education-rows{display:grid;gap:9px}.linked-gap-row{display:grid;grid-template-columns:34px minmax(280px,1.25fr) 34px minmax(260px,1fr) auto;gap:12px;align-items:center;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fbfcfe}.linked-rank{width:28px;height:28px;border-radius:50%;background:#e7f2fa;color:var(--blue);display:grid;place-items:center;font-weight:850}.linked-question b,.linked-education b{display:block;line-height:1.35}.linked-question small,.linked-education small,.linked-education span{display:block;margin-top:5px;color:var(--muted);font-size:12px}.linked-arrow{font-size:20px;color:#8aa0b6;text-align:center}
+.insight-hero{display:flex;justify-content:space-between;gap:20px;align-items:center;background:linear-gradient(135deg,#fff,#eefafa)}.insight-list{display:grid;gap:14px}.insight-card{border:1px solid var(--line);border-radius:14px;background:#fff;padding:18px;box-shadow:var(--shadow)}.insight-card .type{font-size:12px;font-weight:900;letter-spacing:.05em;color:var(--teal)}.insight-card h3{margin:5px 0 8px;font-size:20px;letter-spacing:-.025em}.insight-narrative{margin:0 0 14px!important;color:#2b3d52!important;font-weight:650}.insight-flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.flow-step{background:#f6f8fb;border-radius:11px;padding:12px;min-height:132px}.flow-step small{display:block;color:var(--muted);font-weight:850;margin-bottom:7px}.flow-step b{line-height:1.35}.flow-step p{font-size:13px!important;line-height:1.5!important;margin:5px 0 0!important}.insight-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.coverage-note{font-size:12px;color:var(--muted);margin-top:10px}.priority-chip{display:inline-block;border-radius:999px;padding:5px 9px;background:#fde7e8;color:var(--red);font-size:12px;font-weight:850;margin-left:6px}
+.three-col{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}table{width:100%;border-collapse:collapse;min-width:1120px}th{text-align:left;font-size:12px;color:var(--muted);background:#f6f8fb;position:sticky;top:0;z-index:2}th,td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top}tbody tr{cursor:pointer}tbody tr:hover{background:#f5fbfb}td small{color:var(--muted)}.result-count{font-weight:850;color:var(--navy)}.profile-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.status-card{background:#f6f8fb;border-radius:12px;padding:14px}.status-card small{color:var(--muted)}.question-card{padding:12px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;border-left:5px solid var(--amber)}.question-card small{color:var(--muted)}.profile-sales{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}.profile-sales .status-card h3{margin:6px 0 0}.empty-state{text-align:center;padding:38px;color:var(--muted)}.toast{position:fixed;right:22px;bottom:22px;background:#122d4e;color:#fff;padding:12px 16px;border-radius:9px;opacity:0;transform:translateY(15px);transition:.2s;pointer-events:none;z-index:100}.toast.show{opacity:1;transform:none}
+@media(max-width:1250px){.kpi-grid{grid-template-columns:repeat(3,1fr)}.filters{grid-template-columns:repeat(3,1fr)}.gap-grid{grid-template-columns:repeat(3,1fr)}.insight-flow{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){.linked-gap-row{grid-template-columns:34px 1fr auto}.linked-arrow{display:none}.linked-education{grid-column:2}.linked-target-button{grid-column:3;grid-row:1 / span 2}.three-col,.profile-grid,.profile-sales{grid-template-columns:1fr}.insight-flow{grid-template-columns:1fr}}
+@media(max-width:650px){.app-header{align-items:flex-start;flex-direction:column}.kpi-grid,.gap-grid,.filters{grid-template-columns:1fr}.search-row{flex-direction:column}.insight-hero{flex-direction:column;align-items:flex-start}.linked-gap-row{grid-template-columns:30px 1fr}.linked-education{grid-column:2}.linked-target-button{grid-column:2;grid-row:auto;justify-self:start}
+/* 모바일: 표를 가로 스크롤 대신 카드형 목록으로 전환 (data-label 사용) */
+.table-wrap.responsive-table table{min-width:0}
+.table-wrap.responsive-table thead{position:absolute;left:-9999px;top:-9999px}
+.table-wrap.responsive-table table,.table-wrap.responsive-table tbody,.table-wrap.responsive-table tr,.table-wrap.responsive-table td{display:block;width:100%}
+.table-wrap.responsive-table tr{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;padding:6px 4px;background:#fff}
+.table-wrap.responsive-table td{border-bottom:0;padding:6px 10px;display:flex;justify-content:space-between;gap:10px;align-items:flex-start;text-align:right}
+.table-wrap.responsive-table td::before{content:attr(data-label);color:var(--muted);font-size:12px;font-weight:720;text-align:left;flex:0 0 auto}
+}
+/* =========================================================
+   MOBILE RESPONSIVE ENHANCEMENT
+   Desktop layout remains unchanged. These rules apply only
+   to tablet / mobile widths.
+   ========================================================= */
+
+html{-webkit-text-size-adjust:100%}
+body{min-width:0}
+img,svg,canvas{max-width:100%}
+
+@media (max-width: 900px){
+  .app-header{
+    padding:22px 20px;
+    gap:18px;
+  }
+  .header-copy{max-width:none}
+  .header-actions{
+    width:100%;
+    justify-content:flex-start;
+  }
+  .tabs{
+    padding:0 12px;
+    scrollbar-width:none;
+  }
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{
+    min-height:50px;
+    padding:14px 15px;
+  }
+  main{
+    padding:16px 14px 42px;
+  }
+  .search-shell,.panel{
+    border-radius:13px;
+  }
+  .search-shell{padding:15px}
+  .filters{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .reset-filter{
+    grid-column:1 / -1;
+    width:100%;
+  }
+  .kpi-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+  }
+  .gap-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+  }
+  .kpi-card,.gap-card{padding:14px}
+  .linked-gap-row{
+    grid-template-columns:30px minmax(0,1fr);
+    gap:8px 10px;
+    padding:13px;
+  }
+  .linked-rank{grid-row:1 / span 2}
+  .linked-question{grid-column:2}
+  .linked-education{
+    grid-column:2;
+    padding-top:8px;
+    border-top:1px dashed var(--line);
+  }
+  .linked-arrow{display:none}
+  .linked-target-button{
+    grid-column:2;
+    grid-row:auto;
+    justify-self:stretch;
+    width:100%;
+  }
+  .insight-flow{
+    grid-template-columns:1fr;
+  }
+  .flow-step{
+    min-height:0;
+    padding:13px 14px;
+    border-left:4px solid #d8e6f2;
+  }
+  .insight-actions .button{min-height:44px}
+  .profile-grid,.profile-sales{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+/* Phone */
+@media (max-width: 650px){
+  .app-header{
+    padding:18px 16px;
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .app-header h1{
+    font-size:26px;
+    line-height:1.18;
+    margin-top:4px;
+  }
+  .app-header .header-copy > p:last-child{
+    font-size:13px;
+  }
+  .eyebrow{font-size:10px}
+  .header-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .header-actions .button{
+    width:100%;
+    min-height:44px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:10px 9px;
+    font-size:13px;
+  }
+  .upload-status{
+    grid-column:1 / -1;
+    width:100%;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    line-height:1.4;
+  }
+
+  .tabs{
+    top:0;
+    padding:0 6px;
+  }
+  .tab{
+    flex:0 0 auto;
+    min-width:max-content;
+    padding:13px 12px;
+    font-size:13px;
+  }
+
+  main{
+    padding:12px 10px 34px;
+  }
+  .search-shell{
+    padding:13px;
+    margin-bottom:12px;
+  }
+  .smart-search label{font-size:14px}
+  .search-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .search-row input{
+    grid-column:1 / -1;
+    min-height:46px;
+    font-size:16px; /* prevents iOS auto zoom */
+    padding:11px 12px;
+  }
+  .search-row .button{
+    min-height:44px;
+    width:100%;
+  }
+  .examples{
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    padding-bottom:3px;
+    margin-right:-3px;
+    scrollbar-width:none;
+  }
+  .examples::-webkit-scrollbar{display:none}
+  .examples button{
+    flex:0 0 auto;
+    min-height:36px;
+    padding:8px 11px;
+  }
+
+  .filters{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:9px;
+    margin-top:13px;
+  }
+  .filters label{
+    min-width:0;
+    font-size:11px;
+  }
+  .filters select{
+    min-height:42px;
+    font-size:16px; /* prevents iOS auto zoom */
+    padding:8px 28px 8px 9px;
+  }
+  .reset-filter{
+    grid-column:1 / -1;
+    min-height:43px;
+  }
+  .query-explanation{
+    font-size:12px;
+    padding:9px 10px;
+    overflow-wrap:anywhere;
+  }
+
+  .panel{
+    padding:14px;
+    margin-bottom:12px;
+    border-radius:12px;
+  }
+  .panel-head{
+    margin-bottom:12px;
+    gap:8px;
+  }
+  .panel h2{
+    font-size:17px;
+  }
+  .panel p{
+    font-size:13px;
+  }
+
+  .kpi-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    margin-bottom:12px;
+  }
+  .kpi-card{
+    min-height:112px;
+    padding:12px;
+    border-radius:11px;
+  }
+  .kpi-card span.label{font-size:11px}
+  .kpi-card strong{
+    font-size:23px;
+    margin:6px 0;
+  }
+  .kpi-card small{font-size:11px}
+
+  .gap-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  .gap-card{
+    min-height:112px;
+    padding:12px;
+    border-radius:11px;
+  }
+  .gap-card span{font-size:11px}
+  .gap-card b{font-size:21px}
+
+  .linked-gap-row{
+    grid-template-columns:27px minmax(0,1fr);
+    padding:12px 10px;
+  }
+  .linked-rank{
+    width:26px;height:26px;font-size:12px;
+  }
+  .linked-question b,.linked-education b{
+    font-size:13px;
+  }
+  .linked-question small,.linked-education small,.linked-education span{
+    font-size:11px;
+  }
+
+  .insight-hero{
+    flex-direction:column;
+    align-items:stretch;
+    gap:12px;
+  }
+  .insight-hero .button{
+    width:100%;
+    min-height:46px;
+  }
+  .insight-card{
+    padding:14px;
+    border-radius:12px;
+  }
+  .insight-card h3{
+    font-size:18px;
+    line-height:1.3;
+  }
+  .insight-narrative{
+    font-size:13px;
+    line-height:1.55!important;
+  }
+  .insight-flow{
+    gap:8px;
+  }
+  .flow-step{
+    padding:11px 12px;
+    border-radius:9px;
+  }
+  .flow-step small{font-size:11px}
+  .flow-step b{font-size:13px}
+  .flow-step p{font-size:12px!important}
+  .insight-actions{
+    display:block;
+  }
+  .insight-actions .button{
+    width:100%;
+  }
+  .coverage-note{font-size:11px}
+
+  /* Convert detailed analysis table into mobile cards */
+  .table-wrap{
+    overflow:visible;
+    border:0;
+    border-radius:0;
+    background:transparent;
+  }
+  table{
+    min-width:0;
+    width:100%;
+    display:block;
+  }
+  thead{display:none}
+  tbody{
+    display:grid;
+    gap:10px;
+    width:100%;
+  }
+  tbody tr{
+    display:block;
+    width:100%;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:12px;
+    box-shadow:0 5px 15px rgba(26,53,87,.05);
+    overflow:hidden;
+  }
+  tbody tr:hover{background:#fff}
+  tbody td{
+    display:grid;
+    grid-template-columns:92px minmax(0,1fr);
+    gap:10px;
+    align-items:start;
+    width:100%;
+    min-height:38px;
+    padding:9px 11px;
+    border-bottom:1px solid #edf1f5;
+    font-size:13px;
+    overflow-wrap:anywhere;
+  }
+  tbody td:last-child{border-bottom:0}
+  tbody td::before{
+    color:var(--muted);
+    font-size:11px;
+    font-weight:800;
+    line-height:1.5;
+  }
+  tbody td:nth-child(1)::before{content:"안경사"}
+  tbody td:nth-child(2)::before{content:"안경원"}
+  tbody td:nth-child(3)::before{content:"연차 / Tier"}
+  tbody td:nth-child(4)::before{content:"교육 이수"}
+  tbody td:nth-child(5)::before{content:"인식 Gap"}
+  tbody td:nth-child(6)::before{content:"난시"}
+  tbody td:nth-child(7)::before{content:"멀티포컬"}
+  tbody td:nth-child(8)::before{content:"MAX"}
+  tbody td:nth-child(9)::before{content:"추천 교육"}
+  tbody td:nth-child(10)::before{content:"우선순위"}
+  tbody td:nth-child(1){
+    background:#f7fafc;
+    font-weight:800;
+  }
+
+  .result-count{
+    flex:0 0 auto;
+    font-size:13px;
+  }
+
+  .profile-grid,.profile-sales{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  .status-card{
+    padding:11px;
+    border-radius:10px;
+    min-width:0;
+  }
+  .status-card h3{
+    font-size:16px;
+    overflow-wrap:anywhere;
+  }
+  .question-card{
+    padding:10px;
+    font-size:13px;
+  }
+  #profilePanel .panel-head{
+    align-items:center;
+  }
+  #closeProfile{
+    min-height:40px;
+    min-width:64px;
+  }
+
+  .empty-state{
+    padding:28px 14px;
+    font-size:13px;
+  }
+  .toast{
+    left:12px;
+    right:12px;
+    bottom:12px;
+    width:auto;
+    text-align:center;
+  }
+}
+
+/* Very small phones */
+@media (max-width: 390px){
+  .app-header h1{font-size:23px}
+  .header-actions{grid-template-columns:1fr}
+  .upload-status{grid-column:auto}
+  .kpi-grid,.gap-grid{grid-template-columns:1fr}
+  .filters{grid-template-columns:1fr}
+  .profile-grid,.profile-sales{grid-template-columns:1fr}
+  tbody td{grid-template-columns:82px minmax(0,1fr)}
+}
+/* =========================================================
+   EDUCATION INSIGHT — compact visual layout
+   ========================================================= */
+.compact-insight{padding:20px}
+.insight-card-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:14px}
+.insight-card-head h3{margin-bottom:0}
+.account-badge{flex:0 0 auto;border:1px solid #dce7ee;background:#f4f8fb;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;color:#526a80}
+.diagnosis-strip{display:flex;gap:11px;align-items:flex-start;background:#f6fbfb;border:1px solid #d8eceb;border-left:4px solid var(--teal);border-radius:11px;padding:12px 14px;margin-bottom:12px}
+.diagnosis-icon{font-size:18px;line-height:1.15}
+.diagnosis-strip div{display:grid;grid-template-columns:auto 1fr;column-gap:10px;row-gap:3px;align-items:center;min-width:0}
+.diagnosis-strip small{font-size:11px;color:var(--muted);font-weight:900}
+.diagnosis-strip b{font-size:15px;color:#173a48}
+.diagnosis-strip span:last-child{grid-column:1 / -1;font-size:12px;color:#53687c;line-height:1.5}
+
+.insight-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:8px}
+.insight-metric{border:1px solid var(--line);border-radius:11px;padding:11px 12px;background:#fff}
+.insight-metric span{display:block;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.05em}
+.insight-metric strong{display:block;margin-top:4px;font-size:17px}
+.insight-metric.negative strong{color:var(--red)}
+.insight-metric.positive strong{color:#0a876f}
+.insight-metric.neutral strong{color:#53687c}
+.average-compare{font-size:11px;color:var(--muted);text-align:right;margin:-1px 2px 10px}
+
+.insight-section{border-top:1px solid #e7edf2;padding-top:14px;margin-top:14px}
+.section-title{display:flex;align-items:center;gap:7px;margin-bottom:9px}
+.section-title>span{color:var(--teal);font-weight:950}
+.section-title>b{font-size:14px;color:#22384d}
+.section-title>em{font-style:normal;font-size:11px;font-weight:900;color:#fff;background:#62798e;border-radius:999px;padding:3px 7px}
+
+.perception-gap-list{display:grid;gap:7px}
+.perception-gap-row{display:grid;grid-template-columns:18px minmax(0,1fr);gap:7px;background:#f7f9fb;border:1px solid #e8edf1;border-radius:10px;padding:10px 11px}
+.gap-bullet{color:#d95b5b;font-size:10px;padding-top:3px}
+.gap-copy{min-width:0}
+.gap-copy>b{font-size:13px;line-height:1.45;display:block;color:#273a4e}
+.gap-meta{display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:5px;align-items:center}
+.gap-score{font-size:11px;font-weight:900;color:#b14d4d;background:#fff0f0;border-radius:999px;padding:3px 7px}
+.gap-years{font-size:11px;color:#5c7084;font-weight:750}
+.no-related-gap{background:#f4faf7;border:1px solid #d9eee3;border-radius:10px;padding:11px;color:#4b6a59;font-size:12px;font-weight:750}
+
+.target-chips{display:flex;flex-wrap:wrap;gap:7px}
+.target-chips>span{border:1px solid #dfe8ef;background:#f8fafc;border-radius:999px;padding:7px 10px;font-size:11px;color:#53687c}
+.target-chips b{font-size:12px;color:#253b50;margin-right:2px}
+
+.insight-action-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.insight-action-row{display:grid;grid-template-columns:30px minmax(0,1fr);gap:8px;align-items:start;border:1px solid #dce9e8;background:#f7fbfb;border-radius:11px;padding:11px}
+.action-index{font-size:19px;color:var(--teal);font-weight:900;line-height:1.15}
+.insight-action-row b{display:block;font-size:13px;line-height:1.4;color:#223d49}
+.insight-action-row small{display:block;margin-top:4px;font-size:10px;color:#708293}
+
+.insight-bottom-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}
+.insight-followup{font-size:11px;color:#64778a}
+.insight-followup summary{cursor:pointer;font-weight:900;color:#536b7f;list-style:none;padding:6px 0}
+.insight-followup summary::-webkit-details-marker{display:none}
+.insight-followup[open] summary{color:var(--teal)}
+.insight-followup div{margin-top:3px;background:#f7f9fb;border-radius:8px;padding:8px 10px;line-height:1.45}
+.compact-insight .coverage-note{border-top:0;margin-top:9px}
+.compact-insight .priority-chip{vertical-align:middle}
+
+@media(max-width:900px){
+  .insight-action-list{grid-template-columns:1fr}
+}
+@media(max-width:650px){
+  .compact-insight{padding:14px}
+  .insight-card-head{gap:8px;margin-bottom:10px}
+  .insight-card-head h3{font-size:17px}
+  .account-badge{padding:5px 8px;font-size:10px}
+  .diagnosis-strip{padding:10px 11px}
+  .diagnosis-strip div{grid-template-columns:1fr}
+  .diagnosis-strip b{font-size:14px}
+  .insight-metrics{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .insight-metric{padding:9px 8px}
+  .insight-metric span{font-size:9px}
+  .insight-metric strong{font-size:13px;white-space:nowrap}
+  .perception-gap-row{padding:9px}
+  .gap-copy>b{font-size:12px}
+  .target-chips{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .target-chips>span{border-radius:9px}
+  .target-chips>span:last-child{grid-column:1 / -1}
+  .insight-bottom-row{align-items:stretch;flex-direction:column}
+  .insight-bottom-row .button{width:100%;min-height:44px}
+}
+@media(max-width:390px){
+  .insight-metrics{grid-template-columns:1fr}
+  .target-chips{grid-template-columns:1fr}
+  .target-chips>span:last-child{grid-column:auto}
+}
+/* =========================================================
+   GAP-SPECIFIC TARGET + EDUCATION
+   ========================================================= */
+.gap-plan-card{
+  background:#fff;
+  border:1px solid #e3eaf0;
+  box-shadow:0 3px 10px rgba(30,55,80,.035);
+  padding:13px 14px;
+}
+.gap-question-line{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.gap-question-line>b{
+  font-size:13px;
+  line-height:1.5;
+  color:#273a4e;
+}
+.gap-number{
+  flex:0 0 auto;
+  font-size:10px;
+  font-weight:900;
+  color:#6b7e90;
+  background:#eef3f7;
+  border-radius:999px;
+  padding:3px 7px;
+}
+.gap-execution-row{
+  display:grid;
+  grid-template-columns:minmax(230px,.8fr) minmax(280px,1.2fr);
+  gap:9px;
+  margin-top:9px;
+}
+.gap-target-mini,
+.gap-education-mini{
+  border-radius:9px;
+  min-width:0;
+}
+.gap-target-mini{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px 9px;
+  background:#f7f9fb;
+  border:1px solid #e8edf2;
+  padding:9px 10px;
+  font-size:11px;
+  color:#5b7083;
+}
+.gap-target-mini b{
+  color:#253b50;
+  font-size:12px;
+}
+.gap-education-mini{
+  background:#f4fbfa;
+  border:1px solid #d9ece9;
+  padding:9px 11px;
+}
+.gap-education-mini small{
+  display:block;
+  color:#6d8387;
+  font-size:9px;
+  font-weight:900;
+  margin-bottom:3px;
+}
+.gap-education-mini b{
+  display:block;
+  color:#196f68;
+  font-size:12px;
+  line-height:1.45;
+}
+.gap-target-link{
+  margin-top:7px;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:#38728b;
+  font-size:10px;
+  font-weight:850;
+  cursor:pointer;
+}
+.gap-target-link:hover{text-decoration:underline}
+.total-target-section{
+  background:#fbfcfd;
+  border:1px solid #e7edf2;
+  border-radius:10px;
+  padding:12px;
+}
+.total-target-section.insight-section{
+  border-top:1px solid #e7edf2;
+}
+.dedupe-note{
+  display:block;
+  margin-top:7px;
+  font-size:10px;
+  color:#81909e;
+  line-height:1.4;
+}
+
+@media(max-width:650px){
+  .gap-plan-card{padding:10px}
+  .gap-question-line{gap:6px}
+  .gap-question-line>b{font-size:12px}
+  .gap-execution-row{
+    grid-template-columns:1fr;
+    gap:6px;
+  }
+  .gap-target-mini{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+  .gap-target-mini span:last-child{
+    grid-column:1 / -1;
+  }
+  .gap-education-mini b{font-size:11px}
+  .gap-target-link{
+    width:100%;
+    min-height:34px;
+    text-align:left;
+  }
+}
+@media(max-width:390px){
+  .gap-target-mini{grid-template-columns:1fr}
+  .gap-target-mini span:last-child{grid-column:auto}
+}
+/* =========================================================
+   DETAIL-ONLY DRILL DOWN
+   Does not change Dashboard / Education Insight populations
+   ========================================================= */
+.detail-target-banner{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:12px 14px;
+  margin:0 0 12px;
+  border:1px solid #cfe5e2;
+  border-left:4px solid var(--teal);
+  border-radius:11px;
+  background:#f5fbfa;
+}
+.detail-target-copy{
+  min-width:0;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:5px 10px;
+}
+.detail-target-copy small{
+  flex:0 0 100%;
+  color:#66807e;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.03em;
+}
+.detail-target-copy b{
+  color:#1e4c4a;
+  font-size:13px;
+  line-height:1.4;
+}
+.detail-target-copy span{
+  color:#55706e;
+  font-size:11px;
+  font-weight:750;
+}
+.detail-clear-button{
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+
+@media(max-width:650px){
+  .detail-target-banner{
+    flex-direction:column;
+    align-items:stretch;
+    padding:11px;
+  }
+  .detail-target-copy{
+    display:grid;
+    gap:4px;
+  }
+  .detail-target-copy small{display:block}
+  .detail-clear-button{
+    width:100%;
+    min-height:40px;
+  }
+}
+/* =========================================================
+   EDUCATION OPERATIONS / JOURNEY MANAGEMENT
+   ========================================================= */
+.operation-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start}
+.operation-controls{display:grid;grid-template-columns:120px 105px auto auto;gap:8px;align-items:end}
+.operation-controls label{display:grid;gap:5px;font-size:10px;font-weight:900;color:var(--muted)}
+.operation-controls select{min-height:40px;border:1px solid var(--line);border-radius:9px;padding:7px 9px;background:#fff;color:var(--text);font-weight:750}
+.operation-cycle-note{grid-column:1/-1;background:#f5f9fc;border:1px solid #e1eaf1;border-radius:9px;padding:9px 11px;font-size:11px;color:#5b7083}
+.operation-rule-note{grid-column:1/-1;font-size:10px;color:#7a8b99;line-height:1.5}
+.operation-kpi-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.operation-kpi-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px;box-shadow:0 6px 18px rgba(25,52,78,.04)}
+.operation-kpi-card span{display:block;font-size:10px;font-weight:900;color:var(--muted)}
+.operation-kpi-card strong{display:block;font-size:23px;margin:5px 0;color:#22384c}
+.operation-kpi-card small{display:block;font-size:10px;color:#718291;line-height:1.4}
+.operation-panel-head{align-items:center}
+.operation-status-filters{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.operation-status-filters button{border:1px solid #dce6ed;background:#fff;color:#607487;border-radius:999px;padding:7px 10px;font-size:10px;font-weight:850;cursor:pointer}
+.operation-status-filters button.active{background:#173d5f;color:#fff;border-color:#173d5f}
+.operation-journey-list{display:grid;gap:9px}
+.journey-person-card{border:1px solid #e1e9ef;border-radius:12px;padding:13px;background:#fff}
+.journey-person-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.journey-person-head>div{display:grid;gap:2px}
+.journey-person-head b{font-size:14px;color:#22384c}
+.journey-person-head span:not(.journey-status){font-size:10px;color:#748594}
+.journey-status{flex:0 0 auto;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:900}
+.journey-status.complete{background:#e8f7f1;color:#16745f}
+.journey-status.progress{background:#edf4fb;color:#2d668f}
+.journey-status.not-started{background:#f2f4f6;color:#6e7b87}
+.journey-status.due{background:#fff0e8;color:#b85d2a}
+.journey-source{font-size:10px;color:#718291;margin:7px 0 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.journey-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.journey-step{display:grid;grid-template-columns:25px minmax(0,1fr);gap:7px;align-items:start;border:1px solid #e8edf1;background:#fafbfc;border-radius:9px;padding:8px}
+.journey-step>span{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#e9eef2;color:#617486;font-size:10px;font-weight:900}
+.journey-step div{min-width:0;display:grid;gap:2px}
+.journey-step b{font-size:10px;line-height:1.35;color:#415568;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.journey-step small{font-size:9px;color:#8795a1}
+.journey-step.done{background:#f1faf6;border-color:#dcefe6}
+.journey-step.done>span{background:#39a781;color:#fff}
+.journey-step.next{background:#f3f8fc;border-color:#cfe0ec}
+.journey-step.next>span{background:#39759c;color:#fff}
+.journey-next{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:9px;padding-top:9px;border-top:1px solid #edf1f4}
+.journey-next>div{min-width:0;display:grid;gap:2px}
+.journey-next small{font-size:9px;color:#7b8b99;font-weight:850}
+.journey-next b{font-size:11px;color:#26465e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.next-due{flex:0 0 auto;font-size:10px;font-weight:900;color:#62788b;background:#f2f5f7;border-radius:999px;padding:5px 8px}
+.next-due.due{background:#fff0e8;color:#b85d2a}
+.rolling-intake-list{display:grid;gap:8px}
+.rolling-person-card{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid #e4eaf0;border-radius:11px;padding:11px 12px;background:#fff}
+.rolling-person-copy{min-width:0;display:grid;gap:3px}
+.rolling-person-copy>b{font-size:13px;color:#273d50}
+.rolling-person-copy>span{font-size:10px;color:#758694}
+.rolling-person-copy>small{font-size:10px;color:#526b7e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rolling-tags{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0}
+.rolling-tags em{font-style:normal;background:#f2f6f8;border-radius:999px;padding:3px 6px;font-size:9px;color:#657887}
+.rolling-person-card .button:disabled{opacity:.55;cursor:not-allowed}
+
+@media(max-width:1100px){
+  .operation-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .operation-hero{grid-template-columns:1fr}
+  .operation-controls{grid-template-columns:120px 105px 1fr 1fr}
+}
+@media(max-width:700px){
+  .operation-controls{grid-template-columns:1fr 1fr}
+  .operation-controls .button{width:100%;min-height:43px}
+  .operation-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .operation-kpi-card{padding:11px}
+  .operation-kpi-card strong{font-size:20px}
+  .operation-panel-head{align-items:stretch}
+  .operation-status-filters{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}
+  .operation-status-filters button{flex:0 0 auto}
+  .journey-person-head{display:grid;gap:6px}
+  .journey-status{justify-self:start}
+  .journey-steps{grid-template-columns:1fr}
+  .journey-step b{white-space:normal}
+  .journey-next{align-items:flex-start;flex-direction:column}
+  .journey-next b{white-space:normal}
+  .rolling-person-card{align-items:stretch;flex-direction:column}
+  .rolling-person-card .button{width:100%}
+  .rolling-person-copy>small{white-space:normal}
+}
+@media(max-width:390px){
+  .operation-controls,.operation-kpi-grid{grid-template-columns:1fr}
+}
+/* =========================================================
+   LOCAL RAW EXCEL STORAGE
+   ========================================================= */
+#deleteSavedWorkbook{
+  border-color:#d9e1e7;
+  color:#6b7d8d;
+}
+#deleteSavedWorkbook:hover{
+  border-color:#e3b9b9;
+  color:#a54848;
+  background:#fff8f8;
+}
+.upload-status{
+  max-width:560px;
+  line-height:1.45;
+}
+@media(max-width:650px){
+  .header-actions{
+    grid-template-columns:1fr 1fr;
+  }
+  .header-actions #deleteSavedWorkbook{
+    grid-column:1 / -1;
+    width:100%;
+  }
+  .upload-status{
+    max-width:none;
+  }
+}
+
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<header class="app-header">
+  <div class="header-copy">
+    <p class="eyebrow">ACUVUE EDUCATION RECOMMENDATION</p>
+    <h1>교육 · 인식 · 판매 인사이트 대시보드</h1>
+    <p>안경원 판매성과와 안경사 인식·교육 이력을 연결해, 누구에게 어떤 교육이 필요한지 찾습니다.</p>
+  </div>
+  <div class="header-actions">
+    <label class="button primary" for="workbookInput">Excel 업로드 / 교체</label>
+    <input id="workbookInput" type="file" accept=".xlsx,.xls" hidden />
+    <button class="button" id="downloadResults">현재 대상 다운로드</button>
+    <button class="button ghost" id="deleteSavedWorkbook" type="button">저장 데이터 삭제</button>
+    <span class="upload-status" id="uploadStatus">저장된 데이터 확인 중…</span>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="대시보드 메뉴">
+  <button class="tab active" data-view="overview">통합 대시보드</button>
+  <button class="tab" data-view="insight">교육 인사이트</button>
+  <button class="tab" data-view="operations">교육 운영관리</button>
+  <button class="tab" data-view="segment">안경사 상세 분석</button>
+</nav>
+
+<main>
+  <section class="search-shell">
+    <div class="smart-search">
+      <label for="smartQuery">공통 분석 조건 · 스마트 검색 / 조건 검색</label>
+      <div class="search-row">
+        <input id="smartQuery" placeholder="예: 서울 지역 VIP 안경원 중 난시 역성장 안경원의 3년차 안경사" />
+        <button class="button primary" id="runQuery">찾기</button>
+        <button class="button" id="clearQuery">초기화</button>
+      </div>
+      <div class="examples">
+        <button data-query="난시 역성장">난시 역성장</button>
+        <button data-query="멀티포컬 역성장">멀티포컬 역성장</button>
+        <button data-query="MAX 역성장">MAX 역성장</button>
+        <button data-query="교육 미완료">교육 미완료</button>
+        <button data-query="인식 목표 미달">인식 목표 미달</button>
+      </div>
+    </div>
+
+    <div class="filters">
+      <label>지역<select id="regionFilter"><option value="">전체</option></select></label>
+      <label>연차<select id="yearsFilter"><option value="">전체</option></select></label>
+      <label>Tier<select id="tierFilter"><option value="">전체</option></select></label>
+      <label>채널<select id="channelFilter"><option value="">전체</option></select></label>
+      <label>담당영업사원<select id="repFilter"><option value="">전체</option></select></label>
+      <label>판매 기준월
+        <select id="salesBaseMonth">
+          <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+          <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+          <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+          <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+        </select>
+        <small id="baseMonthHint" class="base-month-hint"></small>
+      </label>
+      <button class="button ghost reset-filter" id="resetFilters">필터 초기화</button>
+    </div>
+    <div id="queryExplanation" class="query-explanation">엑셀을 업로드하면 기준월을 자동 감지하고 분석을 시작합니다.</div>
+  </section>
+
+  <section id="overview" class="view active">
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <article class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow dark">EDUCATION OPPORTUNITY</p>
+          <h2>현재 그룹의 핵심 Gap</h2>
+          <p>카드를 선택하면 해당 대상의 인식 문항과 추천 교육으로 바로 좁혀집니다.</p>
+        </div>
+      </div>
+      <div id="gapCards" class="gap-grid"></div>
+    </article>
+
+    <article class="panel linked-panel">
+      <div class="panel-head">
+        <div>
+          <h2>인식 Gap → 추천 교육</h2>
+          <p id="gapEducationSubtitle">선택한 대상에서 가장 많이 부족한 인식과 필요한 교육을 연결합니다.</p>
+        </div>
+      </div>
+      <div id="linkedGapEducationRows" class="linked-gap-education-rows"></div>
+    </article>
+  </section>
+
+  <section id="insight" class="view">
+    <article class="panel insight-hero">
+      <div>
+        <p class="eyebrow dark">EDUCATION OPPORTUNITY ENGINE</p>
+        <h2>교육 인사이트</h2>
+        <p><b>현상</b> → <b>원인</b> → <b>Target</b> → <b>Action</b> → <b>Follow-up</b> 순서로 자동 분석합니다.</p>
+      </div>
+      <button class="button primary" id="refreshInsights">교육 Opportunity 분석</button>
+    </article>
+
+    <article class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>우선 실행 인사이트</h2>
+          <p>판매 저하 안경원을 먼저 찾고, 그 안경원 안경사의 인식·교육 데이터를 연결합니다.</p>
+        </div>
+      </div>
+      <div id="insightCards" class="insight-list">
+        <div class="empty-state">엑셀 업로드 후 <b>교육 Opportunity 분석</b>을 눌러주세요.</div>
+      </div>
+    </article>
+  </section>
+
+  <section id="operations" class="view">
+    <article class="panel operation-hero">
+      <div>
+        <p class="eyebrow dark">EDUCATION JOURNEY MANAGEMENT</p>
+        <h2>교육 운영관리</h2>
+        <p>반기 인사이트에서 확정한 대상자를 고정하고, 월별 교육 완료 데이터로 2~3개 교육 Journey의 진행 상태를 관리합니다.</p>
+      </div>
+      <div class="operation-controls">
+        <label>운영 Cycle
+          <select id="operationCycleSelect"></select>
+        </label>
+        <label>교육 간격
+          <select id="operationCadence">
+            <option value="7">1주</option>
+            <option value="10">10일</option>
+            <option value="14" selected>2주</option>
+          </select>
+        </label>
+        <button class="button primary" id="freezeOperation" type="button">현재 인사이트 운영 대상 확정</button>
+        <button class="button" id="downloadOperation" type="button">운영 리스트 다운로드</button>
+      </div>
+      <div id="operationCycleNote" class="operation-cycle-note">교육 인사이트를 실행한 뒤 운영 대상을 확정하세요.</div>
+      <div class="operation-rule-note">※ 공통 검색/필터는 운영 대상 <b>조회 범위만</b> 좁힙니다. 한 번 확정된 반기 Cohort 자체는 바뀌지 않습니다.</div>
+    </article>
+
+    <div id="operationKpiGrid" class="operation-kpi-grid"></div>
+
+    <article class="panel">
+      <div class="panel-head operation-panel-head">
+        <div>
+          <h2>Journey 진행 현황</h2>
+          <p>완료 데이터를 기준으로 다음에 전달할 교육과 진행 상태를 자동으로 업데이트합니다.</p>
+        </div>
+        <div class="operation-status-filters" id="operationStatusFilters">
+          <button class="active" data-op-status="all">전체</button>
+          <button data-op-status="not_started">미시작</button>
+          <button data-op-status="progress">진행중</button>
+          <button data-op-status="complete">완료</button>
+          <button data-op-status="due">다음 전달</button>
+        </div>
+      </div>
+      <div id="operationJourneyList" class="operation-journey-list">
+        <div class="empty-state">운영 대상이 아직 확정되지 않았습니다.</div>
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>월별 신규 안경사 · Rolling Intake</h2>
+          <p>반기 Cohort 확정 이후 새로 추가된 안경사를 찾아, 인식 Gap 또는 소속 ACC 판매 상태를 기준으로 Journey에 추가합니다.</p>
+        </div>
+        <span class="result-count" id="rollingIntakeCount"></span>
+      </div>
+      <div id="rollingIntakeList" class="rolling-intake-list">
+        <div class="empty-state">운영 Cycle을 먼저 확정해주세요.</div>
+      </div>
+    </article>
+  </section>
+
+  <section id="segment" class="view">
+    <article class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>안경사 상세 분석</h2>
+          <p>판매는 안경원 단위, 인식·교육은 안경사 단위로 연결됩니다. 행을 클릭하면 상세 프로필이 열립니다.</p>
+        </div>
+        <span class="result-count" id="resultCount"></span>
+      </div>
+      <div id="segmentSummary"></div>
+      <div class="table-wrap responsive-table">
+        <table>
+          <thead>
+            <tr>
+              <th>안경사</th><th>안경원</th><th>연차/Tier</th><th>교육완료</th><th>인식 Gap</th>
+              <th>난시</th><th>멀티포컬</th><th>MAX</th><th>추천교육</th><th>우선순위</th>
+            </tr>
+          </thead>
+          <tbody id="segmentTable"></tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="panel" id="profilePanel" hidden>
+      <div class="panel-head">
+        <div><h2>Optician 360</h2><p>선택 안경사의 교육·인식과 소속 안경원 판매 현황입니다.</p></div>
+        <button class="button ghost" id="closeProfile">닫기</button>
+      </div>
+      <div id="profileContent"></div>
+    </article>
+  </section>
+</main>
+
+<div id="toast" class="toast"></div>
+<script>
+(function () {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+  const clean = v => (v == null ? '' : String(v).trim());
+  const norm = v => clean(v).replace(/\u00a0/g, '').replace(/[\s_\-()./]/g, '').toLowerCase();
+  const keyVal = v => norm(v).replace(/[^a-z0-9가-힣]/g, '');
+  const esc = v => clean(v).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+
+  const S = {
+    master: [], content: [], edu: [], qm: [], per: [], per25: [], per26: [], sales: [], rec: [],
+    filtered: [], query: '', detailTargetIds: null, detailTargetLabel: '', gapFilter: null, insights: [], insightsReady: false, operationCycle: '', operationStatusFilter: 'all',
+    baseMonth: Math.max(1, Math.min(12, new Date().getMonth() + 1)),
+    baseMonthSource: '현재 월 기본값',
+    masterById: new Map(), salesById: new Map(), salesByStore: new Map(),
+    eduById: new Map(), perById: new Map(), per25ById: new Map(), recById: new Map(), metricCache: new Map()
+  };
+  window.S = S;
+
+  const aliases = {
+    master: ['01_안경사마스터', '안경사마스터'],
+    content: ['02_교육콘텐츠', '교육콘텐츠마스터'],
+    edu: ['03_교육참여', '교육참여이력', '교육이력'],
+    qm: ['인식문항마스터', '문항마스터'],
+    per25: ['04_인식조사_2025', '04_2025인식조사', '2025인식조사', '2025 인식조사', '25년인식조사', '25년 인식조사', '인식조사2025', '인식조사_2025'],
+    per26: ['04_인식조사_2026', '04_2026인식조사', '2026인식조사', '2026 인식조사', '26년인식조사', '26년 인식조사', '인식조사2026', '인식조사_2026', '04_인식조사', '인식조사', 'Sheet1'],
+    rec: ['AI추천결과', '교육추천결과', '08_교육추천']
+  };
+
+  const likert = {
+    '전혀 그렇지 않다': 1, '그렇지 않다': 2, '보통이다': 3, '비슷하다': 3,
+    '그렇다': 4, '매우 그렇다': 5
+  };
+
+  const FITTING_COLUMNS = {
+    ast: {
+      label: '난시', title: '난시 성장 (pack/ACC)',
+      py: ['2025 난시 팩수', '2025난시팩수', '25년 난시 팩수', '25년난시팩수'],
+      cy: ['2026 난시 팩수', '2026난시팩수', '26년 난시 팩수', '26년난시팩수'],
+      wearerPy: ['2025 난시 착용자', '2025 난시 착용자수', '2025 난시 웨어러', '2025 난시 wearer', '25년 난시 착용자', '25년 난시 착용자수', '25년 난시 웨어러'],
+      wearerCy: ['2026 난시 착용자', '2026 난시 착용자수', '2026 난시 웨어러', '2026 난시 wearer', '26년 난시 착용자', '26년 난시 착용자수', '26년 난시 웨어러'],
+      newPy: ['2025 난시 신규', '2025 난시 신규착용자', '2025 난시 신규 착용자', '2025 난시 신규웨어러', '2025 난시 신규 웨어러', '2025 난시 new wearer', '25년 난시 신규', '25년 난시 신규착용자', '25년 난시 신규 웨어러'],
+      newCy: ['2026 난시 신규', '2026 난시 신규착용자', '2026 난시 신규 착용자', '2026 난시 신규웨어러', '2026 난시 신규 웨어러', '2026 난시 new wearer', '26년 난시 신규', '26년 난시 신규착용자', '26년 난시 신규 웨어러']
+    },
+    mf: {
+      label: '멀티포컬', title: '멀티포컬 성장 (pack/ACC)',
+      py: ['2025 멀티포컬  팩수', '2025 멀티포컬 팩수', '2025멀티포컬팩수', '25년 멀티포컬  팩수', '25년 멀티포컬 팩수', '25년멀티포컬팩수'],
+      cy: ['2026 멀티포컬  팩수', '2026 멀티포컬 팩수', '2026멀티포컬팩수', '26년 멀티포컬  팩수', '26년 멀티포컬 팩수', '26년멀티포컬팩수'],
+      wearerPy: ['2025 멀티포컬 착용자', '2025 멀티포컬 착용자수', '2025 멀티포컬 웨어러', '2025 MF 착용자', '2025 MF 웨어러', '25년 멀티포컬 착용자', '25년 멀티포컬 착용자수', '25년 멀티포컬 웨어러'],
+      wearerCy: ['2026 멀티포컬 착용자', '2026 멀티포컬 착용자수', '2026 멀티포컬 웨어러', '2026 MF 착용자', '2026 MF 웨어러', '26년 멀티포컬 착용자', '26년 멀티포컬 착용자수', '26년 멀티포컬 웨어러'],
+      newPy: ['2025 멀티포컬 신규', '2025 멀티포컬 신규착용자', '2025 멀티포컬 신규 착용자', '2025 멀티포컬 신규웨어러', '2025 멀티포컬 신규 웨어러', '2025 MF 신규', '2025 MF 신규 웨어러', '25년 멀티포컬 신규', '25년 멀티포컬 신규착용자', '25년 멀티포컬 신규 웨어러'],
+      newCy: ['2026 멀티포컬 신규', '2026 멀티포컬 신규착용자', '2026 멀티포컬 신규 착용자', '2026 멀티포컬 신규웨어러', '2026 멀티포컬 신규 웨어러', '2026 MF 신규', '2026 MF 신규 웨어러', '26년 멀티포컬 신규', '26년 멀티포컬 신규착용자', '26년 멀티포컬 신규 웨어러']
+    },
+    max: {
+      label: 'MAX', title: 'MAX 성장 (pack/ACC)',
+      py: ['2025 MAX  팩수', '2025 MAX 팩수', '2025MAX팩수', '25년 MAX  팩수', '25년 MAX 팩수', '25년MAX팩수'],
+      cy: ['2026 MAX  팩수', '2026 MAX 팩수', '2026MAX팩수', '26년 MAX  팩수', '26년 MAX 팩수', '26년MAX팩수'],
+      wearerPy: ['2025 MAX 착용자', '2025 MAX 착용자수', '2025 MAX 웨어러', '2025 맥스 착용자', '2025 맥스 웨어러', '25년 MAX 착용자', '25년 MAX 착용자수', '25년 MAX 웨어러'],
+      wearerCy: ['2026 MAX 착용자', '2026 MAX 착용자수', '2026 MAX 웨어러', '2026 맥스 착용자', '2026 맥스 웨어러', '26년 MAX 착용자', '26년 MAX 착용자수', '26년 MAX 웨어러'],
+      newPy: ['2025 MAX 신규', '2025 MAX 신규착용자', '2025 MAX 신규 착용자', '2025 MAX 신규웨어러', '2025 MAX 신규 웨어러', '2025 맥스 신규', '25년 MAX 신규', '25년 MAX 신규착용자', '25년 MAX 신규 웨어러'],
+      newCy: ['2026 MAX 신규', '2026 MAX 신규착용자', '2026 MAX 신규 착용자', '2026 MAX 신규웨어러', '2026 MAX 신규 웨어러', '2026 맥스 신규', '26년 MAX 신규', '26년 MAX 신규착용자', '26년 MAX 신규 웨어러']
+    }
+  };
+
+  const INSIGHT = {
+    ast: {
+      focus: '난시 관련 인식',
+      keywords: ['난시', '토릭', 'asd', '축안정', '축 안정', '원주도수', '실린더', 'cylinder'],
+      eduFallback: ['난시 조기교정 인식 강화 교육', '난시 피팅·상담 실전 교육']
+    },
+    mf: {
+      focus: '멀티포컬 관련 인식',
+      keywords: ['멀티포컬', '다초점', '노안', 'mf', '가입도', 'presbyopia'],
+      eduFallback: ['노안·멀티포컬 상담 기본 교육', '멀티포컬 실전 피팅·Follow-up 교육']
+    },
+    max: {
+      focus: 'MAX·눈건강·블루라이트 관련 인식',
+      keywords: ['max', '맥스', '블루라이트', '청색광', '눈건강', '눈 건강', '자외선', 'uv', 'oasys max', '오아시스 맥스'],
+      eduFallback: ['블루라이트·눈건강 가치 전달 교육', 'ACUVUE OASYS MAX 상담 스크립트 교육']
+    }
+  };
+
+  // ============================================================
+  // SECTION: 유틸리티 & 숫자/텍스트 포맷터
+  // ============================================================
+  function get(row, names) {
+    if (!row) return '';
+    const map = {};
+    Object.keys(row).forEach(k => { map[norm(k)] = row[k]; });
+    for (const name of names) {
+      const value = map[norm(name)];
+      if (value !== undefined && clean(value) !== '') return value;
+    }
+    return '';
+  }
+
+  function num(value) {
+    if (value == null || value === '') return null;
+    const text = clean(value);
+    if (!text || text === '-' || text === '데이터 없음') return null;
+    if (/신규\s*(판매|진입)?/.test(text)) return null;
+    const match = text.replace(/,/g, '').replace(/%/g, '').match(/[-+]?\d+(?:\.\d+)?/);
+    if (!match) return null;
+    const n = Number(match[0]);
+    if (!Number.isFinite(n)) return null;
+    if (/↓|감소|하락|역성장/.test(text)) return -Math.abs(n);
+    return n;
+  }
+
+  function avg(values) {
+    const nums = values.map(num).filter(v => v != null && Number.isFinite(v));
+    return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+  }
+
+  function sum(rows, getter) {
+    const nums = rows.map(getter).map(num).filter(v => v != null && Number.isFinite(v));
+    return nums.length ? nums.reduce((a, b) => a + b, 0) : null;
+  }
+
+  function annualize(v) {
+    return v == null ? null : (Number(v) / Math.max(1, S.baseMonth)) * 12;
+  }
+
+  // 연환산은 (누적값/기준월)*12 의 단순 선형 추정으로, 시즌성(예: 특정 시즌에 판매가 몰리는 경우)을
+  // 반영하지 못한다. 기준월이 낮을수록(예: 1~3월) 배율이 커져 왜곡 가능성이 크므로 화면에 안내한다.
+  function updateBaseMonthHint() {
+    const el = $('baseMonthHint');
+    if (!el) return;
+    const m = S.baseMonth || 1;
+    const multiplier = (12 / m).toFixed(1);
+    if (m <= 3) {
+      el.textContent = `⚠ ${m}개월치 실적을 ${multiplier}배 하여 연환산합니다. 계절성이 반영되지 않아 오차가 클 수 있어요.`;
+      el.classList.add('warn');
+    } else {
+      el.textContent = `${m}개월치 실적을 연환산(×${multiplier})한 추정치입니다. 계절성은 반영되지 않습니다.`;
+      el.classList.remove('warn');
+    }
+  }
+
+  const fmtPct = v => v == null ? '데이터 없음' : `${Math.round(Number(v) * 100)}%`;
+  // 색상만으로 증감을 구분하면 색맹/저시력 사용자가 인지하기 어려우므로 ▲▼ 기호를 함께 표기한다.
+  const trendIcon = v => v == null || Number(v) === 0 ? '' : (Number(v) > 0 ? '▲' : '▼');
+  const fmtRate = v => v == null ? '데이터 없음' : `${trendIcon(v)}${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(1)}%`;
+  const fmtPp = v => v == null ? '데이터 없음' : `${trendIcon(v)}${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(1)}%p`;
+  const fmtPack = v => v == null ? '데이터 없음' : `${Number(v) >= 0 ? '+' : ''}${Math.round(Number(v)).toLocaleString('ko-KR')}팩`;
+  const fmtPackPerAcc = v => v == null ? '데이터 없음' : `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(1)}팩 / ACC`;
+  const dclass = v => v == null ? 'neutral' : Number(v) < 0 ? 'negative' : Number(v) > 0 ? 'positive' : 'neutral';
+  // 여러 렌더 함수에서 동일한 "결과 없음" 마크업을 각자 작성하고 있어 하나로 통일한다.
+  const emptyState = message => `<div class="empty-state">${message}</div>`;
+
+  // ============================================================
+  // SECTION: 엑셀 워크북 로딩 & 시트 매핑
+  // ============================================================
+  function sheetNameKey(v) {
+    return clean(v).replace(/\u00a0/g, '').replace(/[\s_\-.()\/]/g, '').toLowerCase();
+  }
+
+  function findWorkbookSheetName(wb, names) {
+    const sheetNames = wb.SheetNames || [];
+    const targets = (names || []).map(sheetNameKey).filter(Boolean);
+    let matched = sheetNames.find(name => targets.includes(sheetNameKey(name)));
+    if (matched) return matched;
+    matched = sheetNames.find(name => targets.some(t => sheetNameKey(name).includes(t) || t.includes(sheetNameKey(name))));
+    return matched || '';
+  }
+
+  function sheet(wb, names) {
+    const name = findWorkbookSheetName(wb, names);
+    return name && wb.Sheets[name]
+      ? XLSX.utils.sheet_to_json(wb.Sheets[name], { defval: '', raw: true, blankrows: false })
+      : [];
+  }
+
+  // 필수 시트(안경사마스터, 인식조사)를 찾지 못하면 어떤 시트가 없는지, 업로드한 파일에는
+  // 어떤 시트가 있는지를 구체적으로 알려준다. (이전에는 조용히 빈 배열로 처리되어 원인 파악이 어려웠음)
+  const requiredSheetLabels = { master: '안경사마스터(01_안경사마스터)', per26: '인식조사(04_인식조사_2026)' };
+  function validateWorkbookSheets(wb) {
+    const missing = Object.keys(requiredSheetLabels)
+      .filter(key => !findWorkbookSheetName(wb, aliases[key]))
+      .map(key => requiredSheetLabels[key]);
+    if (missing.length) {
+      const available = (wb.SheetNames || []).join(', ') || '(시트 없음)';
+      throw new Error(`필수 시트를 찾을 수 없습니다: ${missing.join(', ')}\n업로드한 파일의 시트 목록: ${available}\n시트명을 확인한 뒤 다시 업로드해주세요.`);
+    }
+  }
+
+  function loadFittingSalesSheet(wb) {
+    const names = wb.SheetNames || [];
+    const name = names.find(n => sheetNameKey(n) === sheetNameKey('06_피팅판매'))
+      || names.find(n => clean(n) === '피팅판매')
+      || names.find(n => String(n).includes('피팅판매'));
+    if (!name || !wb.Sheets[name]) return [];
+    return XLSX.utils.sheet_to_json(wb.Sheets[name], { defval: '', raw: true, blankrows: false });
+  }
+
+  function extractMonth(value) {
+    if (value == null || value === '') return null;
+    if (typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 12) return value;
+    const text = clean(value);
+    let m = text.match(/(?:^|[^0-9])(1[0-2]|0?[1-9])\s*월/);
+    if (m) return Number(m[1]);
+    m = text.match(/20\d{2}[-/.](1[0-2]|0?[1-9])(?:[-/.]|$)/);
+    if (m) return Number(m[1]);
+    if (/^(1[0-2]|[1-9])$/.test(text)) return Number(text);
+    return null;
+  }
+
+  function detectSalesBaseMonth(wb, salesRows) {
+    const monthFields = ['기준월', '판매기준월', '데이터기준월', '마감월', '실적기준월', 'BaseMonth', 'SalesBaseMonth'];
+    for (const row of salesRows.slice(0, 30)) {
+      const m = extractMonth(get(row, monthFields));
+      if (m) return { month: m, source: '피팅판매 시트 자동 감지' };
+    }
+
+    for (const sheetName of wb.SheetNames || []) {
+      if (!/기준|설정|config|setting/i.test(sheetName)) continue;
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '', raw: true, blankrows: false }).slice(0, 30);
+      for (const row of rows) {
+        const m = extractMonth(get(row, monthFields));
+        if (m) return { month: m, source: `${sheetName} 자동 감지` };
+        for (const [k, v] of Object.entries(row)) {
+          if (/기준월|마감월|basemonth/i.test(clean(k))) {
+            const parsed = extractMonth(v);
+            if (parsed) return { month: parsed, source: `${sheetName} 자동 감지` };
+          }
+        }
+      }
+    }
+    return { month: Math.max(1, Math.min(12, new Date().getMonth() + 1)), source: '엑셀 기준월 없음 · 현재 월 기본값' };
+  }
+
+  // ============================================================
+  // SECTION: 데이터 정규화 (마스터/문항/인식조사)
+  // ============================================================
+  function infer(text) {
+    const q = clean(text);
+    if (/블루라이트|청색광|MAX|맥스|눈건강|눈 건강|자외선|\bUV\b|OASYS MAX|오아시스 맥스/i.test(q)) return 'max';
+    if (/멀티포컬|다초점|노안|\bMF\b|가입도|presbyopia/i.test(q)) return 'mf';
+    if (/난시|토릭|ASD|축안정|축 안정|원주도수|실린더|cylinder/i.test(q)) return 'ast';
+    return 'other';
+  }
+
+  function score(v) {
+    if (typeof v === 'number') return v;
+    return likert[clean(v)] ?? num(v);
+  }
+
+  function normMaster(rows) {
+    return rows.map((r, i) => ({
+      ...r,
+      안경사ID: clean(get(r, ['안경사ID', '안경사 ID', 'ID', 'OpticianID'])) || `AUTO-${i + 1}`,
+      안경사명: clean(get(r, ['안경사명', '안경사', '이름', '성명'])),
+      안경원코드: clean(get(r, ['안경원코드', '매장코드', '거래처코드', 'ShipTo', 'SoldTo', 'Outletnumber', 'Outlet Number', '매장ID', '매장번호', 'CustomerID'])),
+      안경원명: clean(get(r, ['안경원명', '안경원', '매장명', '거래처명', 'OutletName', 'StoreName'])),
+      지역: clean(get(r, ['지역', '시도', 'Region'])),
+      연차: clean(get(r, ['연차', 'Years', '경력'])),
+      Tier: clean(get(r, ['Tier', '티어', '등급'])),
+      채널: clean(get(r, ['채널', 'Channel', '전략구분', '유형'])),
+      담당영업사원: clean(get(r, ['담당영업사원', '담당자', '영업사원']))
+    })).filter(r => r.안경사ID || r.안경사명);
+  }
+
+  function normQm(rows) {
+    return rows.map((r, i) => {
+      const q = clean(get(r, ['문항', '문항명', 'Question']));
+      const productRaw = clean(get(r, ['제품군']));
+      return {
+        문항ID: clean(get(r, ['문항ID', 'QuestionID'])) || `Q${String(i + 1).padStart(3, '0')}`,
+        문항: q,
+        제품군: productRaw ? infer(productRaw) : infer(q),
+        목표값: num(get(r, ['목표값'])) ?? 4,
+        긍정방향: clean(get(r, ['긍정방향'])) || (/역코딩/.test(q) ? '낮을수록 긍정' : '높을수록 긍정'),
+        사용: clean(get(r, ['분석사용여부', '사용여부'])) || 'Y'
+      };
+    });
+  }
+
+  function normPer(rows) {
+    const meta = ['안경사ID', 'ID', '안경사명', '안경원명', '지역', '연차', 'Tier', 'SEG', 'No', '번호'];
+    const out = [];
+    rows.forEach(r => {
+      const id = clean(get(r, ['안경사ID', '안경사 ID', 'ID']));
+      if (!id) return;
+      Object.keys(r).forEach(col => {
+        if (meta.some(m => norm(m) === norm(col))) return;
+        const normalizedCol = norm(col);
+        const qm = S.qm.find(q => {
+          const qid = norm(q.문항ID);
+          const qt = norm(q.문항);
+          return (qid && normalizedCol.includes(qid)) || (qt && normalizedCol.includes(qt));
+        }) || {
+          문항ID: col, 문항: col, 제품군: infer(col), 목표값: 4,
+          긍정방향: /역코딩/.test(col) ? '낮을수록 긍정' : '높을수록 긍정', 사용: 'Y'
+        };
+        const rawScore = score(r[col]);
+        if (rawScore == null || rawScore < 1 || rawScore > 5 || qm.사용 === 'N') return;
+        const adjusted = /낮을수록/.test(qm.긍정방향) ? 6 - rawScore : rawScore;
+        out.push({
+          안경사ID: id, 문항ID: qm.문항ID, 문항: qm.문항, 제품군: qm.제품군,
+          원응답: r[col], 점수: adjusted, 목표값: qm.목표값, gap: adjusted < qm.목표값
+        });
+      });
+    });
+    return out;
+  }
+
+  // ============================================================
+  // SECTION: 조회 인덱스 구축 (ID/매장 단위 Map)
+  // ============================================================
+  function storeKey(row) {
+    const code = clean(get(row, ['안경원코드', '매장코드', '거래처코드', 'ShipTo', 'SoldTo', 'Outletnumber', 'Outlet Number', '매장ID', '매장번호', 'CustomerID']) || row?.안경원코드);
+    const name = clean(get(row, ['안경원명', '안경원', '매장명', '거래처명', 'OutletName', 'StoreName']) || row?.안경원명);
+    return code ? keyVal(code) : (name ? keyVal(name) : '');
+  }
+
+  function salesId(row) {
+    return clean(get(row, ['안경사ID', '안경사 ID', 'ID', 'OpticianID']));
+  }
+
+  // 같은 rows 배열 참조로 여러 번(예: 난시/멀티포컬/MAX 3개 지표 계산 시) 중복 호출되므로
+  // WeakMap으로 결과를 캐싱해 대용량 데이터에서 불필요한 재계산을 줄인다.
+  const dedupeSalesRowsCache = new WeakMap();
+  function dedupeSalesRows(rows) {
+    if (dedupeSalesRowsCache.has(rows)) return dedupeSalesRowsCache.get(rows);
+    const map = new Map();
+    rows.forEach((row, i) => {
+      const key = storeKey(row) || salesId(row) || `row-${i}`;
+      if (!map.has(key)) map.set(key, row);
+    });
+    const result = [...map.values()];
+    dedupeSalesRowsCache.set(rows, result);
+    return result;
+  }
+
+  function rebuildIndexes() {
+    S.masterById = new Map(); S.salesById = new Map(); S.salesByStore = new Map();
+    S.eduById = new Map(); S.perById = new Map(); S.per25ById = new Map(); S.recById = new Map(); S.metricCache = new Map();
+
+    S.master.forEach(r => { if (r.안경사ID) S.masterById.set(r.안경사ID, r); });
+    S.sales.forEach(r => {
+      const id = salesId(r);
+      if (id) {
+        if (!S.salesById.has(id)) S.salesById.set(id, []);
+        S.salesById.get(id).push(r);
+      }
+      const store = storeKey(r);
+      if (store) {
+        if (!S.salesByStore.has(store)) S.salesByStore.set(store, []);
+        S.salesByStore.get(store).push(r);
+      }
+    });
+    S.edu.forEach(r => {
+      const id = clean(get(r, ['안경사ID', '안경사 ID', 'ID']));
+      if (!id) return;
+      if (!S.eduById.has(id)) S.eduById.set(id, []);
+      S.eduById.get(id).push(r);
+    });
+    S.per26.forEach(r => {
+      if (!S.perById.has(r.안경사ID)) S.perById.set(r.안경사ID, []);
+      S.perById.get(r.안경사ID).push(r);
+    });
+    S.per25.forEach(r => {
+      if (!S.per25ById.has(r.안경사ID)) S.per25ById.set(r.안경사ID, []);
+      S.per25ById.get(r.안경사ID).push(r);
+    });
+    S.per = S.per26;
+    S.rec.forEach(r => {
+      const id = clean(get(r, ['안경사ID', '안경사 ID', 'ID']));
+      if (id && !S.recById.has(id)) S.recById.set(id, r);
+    });
+  }
+
+  function rowsFor(id) {
+    const person = S.masterById.get(id);
+    const store = person ? storeKey(person) : '';
+    if (store) {
+      const rows = S.salesByStore.get(store) || [];
+      if (rows.length) return dedupeSalesRows(rows);
+    }
+    return dedupeSalesRows(S.salesById.get(id) || []);
+  }
+
+  function selectedSalesRows(masterRows) {
+    const stores = new Set();
+    const rows = [];
+    masterRows.forEach(person => {
+      const store = storeKey(person);
+      if (store && stores.has(store)) return;
+      const matched = rowsFor(person.안경사ID);
+      matched.forEach(r => {
+        const key = storeKey(r) || `id:${salesId(r)}`;
+        if (!stores.has(key)) {
+          stores.add(key);
+          rows.push(r);
+        }
+      });
+    });
+    return dedupeSalesRows(rows);
+  }
+
+  // ============================================================
+  // SECTION: 판매 성장률 / 연환산 지표 계산
+  // ============================================================
+  function growthInfo(rows, key) {
+    const col = FITTING_COLUMNS[key];
+    const unique = dedupeSalesRows(rows);
+    const py = sum(unique, r => get(r, col.py));
+    const cyYtd = sum(unique, r => get(r, col.cy));
+    if (py == null && cyYtd == null) return { status: 'none', rate: null, py: null, cyYtd: null, cyAnnualized: null };
+    const cyAnnualized = annualize(cyYtd || 0);
+    if ((py == null || py === 0) && (cyYtd || 0) > 0) {
+      return { status: 'new', rate: null, py: py || 0, cyYtd: cyYtd || 0, cyAnnualized };
+    }
+    if ((py || 0) === 0 && (cyYtd || 0) === 0) {
+      return { status: 'flat', rate: 0, py: py || 0, cyYtd: cyYtd || 0, cyAnnualized: 0 };
+    }
+    const rate = py ? ((cyAnnualized - py) / py) * 100 : null;
+    return { status: rate == null ? 'none' : 'normal', rate, py, cyYtd: cyYtd || 0, cyAnnualized };
+  }
+
+  function countGrowthInfo(rows, key, metric) {
+    const col = FITTING_COLUMNS[key];
+    const pyCols = metric === 'wearer' ? col.wearerPy : col.newPy;
+    const cyCols = metric === 'wearer' ? col.wearerCy : col.newCy;
+    const unique = dedupeSalesRows(rows);
+    const py = sum(unique, r => get(r, pyCols || []));
+    const cyYtd = sum(unique, r => get(r, cyCols || []));
+    if (py == null && cyYtd == null) return { status: 'none', rate: null, py: null, cyYtd: null, cyAnnualized: null };
+    const cyAnnualized = annualize(cyYtd || 0);
+    if ((py == null || py === 0) && (cyYtd || 0) > 0) return { status: 'new', rate: null, py: py || 0, cyYtd: cyYtd || 0, cyAnnualized };
+    if ((py || 0) === 0 && (cyYtd || 0) === 0) return { status: 'flat', rate: 0, py: py || 0, cyYtd: cyYtd || 0, cyAnnualized: 0 };
+    const rate = py ? ((cyAnnualized - py) / py) * 100 : null;
+    return { status: rate == null ? 'none' : 'normal', rate, py, cyYtd: cyYtd || 0, cyAnnualized };
+  }
+
+  function metricRateLabel(info) {
+    if (!info || info.status === 'none') return '데이터 없음';
+    if (info.status === 'new') return '신규 발생';
+    return fmtRate(info.rate);
+  }
+
+  function packPerWearerInfo(rows, key) {
+    const pack = growthInfo(rows, key);
+    const wearer = countGrowthInfo(rows, key, 'wearer');
+    if (pack.py == null || wearer.py == null || !wearer.py || pack.cyAnnualized == null || wearer.cyAnnualized == null || !wearer.cyAnnualized) {
+      return { py: null, cy: null, rate: null };
+    }
+    const py = pack.py / wearer.py;
+    const cy = pack.cyAnnualized / wearer.cyAnnualized;
+    return { py, cy, rate: py ? ((cy - py) / py) * 100 : null };
+  }
+
+  // 판매 Driver 분류 임계값 (%p 단위).
+  // 근거: 팀 내부적으로 "한 자릿수 초반(-2~-3%p) 변화는 노이즈로 보고,
+  // -5%p 이상 하락한 지표만 '뚜렷한 원인 후보'로 본다"는 경험적 기준을 사용.
+  // 데이터가 쌓이면 아래 상수만 조정하면 되도록 매직넘버를 분리해둠.
+  const DRIVER_THRESHOLD = {
+    STRONG: -5,  // 이 이하 하락이면 "뚜렷한" 감소로 간주 (신규유입/유지 판단 기준)
+    MILD: -3,    // 이 이하 하락이면 "약한" 감소 신호로 간주 (보조 판단 기준)
+    WEAK: -2     // 이 이하 하락이면 "미세한" 감소로 간주 (intensity 판단 기준)
+  };
+
+  function salesDriver(rows, key) {
+    const pack = growthInfo(rows, key);
+    const wearer = countGrowthInfo(rows, key, 'wearer');
+    const newWearer = countGrowthInfo(rows, key, 'new');
+    const intensity = packPerWearerInfo(rows, key);
+    const pr = pack.rate, wr = wearer.rate, nr = newWearer.rate;
+    const T = DRIVER_THRESHOLD;
+
+    let type = 'mixed', label = '복합 요인', reason = '팩수·착용자·신규 지표를 함께 확인할 필요가 있습니다.';
+    if (nr != null && nr <= T.STRONG && wr != null && wr <= T.MILD) {
+      type = 'acquisition'; label = '신규 유입 약화';
+      reason = '신규 착용자 감소가 전체 착용자와 판매 감소로 이어지는 패턴입니다.';
+    } else if (nr != null && nr >= T.WEAK && wr != null && wr <= T.STRONG) {
+      type = 'retention'; label = '착용자 유지 약화';
+      reason = '신규 유입은 유지되지만 전체 착용자가 감소해 적응·Follow-up·재방문 관리 이슈 가능성이 있습니다.';
+    } else if (pr != null && pr <= T.WEAK && wr != null && wr >= T.MILD && intensity.rate != null && intensity.rate <= T.MILD) {
+      type = 'intensity'; label = '착용자당 구매량 감소';
+      reason = '착용자 규모보다 팩수가 더 크게 감소해 재구매·제품가치 전달·구매주기 이슈 가능성이 있습니다.';
+    } else if (pr != null && pr >= 0 && nr != null && nr <= T.STRONG) {
+      type = 'future-risk'; label = '신규 Pipeline 약화';
+      reason = '현재 팩수는 유지되지만 신규 착용자가 줄어 향후 성장 위험 신호가 있습니다.';
+    } else if (nr != null && nr <= T.STRONG) {
+      type = 'acquisition'; label = '신규 유입 약화';
+      reason = '신규 착용자 감소가 가장 뚜렷한 선행 신호입니다.';
+    } else if (wr != null && wr <= T.STRONG) {
+      type = 'retention'; label = '착용자 기반 감소';
+      reason = '전체 착용자 수 감소가 판매 저하와 함께 나타납니다.';
+    } else if (intensity.rate != null && intensity.rate <= T.MILD) {
+      type = 'intensity'; label = '착용자당 구매량 감소';
+      reason = '착용자 대비 팩수 효율이 전년보다 낮아졌습니다.';
+    }
+
+    return { type, label, reason, pack, wearer, newWearer, intensity };
+  }
+
+  function driverEducationKeywords(type) {
+    if (type === 'acquisition' || type === 'future-risk') return ['신규', '상담', '추천', '대상', '전환', '발굴', '첫', '스크립트'];
+    if (type === 'retention') return ['적응', 'follow', '팔로우', '재방문', '관리', '불편', '유지'];
+    if (type === 'intensity') return ['가치', '재구매', '제품', '사용', '착용', '혜택', '상담'];
+    return [];
+  }
+
+  function driverFallbackEducation(key, type) {
+    const product = FITTING_COLUMNS[key].label;
+    if (type === 'acquisition' || type === 'future-risk') return `${product} 신규 착용자 발굴·상담 전환 교육`;
+    if (type === 'retention') return `${product} 적응 관리·Follow-up 교육`;
+    if (type === 'intensity') return `${product} 제품 가치·재구매 상담 교육`;
+    return INSIGHT[key].eduFallback[0];
+  }
+
+  function packDelta(rows, key) {
+    const info = growthInfo(rows, key);
+    if (info.py == null && info.cyAnnualized == null) return null;
+    return (info.cyAnnualized || 0) - (info.py || 0);
+  }
+
+  function avgPackDeltaPerAcc(rows, key) {
+    const unique = dedupeSalesRows(rows);
+    if (!unique.length) return null;
+    const total = packDelta(unique, key);
+    return total == null ? null : total / unique.length;
+  }
+
+  function growthLabel(info) {
+    if (!info || info.status === 'none') return '데이터 없음';
+    if (info.status === 'new') return '신규 판매';
+    return fmtRate(info.rate);
+  }
+
+  function growthClass(info) {
+    if (!info || info.status === 'none') return 'neutral';
+    if (info.status === 'new') return 'new-sale';
+    return dclass(info.rate);
+  }
+
+  function negativeAccCount(rows, key) {
+    return dedupeSalesRows(rows).filter(r => {
+      const info = growthInfo([r], key);
+      return info.rate != null && info.rate < 0;
+    }).length;
+  }
+
+  // ============================================================
+  // SECTION: 교육 이수 & 개인별 종합 지표(metrics)
+  // ============================================================
+  function eduDone(row) {
+    const flag = clean(get(row, ['완료여부', '수료여부', '참여여부', '시청여부'])).toUpperCase();
+    if (['Y', 'YES', 'TRUE', '완료', '수료', 'DONE', 'COMPLETED'].includes(flag)) return true;
+    const progress = num(get(row, ['완료율', '진도율', '진행률']));
+    return progress != null && progress >= 100;
+  }
+
+  function educationTitle(row) {
+    return clean(get(row, ['교육명', '콘텐츠명', '추천교육명', '과정명', 'Title'])) || clean(get(row, ['교육ID', '콘텐츠ID', 'ID']));
+  }
+
+  function contentName(id) {
+    const content = S.content.find(x => clean(get(x, ['교육ID', '콘텐츠ID', 'ID'])) === clean(id));
+    return educationTitle(content) || clean(id);
+  }
+
+  function educationDisplayTitle(row) {
+    const direct = clean(get(row, ['교육명', '콘텐츠명', '추천교육명', '과정명', 'Title']));
+    if (direct) return direct;
+    const id = clean(get(row, ['교육ID', '콘텐츠ID', 'ID']));
+    return id ? (contentName(id) || id) : '교육명 미등록';
+  }
+
+  function educationDate(row) {
+    return clean(get(row, ['교육일', '이수일', '수료일', '완료일', '참여일', '날짜', 'Date']));
+  }
+
+  function completedEducationRowsForPerson(id) {
+    return (S.eduById.get(id) || []).filter(eduDone);
+  }
+
+  function questionRelevance(q, key) {
+    const text = `${q.문항 || ''} ${q.문항ID || ''} ${q.제품군 || ''}`.toLowerCase();
+    let value = q.제품군 === key ? 4 : 0;
+    INSIGHT[key].keywords.forEach(k => { if (text.includes(String(k).toLowerCase())) value += 1; });
+    return value;
+  }
+
+  function educationRelated(text, key) {
+    const normalized = clean(text).toLowerCase();
+    return INSIGHT[key].keywords.some(k => normalized.includes(String(k).toLowerCase()));
+  }
+
+  function metrics(id) {
+    if (S.metricCache.has(id)) return S.metricCache.get(id);
+    const person = S.masterById.get(id);
+    const sales = rowsFor(id);
+    const perc = S.perById.get(id) || [];
+    const gaps = perc.filter(x => x.gap);
+    const edu = S.eduById.get(id) || [];
+    const completedEdu = edu.filter(eduDone);
+    const eduCompletedCount = completedEdu.length;
+    const eduTotalCount = edu.length;
+    const eduRate = eduTotalCount ? eduCompletedCount / eduTotalCount : null;
+    const rec = S.recById.get(id) || {};
+    const growths = {};
+    ['ast', 'mf', 'max'].forEach(key => {
+      growths[key] = {
+        info: growthInfo(sales, key), pack: packDelta(sales, key), avgPack: avgPackDeltaPerAcc(sales, key)
+      };
+    });
+    const hasNegative = ['ast', 'mf', 'max'].some(k => growths[k].info.rate != null && growths[k].info.rate < 0);
+    const priority = gaps.length >= 3 || hasNegative ? '높음' : (gaps.length || eduRate == null || eduRate < 1) ? '중간' : '낮음';
+    const m = {
+      p: person, perc, gaps, eduRate, eduCompletedCount, eduTotalCount, rec, growths, priority,
+      educationIncomplete: eduCompletedCount === 0 || (eduTotalCount > 0 && eduCompletedCount < eduTotalCount)
+    };
+    S.metricCache.set(id, m);
+    return m;
+  }
+
+  // ============================================================
+  // SECTION: 필터 & 스마트 검색
+  // ============================================================
+  function uniqueValues(field) {
+    return [...new Set(S.master.map(r => clean(r[field])).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko', { numeric: true }));
+  }
+
+  function buildFilters() {
+    [['regionFilter', '지역'], ['yearsFilter', '연차'], ['tierFilter', 'Tier'], ['channelFilter', '채널'], ['repFilter', '담당영업사원']].forEach(([id, field]) => {
+      const el = $(id);
+      if (!el) return;
+      el.innerHTML = '<option value="">전체</option>' + uniqueValues(field).map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+      el.onchange = () => { S.query = ''; S.detailTargetIds = null; S.detailTargetLabel = ''; S.gapFilter = null; render(); if (S.insightsReady) renderInsights(); };
+    });
+  }
+
+  function filterByDropdown() {
+    let rows = [...S.master];
+    [['regionFilter', '지역'], ['yearsFilter', '연차'], ['tierFilter', 'Tier'], ['channelFilter', '채널'], ['repFilter', '담당영업사원']].forEach(([id, field]) => {
+      const value = $(id)?.value;
+      if (value) rows = rows.filter(r => clean(r[field]) === value);
+    });
+    return rows;
+  }
+
+  function productFromQuery(q) {
+    if (/멀티포컬|다초점|노안|\bMF\b/i.test(q)) return 'mf';
+    if (/MAX|맥스|블루라이트|눈건강/i.test(q)) return 'max';
+    if (/난시|토릭|ASD/i.test(q)) return 'ast';
+    return null;
+  }
+
+  function lowPerceptionForPerson(id, productKey) {
+    return (S.perById.get(id) || []).some(p => (!productKey || questionRelevance(p, productKey) > 0) && p.gap);
+  }
+
+  function smartDimensionValue(field, q) {
+    const rawQ = clean(q);
+    const nq = norm(rawQ);
+    const placeholders = new Set(['-', '없음', '미분류', '미정', 'n/a', 'na', 'null']);
+
+    return uniqueValues(field).find(v => {
+      const rawV = clean(v);
+      const nv = norm(rawV);
+
+      // '-', 빈값 같은 placeholder는 어떤 검색어에도 자동 매칭하지 않음
+      if (!rawV || !nv || placeholders.has(rawV.toLowerCase())) return false;
+
+      // Tier A/B/C처럼 한 글자 값은 MAX 등의 단어 안에 포함된 글자로 오인하지 않도록
+      // 독립 토큰 또는 'A티어', 'Tier A'처럼 명시된 경우에만 매칭
+      if (nv.length === 1) {
+        const escaped = rawV.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const tokenRe = new RegExp(`(^|[\\s,;/|()])${escaped}(?=$|[\\s,;/|()])`, 'i');
+        const tierPrefixRe = new RegExp(`(?:tier|티어)\\s*[:=]?\\s*${escaped}(?=$|[\\s,;/|()])`, 'i');
+        const tierSuffixRe = new RegExp(`(^|[\\s,;/|()])${escaped}\\s*(?:tier|티어)`, 'i');
+        return tokenRe.test(rawQ) || (field === 'Tier' && (tierPrefixRe.test(rawQ) || tierSuffixRe.test(rawQ)));
+      }
+
+      return nq.includes(nv);
+    }) || null;
+  }
+
+  function parseSmartConditions(q) {
+    const product = productFromQuery(q);
+    const conditions = [];
+    const region = smartDimensionValue('지역', q);
+    const tier = smartDimensionValue('Tier', q);
+    const channel = smartDimensionValue('채널', q);
+    const rep = smartDimensionValue('담당영업사원', q);
+    if (region) conditions.push({ label: `지역=${region}`, test: r => clean(r.지역) === region });
+    if (tier) conditions.push({ label: `Tier=${tier}`, test: r => clean(r.Tier) === tier });
+    if (channel) conditions.push({ label: `채널=${channel}`, test: r => clean(r.채널) === channel });
+    if (rep) conditions.push({ label: `담당=${rep}`, test: r => clean(r.담당영업사원) === rep });
+    const years = q.match(/(\d+)\s*년차/);
+    if (years) conditions.push({ label: `${years[1]}년차`, test: r => clean(r.연차).includes(years[1]) });
+    if (/인식|gap|갭|낮|부족|저하/i.test(q)) {
+      conditions.push({ label: product ? `${FITTING_COLUMNS[product].label} 인식 낮음` : '인식 목표 미달', test: r => lowPerceptionForPerson(r.안경사ID, product) });
+    }
+    if (/교육.*미완료|미완료|미수료|미이수/i.test(q)) {
+      conditions.push({ label: '교육 미완료', test: r => metrics(r.안경사ID).educationIncomplete });
+    }
+    if (/역성장|성장률.*음수|마이너스|판매.*감소/i.test(q)) {
+      conditions.push({
+        label: product ? `${FITTING_COLUMNS[product].label} 역성장` : '제품 역성장',
+        test: r => {
+          const m = metrics(r.안경사ID);
+          if (product) return m.growths[product].info.rate != null && m.growths[product].info.rate < 0;
+          return ['ast', 'mf', 'max'].some(k => m.growths[k].info.rate != null && m.growths[k].info.rate < 0);
+        }
+      });
+    }
+    return conditions;
+  }
+
+  function filtered() {
+    let rows = filterByDropdown();
+    const q = clean(S.query);
+    if (q) {
+      const conditions = parseSmartConditions(q);
+      if (conditions.length) rows = rows.filter(r => conditions.every(c => c.test(r)));
+      else rows = rows.filter(r => Object.values(r).some(v => norm(v).includes(norm(q))));
+      if ($('queryExplanation')) {
+        const labels = conditions.map(c => `[${c.label}]`).join(' ');
+        $('queryExplanation').textContent = `공통 분석 조건 · ${labels || `검색어=${q}`} / 결과 ${rows.length}명 · 판매 기준 ${S.baseMonth}월 (${S.baseMonthSource})`;
+      }
+    }
+    return rows;
+  }
+
+  function rowsForDetail(rows) {
+    if (S.detailTargetIds) {
+      return rows.filter(r => S.detailTargetIds.has(r.안경사ID));
+    }
+    return rowsForGapFilter(rows);
+  }
+
+  function detailTargetAccCount(rows) {
+    return new Set(rows.map(storeKey).filter(Boolean)).size;
+  }
+
+  function rowsForSalesReverse(rows, key) {
+    const sales = selectedSalesRows(rows).filter(r => {
+      const info = growthInfo([r], key);
+      return info.rate != null && info.rate < 0;
+    });
+    const stores = new Set(sales.map(storeKey).filter(Boolean));
+    return rows.filter(r => stores.has(storeKey(r)));
+  }
+
+  function rowsForGapFilter(rows) {
+    if (!S.gapFilter) return rows;
+    if (S.gapFilter.type === 'education') return rows.filter(r => metrics(r.안경사ID).educationIncomplete);
+    if (S.gapFilter.type === 'perception') return rows.filter(r => metrics(r.안경사ID).gaps.length > 0);
+    if (S.gapFilter.type === 'sales') return rowsForSalesReverse(rows, S.gapFilter.key);
+    return rows;
+  }
+
+  function gapFilterTitle() {
+    if (!S.gapFilter) return '현재 그룹';
+    if (S.gapFilter.type === 'education') return '교육 미완료 대상';
+    if (S.gapFilter.type === 'perception') return '인식 목표 미달 대상';
+    if (S.gapFilter.type === 'sales') return `${FITTING_COLUMNS[S.gapFilter.key].label} 역성장 안경원 대상`;
+    return '현재 그룹';
+  }
+
+  function setGapFilter(type, key = null) {
+    const same = S.gapFilter && S.gapFilter.type === type && S.gapFilter.key === key;
+    S.gapFilter = same ? null : { type, key };
+
+    // 통합 대시보드에서 새 Drill-down을 시작하면 이전 상세 대상 선택은 해제
+    S.detailTargetIds = null;
+    S.detailTargetLabel = '';
+
+    render();
+  }
+
+  // ============================================================
+  // SECTION: 렌더링 - 인사이트/Gap 카드/세그먼트 화면
+  // ============================================================
+  function kpi(label, value, note) {
+    return `<div class="kpi-card"><span class="label">${label}</span><strong>${value}</strong><small>${note}</small></div>`;
+  }
+
+  function kpiGrowth(key, rows) {
+    const sales = selectedSalesRows(rows);
+    const info = growthInfo(sales, key);
+    const allInfo = growthInfo(dedupeSalesRows(S.sales), key);
+    const avgPack = avgPackDeltaPerAcc(sales, key);
+    const diff = info.rate != null && allInfo.rate != null ? info.rate - allInfo.rate : null;
+    const main = avgPack == null ? '-' : `${Number(avgPack) >= 0 ? '+' : ''}${Number(avgPack).toFixed(1)}`;
+    const compare = info.status === 'new' ? '신규 판매' : growthLabel(info);
+    return kpi(
+      FITTING_COLUMNS[key].title,
+      `<span class="${dclass(avgPack)}">${main}</span>`,
+      `<span class="${growthClass(info)}">${compare} vs PY</span><span class="metric-note ${dclass(diff)}">${diff == null ? '전체 평균 비교 없음' : `${fmtPp(diff)} vs avg`}</span>`
+    );
+  }
+
+  function renderGapCards(rows, ms) {
+    const sales = selectedSalesRows(rows);
+    const cards = [
+      { cls: 'education', type: 'education', key: null, label: '교육 미완료', value: `${ms.filter(m => m.educationIncomplete).length}명` },
+      { cls: 'perception', type: 'perception', key: null, label: '인식 목표 미달', value: `${ms.filter(m => m.gaps.length).length}명` },
+      { cls: 'ast', type: 'sales', key: 'ast', label: '난시 역성장', value: `${negativeAccCount(sales, 'ast')} ACC` },
+      { cls: 'mf', type: 'sales', key: 'mf', label: '멀티포컬 역성장', value: `${negativeAccCount(sales, 'mf')} ACC` },
+      { cls: 'max', type: 'sales', key: 'max', label: 'MAX 역성장', value: `${negativeAccCount(sales, 'max')} ACC` }
+    ];
+    $('gapCards').innerHTML = cards.map(c => {
+      const active = S.gapFilter && S.gapFilter.type === c.type && S.gapFilter.key === c.key ? ' active' : '';
+      return `<button class="gap-card ${c.cls}${active}" data-gap-type="${c.type}" data-gap-key="${c.key || ''}" type="button" aria-pressed="${active ? 'true' : 'false'}" aria-label="${c.label} ${c.value}, ${active ? '선택됨, 다시 클릭하면 해제' : '클릭해서 대상 좁히기'}"><span>${c.label}</span><b>${c.value}</b><small>${active ? '선택됨 · 다시 클릭하면 해제' : '클릭해서 대상 좁히기'}</small></button>`;
+    }).join('');
+    document.querySelectorAll('[data-gap-type]').forEach(btn => {
+      btn.onclick = () => setGapFilter(btn.dataset.gapType, btn.dataset.gapKey || null);
+    });
+  }
+
+  function getTopGapQuestions(rows, limit = 7) {
+    const targetRows = rowsForGapFilter(rows);
+    const ids = new Set(targetRows.map(r => r.안경사ID));
+    const byQuestion = new Map();
+    S.per.forEach(p => {
+      if (!ids.has(p.안경사ID) || !p.gap || !p.문항) return;
+      if (S.gapFilter?.type === 'sales' && questionRelevance(p, S.gapFilter.key) <= 0) return;
+      if (!byQuestion.has(p.문항)) byQuestion.set(p.문항, { scores: [], ids: new Set() });
+      const bucket = byQuestion.get(p.문항);
+      bucket.scores.push(p.점수);
+      bucket.ids.add(p.안경사ID);
+    });
+    return [...byQuestion.entries()].map(([q, item]) => ({
+      q, count: item.ids.size, avgScore: avg(item.scores), targetIds: [...item.ids]
+    })).sort((a, b) => b.count - a.count || (a.avgScore ?? 99) - (b.avgScore ?? 99)).slice(0, limit);
+  }
+
+  function productKeyFromQuestion(text) {
+    const inferred = infer(text);
+    return inferred === 'other' ? null : inferred;
+  }
+
+  function overlapScore(a, b) {
+    const tokens = [...new Set(clean(a).toLowerCase().match(/[a-z0-9가-힣]{2,}/g) || [])];
+    const text = clean(b).toLowerCase();
+    return tokens.reduce((acc, token) => acc + (text.includes(token) ? 1 : 0), 0);
+  }
+
+  function suggestedEducationTitle(questionText) {
+    if (/프리즘|한쪽.*난시|구면|수직/i.test(questionText)) return '난시 프리즘 및 디자인 관련 교육';
+    if (/난시|토릭|ASD|축|원주/i.test(questionText)) return '난시 피팅 및 디자인 관련 교육';
+    if (/멀티포컬|다초점|노안|적응|follow|팔로우/i.test(questionText)) return '멀티포컬 상담 및 적응 관리 교육';
+    if (/블루라이트|눈건강|자외선|MAX|맥스/i.test(questionText)) return '블루라이트·눈건강 가치 전달 교육';
+    return '인식 Gap 보완 교육';
+  }
+
+  function findBestEducationForQuestion(questionText, excludedTitles = new Set()) {
+    const productKey = productKeyFromQuestion(questionText);
+    const rows = (S.content || []).map(row => ({ row, title: educationTitle(row) })).filter(x => x.title);
+    const candidates = rows.map(x => {
+      let s = overlapScore(questionText, x.title);
+      if (productKey && educationRelated(x.title, productKey)) s += 2;
+      if (excludedTitles.has(norm(x.title))) s -= 5;
+      return { ...x, score: s };
+    }).filter(x => x.score > 0).sort((a, b) => b.score - a.score);
+    if (candidates.length) return { title: candidates[0].title, status: '교육 리스트 매칭' };
+    return { title: suggestedEducationTitle(questionText), status: '현재 교육 리스트에 없음 · 제작 필요' };
+  }
+
+  function renderLinkedGapEducation(rows) {
+    const targetRows = rowsForGapFilter(rows);
+    const top = getTopGapQuestions(rows, 7);
+    if ($('gapEducationSubtitle')) $('gapEducationSubtitle').textContent = `${gapFilterTitle()} 기준 · 대상 ${targetRows.length}명 · 부족 인식과 교육을 연결합니다.`;
+    const box = $('linkedGapEducationRows');
+    if (!top.length) {
+      box.innerHTML = emptyState('선택 대상의 인식 Gap 문항이 없습니다.');
+      return;
+    }
+    box.innerHTML = top.map((item, i) => {
+      const rec = findBestEducationForQuestion(item.q);
+      return `<div class="linked-gap-row">
+        <div class="linked-rank">${i + 1}</div>
+        <div class="linked-question"><b>${esc(item.q)}</b><small>${item.count}명 · 평균 ${item.avgScore == null ? '-' : item.avgScore.toFixed(1)}점</small></div>
+        <div class="linked-arrow" aria-hidden="true">→</div>
+        <div class="linked-education"><small>추천 교육</small><b>${esc(rec.title)}</b><span>${esc(rec.status)}</span></div>
+        <button class="button linked-target-button" type="button" data-question-target="${i}" aria-label="${esc(item.q)} 문항 대상자 ${item.count}명 보기">대상자 보기</button>
+      </div>`;
+    }).join('');
+    box.querySelectorAll('[data-question-target]').forEach(button => {
+      button.onclick = () => {
+        const item = top[Number(button.dataset.questionTarget)];
+        S.detailTargetIds = new Set(item.targetIds);
+        S.detailTargetLabel = `인식 Gap · ${item.q}`;
+        S.gapFilter = null;
+        render();
+        view('segment');
+      };
+    });
+  }
+
+  function recommendedEducationForPerson(id) {
+    const m = metrics(id);
+    const recName = clean(get(m.rec, ['추천교육명', '교육명'])) || contentName(get(m.rec, ['추천교육ID', '교육ID']));
+    if (recName) return recName;
+    const firstGap = m.gaps.sort((a, b) => a.점수 - b.점수)[0];
+    return firstGap ? findBestEducationForQuestion(firstGap.문항).title : '없음';
+  }
+
+  function renderSegment(rows, ms) {
+    $('resultCount').textContent = `${rows.length.toLocaleString('ko-KR')}명`;
+
+    const detailBanner = S.detailTargetIds
+      ? `<div class="detail-target-banner">
+          <div class="detail-target-copy">
+            <small>현재 상세 대상</small>
+            <b>${esc(S.detailTargetLabel || '선택 대상')}</b>
+            <span>👤 ${rows.length.toLocaleString('ko-KR')}명 · 🏪 ${detailTargetAccCount(rows).toLocaleString('ko-KR')} ACC</span>
+          </div>
+          <button class="button ghost detail-clear-button" id="clearDetailTarget" type="button">× 상세 대상 해제</button>
+        </div>`
+      : '';
+
+    $('segmentSummary').innerHTML = `${detailBanner}<div class="three-col"><div>${kpiGrowth('ast', rows)}</div><div>${kpiGrowth('mf', rows)}</div><div>${kpiGrowth('max', rows)}</div></div>`;
+
+    const clearDetailButton = $('clearDetailTarget');
+    if (clearDetailButton) {
+      clearDetailButton.onclick = () => {
+        S.detailTargetIds = null;
+        S.detailTargetLabel = '';
+        render();
+        view('segment');
+      };
+    }
+    $('segmentTable').innerHTML = ms.map(m => {
+      const p = m.p || {};
+      const cell = key => {
+        const g = m.growths[key];
+        return `${fmtPack(g.pack)}<br><small class="${growthClass(g.info)}">${growthLabel(g.info)}</small>`;
+      };
+      return `<tr data-id="${esc(p.안경사ID)}" tabindex="0" role="button" aria-label="${esc(p.안경사명)} 상세 프로필 열기">
+        <td data-label="안경사"><b>${esc(p.안경사명)}</b><small><br>${esc(p.안경사ID)}</small></td>
+        <td data-label="안경원">${esc(p.안경원명)}<small><br>${esc(p.지역)} · ${esc(p.채널)}</small></td>
+        <td data-label="연차/Tier">${esc(p.연차)} / ${esc(p.Tier)}</td>
+        <td data-label="교육완료"><b>${m.eduCompletedCount}건</b></td>
+        <td data-label="인식 Gap">${m.perc.length ? `${m.gaps.length}개` : '데이터 없음'}</td>
+        <td data-label="난시">${cell('ast')}</td><td data-label="멀티포컬">${cell('mf')}</td><td data-label="MAX">${cell('max')}</td>
+        <td data-label="추천교육">${esc(recommendedEducationForPerson(p.안경사ID))}</td><td data-label="우선순위">${esc(m.priority)}</td>
+      </tr>`;
+    }).join('');
+    document.querySelectorAll('#segmentTable tr').forEach(tr => {
+      tr.onclick = () => showProfile(tr.dataset.id);
+      tr.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showProfile(tr.dataset.id); } };
+    });
+  }
+
+  function showProfile(id) {
+    const m = metrics(id);
+    if (!m.p) return;
+    const completedEducationRows = completedEducationRowsForPerson(id);
+    const completedEducationHtml = completedEducationRows.length
+      ? completedEducationRows.map((row, idx) => {
+          const title = educationDisplayTitle(row);
+          const date = educationDate(row);
+          return `<div class="question-card"><b>${idx + 1}. ${esc(title)}</b>${date ? `<br><small>이수일 ${esc(date)}</small>` : ''}</div>`;
+        }).join('')
+      : '<div class="empty-state">이수한 교육이 없습니다.</div>';
+
+    const salesCards = ['ast', 'mf', 'max'].map(key => {
+      const g = m.growths[key];
+      return `<div class="status-card"><small>${FITTING_COLUMNS[key].label} 소속 안경원</small><h3 class="${growthClass(g.info)}">${growthLabel(g.info)}</h3><small>${fmtPack(g.pack)} 연환산 증감</small></div>`;
+    }).join('');
+    $('profilePanel').hidden = false;
+    $('profileContent').innerHTML = `
+      <h3>${esc(m.p.안경사명)} <small>${esc(id)}</small></h3>
+      <p>${esc(m.p.안경원명)} · ${esc(m.p.지역)} · ${esc(m.p.연차)} / ${esc(m.p.Tier)}</p>
+      <div class="profile-grid">
+        <div class="status-card"><small>교육 이수</small><h3>${m.eduCompletedCount}건</h3></div>
+        <div class="status-card"><small>인식 Gap</small><h3>${m.perc.length ? `${m.gaps.length}개` : '데이터 없음'}</h3></div>
+        <div class="status-card"><small>우선순위</small><h3>${esc(m.priority)}</h3></div>
+      </div>
+      <div class="profile-sales">${salesCards}</div>
+      <h3>이수 교육 <small>(${m.eduCompletedCount}건)</small></h3>
+      ${completedEducationHtml}
+      <h3>문항별 Gap</h3>
+      ${m.gaps.slice().sort((a, b) => a.점수 - b.점수).slice(0, 10).map(g => `<div class="question-card"><b>${esc(g.문항)}</b><br><small>응답 ${esc(g.원응답)} · 보정점수 ${g.점수} · 목표 ${g.목표값}</small></div>`).join('') || '<div class="empty-state">Gap 문항이 없습니다.</div>'}
+    `;
+    $('profilePanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    view('segment');
+  }
+
+  // severity(정렬 보조 점수) 가중치 및 추세 판정 임계값(리커트 5점 척도, 0.1~0.2점 단위).
+  // 근거: 정렬의 1차 기준은 항상 targetGap(목표 대비 절대 미달폭)이며, 아래 값들은 그 안에서
+  // "같은 정도로 미달인 문항끼리" 순서를 정하기 위한 2차 보조 지표일 뿐이라 최종 결과에 미치는
+  // 영향은 제한적이다. 가중치 비율(diff:targetGap:change ≈ 35:30:60)은 "평균 대비 저성과보다
+  // 전년 대비 악화 추세를 더 급한 신호로 본다"는 판단을 반영한 값.
+  const SEVERITY_WEIGHT = { VS_AVG: 35, VS_TARGET: 30, YOY_CHANGE: 60, PERSISTENT_BONUS: 12, EARLY_WARNING_BONUS: 8 };
+  // 리커트 5점 척도에서 0.2점 변화를 "유의미한 변화", 0.3점을 "하락 추세 경고"로 보는 경험적 기준.
+  const TREND_THRESHOLD = { WORSENING: -0.2, RECOVERING: 0.2, PERSISTENT_BAND: 0.2, EARLY_WARNING: -0.3 };
+
+  function lowQuestionsForRows(masterRows, key, maxCount = 999) {
+    const ids = new Set(masterRows.map(r => r.안경사ID));
+    const seg26ByQ = new Map();
+    const all26ByQ = new Map();
+    const seg25ByQ = new Map();
+    const infoByQ = new Map();
+
+    S.per26.forEach(p => {
+      if (questionRelevance(p, key) <= 0 || !p.문항) return;
+      if (!all26ByQ.has(p.문항)) all26ByQ.set(p.문항, []);
+      all26ByQ.get(p.문항).push(p.점수);
+      infoByQ.set(p.문항, { target: p.목표값 || 4 });
+      if (ids.has(p.안경사ID)) {
+        if (!seg26ByQ.has(p.문항)) seg26ByQ.set(p.문항, []);
+        seg26ByQ.get(p.문항).push(p.점수);
+      }
+    });
+
+    S.per25.forEach(p => {
+      if (questionRelevance(p, key) <= 0 || !p.문항 || !ids.has(p.안경사ID)) return;
+      if (!seg25ByQ.has(p.문항)) seg25ByQ.set(p.문항, []);
+      seg25ByQ.get(p.문항).push(p.점수);
+    });
+
+    return [...seg26ByQ.entries()].map(([q, vals]) => {
+      const seg = avg(vals);
+      const all = avg(all26ByQ.get(q) || []);
+      const prev = avg(seg25ByQ.get(q) || []);
+      const target = infoByQ.get(q)?.target || 4;
+      const diff = seg != null && all != null ? seg - all : null;
+      const targetGap = seg != null ? seg - target : null;
+      const change = seg != null && prev != null ? seg - prev : null;
+      const prevGap = prev != null ? prev - target : null;
+
+      let trendType = 'current-gap', trendLabel = '2026 현재 Gap';
+      const TT = TREND_THRESHOLD;
+      if (change != null && seg < target && change <= TT.WORSENING) { trendType = 'worsening'; trendLabel = '현재 미달 + 전년 대비 악화'; }
+      else if (change != null && seg < target && prev < target && Math.abs(change) < TT.PERSISTENT_BAND) { trendType = 'persistent'; trendLabel = '2년 연속 지속 Gap'; }
+      else if (change != null && seg < target && change >= TT.RECOVERING) { trendType = 'recovering'; trendLabel = '개선 중이나 아직 미달'; }
+      else if (change != null && seg >= target && change <= TT.EARLY_WARNING) { trendType = 'early-warning'; trendLabel = '현재 도달이나 하락 추세'; }
+
+      const SW = SEVERITY_WEIGHT;
+      const severity =
+        Math.max(0, -(diff || 0)) * SW.VS_AVG +
+        Math.max(0, -(targetGap || 0)) * SW.VS_TARGET +
+        Math.max(0, -(change || 0)) * SW.YOY_CHANGE +
+        (trendType === 'persistent' ? SW.PERSISTENT_BONUS : 0) +
+        (trendType === 'early-warning' ? SW.EARLY_WARNING_BONUS : 0) +
+        vals.length;
+
+      return { q, seg, all, prev, change, diff, targetGap, prevGap, target, count: vals.length, severity, trendType, trendLabel };
+    }).filter(x => {
+      // 교육 인사이트의 원인 문항은 '평균 이하'가 아니라 절대 목표 기준으로만 판단.
+      // 역문항은 normPer 단계에서 역코딩되므로 동일하게 보정점수 < 목표값으로 판정됨.
+      return x.seg != null && x.targetGap != null && x.targetGap < 0;
+    }).sort((a, b) => {
+      const gapA = Math.abs(a.targetGap || 0);
+      const gapB = Math.abs(b.targetGap || 0);
+      return gapB - gapA || b.severity - a.severity;
+    }).slice(0, maxCount);
+  }
+
+  function perceptionTrendText(item) {
+    if (!item) return '관련 인식 Gap 없음';
+    if (item.prev == null || item.seg == null) return `${item.q} · 2026 기준`;
+    const delta = item.seg - item.prev;
+    const arrow = delta < 0 ? '▼' : delta > 0 ? '▲' : '→';
+    const amount = Math.abs(delta).toFixed(1);
+    return `${item.q} · 2025 → 2026 ${arrow}${amount}`;
+  }
+
+
+  function completedEducationTitles(rows) {
+    const ids = new Set(rows.map(r => r.안경사ID));
+    return new Set(S.edu.filter(r => ids.has(clean(get(r, ['안경사ID', '안경사 ID', 'ID']))) && eduDone(r)).map(educationTitle).filter(Boolean).map(norm));
+  }
+
+  function recommendedEducationPlan(rows, key, causes, driver) {
+    const completed = completedEducationTitles(rows);
+    const causeItems = Array.isArray(causes) ? causes.filter(Boolean) : (causes ? [causes] : []);
+    const questions = causeItems.map(x => x.q).filter(Boolean);
+    const driverKeywords = driverEducationKeywords(driver?.type);
+    const contentRows = (S.content || []).map(row => ({ row, title: educationTitle(row) })).filter(x => x.title);
+
+    const scored = contentRows.map(x => {
+      let scoreValue = questions.reduce((sumValue, q) => sumValue + overlapScore(q, x.title), 0);
+      if (educationRelated(x.title, key)) scoreValue += 4;
+      driverKeywords.forEach(k => { if (clean(x.title).toLowerCase().includes(String(k).toLowerCase())) scoreValue += 2; });
+      if (completed.has(norm(x.title))) scoreValue -= 8;
+      return { ...x, score: scoreValue };
+    }).filter(x => x.score > 0).sort((a, b) => b.score - a.score);
+
+    const first = scored.length
+      ? { title: scored[0].title, status: '인식 Gap·판매 Driver 매칭' }
+      : { title: driverFallbackEducation(key, driver?.type), status: 'Driver 기반 추천' };
+
+    const blocked = new Set([...completed, norm(first.title)]);
+    const secondCandidate = scored.find(x => !blocked.has(norm(x.title)));
+    const second = secondCandidate
+      ? { title: secondCandidate.title, status: '관련 Gap 보완' }
+      : (() => {
+          const fallback = INSIGHT[key].eduFallback.find(x => !blocked.has(norm(x))) || driverFallbackEducation(key, driver?.type);
+          return { title: fallback, status: '보완 교육' };
+        })();
+
+    return [first, second];
+  }
+
+  function personHasLowRelatedPerception(id, key) {
+    return (S.perById.get(id) || []).some(p => questionRelevance(p, key) > 0 && p.gap);
+  }
+
+  function peopleWithQuestionGap(masterRows, key, questionText) {
+    if (!questionText) return [];
+    return masterRows.filter(person => {
+      const rows = S.perById.get(person.안경사ID) || [];
+      return rows.some(p =>
+        p.문항 === questionText &&
+        questionRelevance(p, key) > 0 &&
+        p.gap
+      );
+    });
+  }
+
+  function personHasIncompleteRelatedEducation(id, key) {
+    const rows = S.eduById.get(id) || [];
+    if (!rows.length) return true;
+    const related = rows.filter(r => educationRelated(Object.values(r).join(' '), key));
+    const base = related.length ? related : rows;
+    return base.some(r => !eduDone(r));
+  }
+
+  function peopleInSalesAccounts(masterRows, salesRows) {
+    const stores = new Set(dedupeSalesRows(salesRows).map(storeKey).filter(Boolean));
+    return masterRows.filter(r => stores.has(storeKey(r)));
+  }
+
+  function focusGroup(people, questionText) {
+    if (!people.length || !questionText) return '';
+    const dims = [['Tier', 'Tier'], ['채널', '채널'], ['연차', '연차'], ['지역', '지역']];
+    const candidates = [];
+    dims.forEach(([field, label]) => {
+      const groups = new Map();
+      people.forEach(p => {
+        const value = clean(p[field]);
+        if (!value) return;
+        if (!groups.has(value)) groups.set(value, []);
+        groups.get(value).push(p);
+      });
+      groups.forEach((members, value) => {
+        if (members.length < 2) return;
+        const ids = new Set(members.map(x => x.안경사ID));
+        const scores = S.per.filter(x => ids.has(x.안경사ID) && x.문항 === questionText).map(x => x.점수);
+        const groupAvg = avg(scores);
+        if (groupAvg != null) candidates.push({ label, value, avg: groupAvg, size: members.length });
+      });
+    });
+    candidates.sort((a, b) => a.avg - b.avg || b.size - a.size);
+    return candidates[0] ? `${candidates[0].label} ${candidates[0].value} · ${candidates[0].avg.toFixed(1)}점` : '';
+  }
+
+  function generateInsights() {
+    const baseRows = Array.isArray(S.filtered) ? S.filtered : S.master;
+    const allSales = selectedSalesRows(baseRows);
+    const insights = [];
+
+    // 같은 제품이라도 "전년 대비 역성장"과 "평균 대비 저성과"는 서로 다른 집단으로 분리해
+    // 각 집단의 인식 변화와 교육 니즈를 별도로 분석합니다.
+    const tracks = [
+      { mode: 'reverse', label: '전년 대비 역성장' },
+      { mode: 'under', label: '평균 대비 저성과' }
+    ];
+
+    ['ast', 'mf', 'max'].forEach(key => {
+      const overallDriver = salesDriver(allSales, key);
+      const overall = overallDriver.pack;
+      if (overall.status === 'none') return;
+
+      // priority 계산에서 affectedAccCount(개수)를 비율로 환산하기 위한 분모.
+      // 이 제품군에 대해 성장률을 계산할 수 있는(=데이터가 있는) 전체 ACC 수.
+      const totalAccForKey = dedupeSalesRows(allSales).filter(row => growthInfo([row], key).rate != null).length || 1;
+
+      tracks.forEach(track => {
+        const affectedSales = dedupeSalesRows(allSales).filter(row => {
+          const pack = growthInfo([row], key);
+          if (pack.rate == null) return false;
+
+          if (track.mode === 'reverse') {
+            return pack.rate < 0;
+          }
+
+          // 평균 대비 저성과는 역성장 그룹과 원인 분석이 섞이지 않도록
+          // 0% 이상 성장 중이지만 전체 성장률보다 3%p 이상 낮은 ACC만 분리합니다.
+          return pack.rate >= 0 && overall.rate != null && pack.rate <= overall.rate - 3;
+        });
+        if (!affectedSales.length) return;
+
+        const affectedPeople = peopleInSalesAccounts(baseRows, affectedSales);
+        if (!affectedPeople.length) return;
+
+        const respondents = affectedPeople.filter(p =>
+          (S.perById.get(p.안경사ID) || []).some(x => questionRelevance(x, key) > 0)
+        );
+        const causeList = lowQuestionsForRows(respondents.length ? respondents : affectedPeople, key, 999);
+        const primary = causeList[0] || null;
+        const affectedDriver = salesDriver(affectedSales, key);
+
+        // 인식 Gap마다 실제 대상자와 추천 교육을 별도로 계산
+        const gapPlans = causeList.map(g => {
+          const gapPeople = peopleWithQuestionGap(affectedPeople, key, g.q);
+          const gapAccCount = new Set(gapPeople.map(storeKey).filter(Boolean)).size;
+          const gapIncompleteCount = gapPeople.filter(p => personHasIncompleteRelatedEducation(p.안경사ID, key)).length;
+          const gapRecs = recommendedEducationPlan(gapPeople, key, [g], affectedDriver);
+          return {
+            ...g,
+            targetPeople: gapPeople,
+            targetAccCount: gapAccCount,
+            incompleteCount: gapIncompleteCount,
+            rec: gapRecs[0] || { title: driverFallbackEducation(key, affectedDriver?.type), status: 'Driver 기반 추천' }
+          };
+        });
+
+        // 카드 전체 Target은 Gap별 대상자의 합집합(안경사 중복 제거)
+        const uniqueGapTargets = new Map();
+        gapPlans.forEach(plan => plan.targetPeople.forEach(p => {
+          if (p?.안경사ID && !uniqueGapTargets.has(p.안경사ID)) uniqueGapTargets.set(p.안경사ID, p);
+        }));
+
+        // 관련 인식 Gap이 없을 때만 기존 판매 Driver + 교육이력 기준 Target을 fallback으로 사용
+        const fallbackTargets = affectedPeople.filter(p =>
+          personHasLowRelatedPerception(p.안경사ID, key) ||
+          personHasIncompleteRelatedEducation(p.안경사ID, key)
+        );
+        const finalTargets = uniqueGapTargets.size
+          ? [...uniqueGapTargets.values()]
+          : (fallbackTargets.length ? fallbackTargets : affectedPeople);
+
+        const targetAccCount = new Set(finalTargets.map(storeKey).filter(Boolean)).size;
+        const affectedAccCount = dedupeSalesRows(affectedSales).length;
+        const incompleteCount = finalTargets.filter(p => personHasIncompleteRelatedEducation(p.안경사ID, key)).length;
+        const recs = causeList.length
+          ? []
+          : recommendedEducationPlan(finalTargets, key, causeList, affectedDriver);
+        const focus = focusGroup(respondents, primary?.q);
+
+        // --- 심각도(severity): 전부 %p 단위라서 서로 더해도 단위가 맞음 ---
+        const packRisk = Math.max(0, -(affectedDriver.pack.rate || 0));
+        const wearerRisk = Math.max(0, -(affectedDriver.wearer.rate || 0));
+        const newRisk = Math.max(0, -(affectedDriver.newWearer.rate || 0));
+        const trendRisk = Math.max(0, -(primary?.change || 0)) * 20;
+        const underGap = track.mode === 'under' && overall.rate != null && affectedDriver.pack.rate != null
+          ? Math.max(0, overall.rate - affectedDriver.pack.rate)
+          : 0;
+        const severityScore = packRisk * 8 + wearerRisk * 5 + newRisk * 7 + trendRisk + underGap * 6;
+
+        // --- 규모/실행가능성: 원시 개수(count) 대신 "전체 대비 비율"로 환산해 0~1 스케일로 맞춤 ---
+        // (개수를 그대로 쓰면 모수가 큰 그룹이 심각도와 무관하게 항상 상위로 밀려 올라가는 문제가 있었음)
+        const reachRatio = affectedAccCount / totalAccForKey;               // 이 제품군 전체 ACC 중 영향받은 비율
+        const actionRatio = finalTargets.length ? incompleteCount / finalTargets.length : 0; // 타겟 중 교육으로 바로 해결 가능한 비율
+
+        // severity(%p 기반)와 reach/action(비율 0~1 → 0~100 환산)을 같은 크기 단위로 맞춰 가중합.
+        // reach·action의 가중치(1.2 / 0.6)는 severity 대비 상대적 영향력을 조절하는 값으로,
+        // "역성장 강도"를 최우선으로 보되 "파급 규모"와 "즉시 실행 가능성"을 보조 신호로 반영하려는 의도입니다.
+        const priority = severityScore + reachRatio * 100 * 1.2 + actionRatio * 100 * 0.6;
+
+        const causeText = primary
+          ? perceptionTrendText(primary)
+          : `${INSIGHT[key].focus}에서 현재/전년 추세상 뚜렷한 저하 문항은 아직 확인되지 않음`;
+
+        const perceptionEvidence = primary?.change != null
+          ? (primary.change <= -0.2
+              ? `관련 인식도 전년 대비 악화되어 교육 원인 후보의 근거가 강화됩니다.`
+              : primary.change >= 0.2
+                ? `관련 인식은 개선 중이므로 판매 저하를 인식 하나만으로 설명하기 어렵습니다.`
+                : `관련 인식은 전년과 유사한 수준으로 지속되고 있습니다.`)
+          : `2025 인식 데이터가 없거나 동일 문항 매칭이 되지 않아 현재 인식 기준으로 판단합니다.`;
+
+        const performanceText = track.mode === 'reverse'
+          ? `${FITTING_COLUMNS[key].label} 전년 대비 역성장 ACC ${affectedAccCount}개`
+          : `${FITTING_COLUMNS[key].label} 전체 성장률 ${growthLabel(overall)} 대비 낮은 ACC ${affectedAccCount}개`;
+
+        const narrative = `${performanceText}의 판매 구조를 별도로 분석한 결과 ${affectedDriver.label} 패턴이 우선 확인됩니다. ` +
+          `${primary ? `인식에서는 ‘${primary.q}’가 ${primary.prev != null ? `2025 ${primary.prev.toFixed(1)}점에서 2026 ${primary.seg.toFixed(1)}점으로 ${primary.change >= 0 ? '+' : ''}${primary.change.toFixed(1)}점 변화했습니다.` : `2026 ${primary.seg.toFixed(1)}점으로 확인됩니다.`}` : ''} ` +
+          perceptionEvidence + (focus ? ` 특히 ${focus}에서 Gap이 두드러집니다.` : '');
+
+        insights.push({
+          key,
+          mode: track.mode,
+          trackLabel: track.label,
+          title: `${FITTING_COLUMNS[key].label} · ${track.label}`,
+          narrative,
+          affectedSales,
+          affectedPeople,
+          affectedAccCount,
+          respondents,
+          targetPeople: finalTargets,
+          targetAccCount,
+          incompleteCount,
+          causeList,
+          gapPlans,
+          causeText,
+          recs,
+          focus,
+          priority,
+          driver: affectedDriver,
+          overallDriver
+        });
+      });
+    });
+
+    return insights.sort((a, b) => b.priority - a.priority);
+  }
+
+  function insightMetricChip(label, info) {
+    if (!info || info.status === 'none') {
+      return `<div class="insight-metric neutral"><span>${esc(label)}</span><strong>— 데이터 없음</strong></div>`;
+    }
+    if (info.status === 'new') {
+      return `<div class="insight-metric positive"><span>${esc(label)}</span><strong>＋ 신규 발생</strong></div>`;
+    }
+    const rate = info.rate;
+    const cls = rate < 0 ? 'negative' : rate > 0 ? 'positive' : 'neutral';
+    const arrow = rate < 0 ? '▼' : rate > 0 ? '▲' : '—';
+    return `<div class="insight-metric ${cls}"><span>${esc(label)}</span><strong>${arrow} ${esc(fmtRate(rate))}</strong></div>`;
+  }
+
+  function gapYearText(g) {
+    if (!g) return '';
+    if (g.prev == null || g.seg == null) return '2026 기준';
+    const delta = g.seg - g.prev;
+    const arrow = delta < 0 ? '▼' : delta > 0 ? '▲' : '→';
+    const amount = Math.abs(delta).toFixed(1);
+    return `2025 → 2026 ${arrow}${amount}`;
+  }
+
+  function renderInsights() {
+    S.insightsReady = true;
+    S.insights = generateInsights();
+    const box = $('insightCards');
+
+    if (!S.insights.length) {
+      box.innerHTML = emptyState('현재 조건에서 우선 실행할 교육 Opportunity가 없습니다.');
+      return;
+    }
+
+    box.innerHTML = S.insights.map((item, i) => {
+      const product = FITTING_COLUMNS[item.key].label;
+      const d = item.driver;
+      const overallText = item.mode === 'under' && item.overallDriver?.pack?.rate != null
+        ? ` · 전체 평균 ${growthLabel(item.overallDriver.pack)}`
+        : '';
+
+      const gapHtml = item.gapPlans?.length
+        ? item.gapPlans.map((g, idx) => `
+          <div class="perception-gap-row gap-plan-card">
+            <div class="gap-bullet">●</div>
+            <div class="gap-copy">
+              <div class="gap-question-line">
+                <b>${esc(g.q)}</b>
+                <span class="gap-number">Gap ${idx + 1}</span>
+              </div>
+              <div class="gap-meta">
+                <span class="gap-score">${g.seg.toFixed(1)} / 목표 ${Number(g.target || 4).toFixed(1)}</span>
+                <span class="gap-years">${esc(gapYearText(g))}</span>
+              </div>
+
+              <div class="gap-execution-row">
+                <div class="gap-target-mini">
+                  <span>👤 <b>${g.targetPeople.length}명</b></span>
+                  <span>🏪 <b>${g.targetAccCount} ACC</b></span>
+                  <span>🎓 미이수/미완료 <b>${g.incompleteCount}명</b></span>
+                </div>
+                <div class="gap-education-mini">
+                  <small>추천 교육</small>
+                  <b>→ ${esc(g.rec.title)}</b>
+                </div>
+              </div>
+
+              <button class="gap-target-link" type="button"
+                data-gap-target="${i}:${idx}">대상 안경사 보기 →</button>
+            </div>
+          </div>`).join('')
+        : `<div class="no-related-gap">✓ ${esc(product)} 관련 문항 중 현재 목표 미달 인식 Gap이 없습니다.</div>`;
+
+      const actionHtml = !item.gapPlans?.length
+        ? item.recs.map((r, idx) => `
+          <div class="insight-action-row">
+            <span class="action-index">${idx === 0 ? '①' : '②'}</span>
+            <div>
+              <b>${esc(r.title)}</b>
+              <small>${esc(d.label)} 기반 추천</small>
+            </div>
+          </div>`).join('')
+        : '';
+
+      const fuMetrics = [
+        '인식 재측정',
+        d.newWearer.status !== 'none' ? '신규' : null,
+        d.wearer.status !== 'none' ? '웨어러' : null,
+        'PACK'
+      ].filter(Boolean).join(' → ');
+
+      return `<article class="insight-card compact-insight">
+        <div class="insight-card-head">
+          <div>
+            <div class="type">EDUCATION OPPORTUNITY <span class="priority-chip">우선순위 ${i + 1}</span></div>
+            <h3>${esc(item.title)}</h3>
+          </div>
+          <div class="account-badge">${item.affectedAccCount} ACC</div>
+        </div>
+
+        <div class="diagnosis-strip">
+          <span class="diagnosis-icon">⚠</span>
+          <div><small>핵심 진단</small><b>${esc(d.label)}</b><span>${esc(d.reason)}</span></div>
+        </div>
+
+        <div class="insight-metrics">
+          ${insightMetricChip('PACK', d.pack)}
+          ${insightMetricChip('WEARER', d.wearer)}
+          ${insightMetricChip('NEW', d.newWearer)}
+        </div>
+        ${item.mode === 'under' ? `<div class="average-compare">전체 평균 대비 비교${esc(overallText)}</div>` : ''}
+
+        <section class="insight-section cause-section">
+          <div class="section-title">
+            <span>●</span>
+            <b>관련 인식 Gap · Target · 추천 교육</b>
+            <em>${item.gapPlans?.length || 0}개</em>
+          </div>
+          <div class="perception-gap-list">${gapHtml}</div>
+        </section>
+
+        <section class="insight-section target-section total-target-section">
+          <div class="section-title"><span>◎</span><b>전체 교육 Opportunity</b></div>
+          <div class="target-chips">
+            <span><b>👤 ${item.targetPeople.length}명</b> 고유 안경사</span>
+            <span><b>🏪 ${item.targetAccCount} ACC</b></span>
+            <span><b>🎓 ${item.incompleteCount}명</b> 교육 미이수/미완료</span>
+          </div>
+          ${item.gapPlans?.length ? '<small class="dedupe-note">※ Gap별 대상자가 중복될 수 있어 전체 수치는 안경사/ACC 중복을 제거한 값입니다.</small>' : ''}
+        </section>
+
+        ${!item.gapPlans?.length ? `
+        <section class="insight-section action-section">
+          <div class="section-title"><span>→</span><b>추천 Action</b></div>
+          <div class="insight-action-list">${actionHtml}</div>
+        </section>` : ''}
+
+        <div class="insight-bottom-row">
+          <details class="insight-followup">
+            <summary>↻ F/U 관리</summary>
+            <div>교육 이수 확인 후 ${esc(fuMetrics)} 재확인</div>
+          </details>
+          <button class="button primary" type="button" data-insight-target="${i}">교육 대상 안경사 보기</button>
+        </div>
+
+        <div class="coverage-note">※ 판매 기준월 ${S.baseMonth}월 · ${esc(S.baseMonthSource)} · 2025 인식 ${S.per25.length ? '연결됨' : '미연결'} · 2026 인식 ${S.per26.length ? '연결됨' : '미연결'}</div>
+      </article>`;
+    }).join('');
+
+    box.querySelectorAll('[data-gap-target]').forEach(btn => {
+      btn.onclick = () => {
+        const [insightIndex, gapIndex] = String(btn.dataset.gapTarget).split(':').map(Number);
+        const item = S.insights[insightIndex];
+        const plan = item?.gapPlans?.[gapIndex];
+        if (!item || !plan) return;
+
+        S.detailTargetIds = new Set(plan.targetPeople.map(p => p.안경사ID));
+        S.detailTargetLabel = `${item.title} · ${plan.q}`;
+        S.gapFilter = null;
+        render();
+        view('segment');
+      };
+    });
+
+    box.querySelectorAll('[data-insight-target]').forEach(btn => {
+      btn.onclick = () => {
+        const item = S.insights[Number(btn.dataset.insightTarget)];
+        S.detailTargetIds = new Set(item.targetPeople.map(p => p.안경사ID));
+        S.detailTargetLabel = `${item.title} · 전체 교육 Opportunity`;
+        S.gapFilter = null;
+        render();
+        view('segment');
+      };
+    });
+  }
+
+
+  const OP_STORAGE_KEY = 'ACUVUE_EDUCATION_JOURNEY_CYCLES_V1';
+
+  // ============================================================
+  // SECTION: 교육 운영관리 (Journey / Cycle)
+  // ============================================================
+  function currentOperationCycleKey(date = new Date()) {
+    const year = date.getFullYear();
+    const half = date.getMonth() < 6 ? 'H1' : 'H2';
+    return `${year} ${half}`;
+  }
+
+  function loadOperationStore() {
+    try {
+      const raw = localStorage.getItem(OP_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && typeof parsed === 'object' ? parsed : { cycles: {} };
+    } catch (e) {
+      return { cycles: {} };
+    }
+  }
+
+  function saveOperationStore(store) {
+    try {
+      localStorage.setItem(OP_STORAGE_KEY, JSON.stringify(store || { cycles: {} }));
+      return true;
+    } catch (e) {
+      console.warn('운영관리 저장 실패', e);
+      return false;
+    }
+  }
+
+  function ensureOperationCycleOptions() {
+    const select = $('operationCycleSelect');
+    if (!select) return;
+    const store = loadOperationStore();
+    const current = currentOperationCycleKey();
+    const keys = [...new Set([current, ...Object.keys(store.cycles || {})])]
+      .sort((a, b) => b.localeCompare(a, 'ko', { numeric: true }));
+    const preferred = S.operationCycle && keys.includes(S.operationCycle) ? S.operationCycle : current;
+    select.innerHTML = keys.map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join('');
+    select.value = preferred;
+    S.operationCycle = preferred;
+  }
+
+  function selectedOperationCycle() {
+    const store = loadOperationStore();
+    const key = $('operationCycleSelect')?.value || S.operationCycle || currentOperationCycleKey();
+    S.operationCycle = key;
+    return store.cycles?.[key] || null;
+  }
+
+  function commonFilterSummary() {
+    const parts = [];
+    if (S.query) parts.push(`검색: ${S.query}`);
+    [['regionFilter','지역'],['yearsFilter','연차'],['tierFilter','Tier'],['channelFilter','채널'],['repFilter','담당']].forEach(([id,label]) => {
+      const value = $(id)?.value;
+      if (value) parts.push(`${label}: ${value}`);
+    });
+    return parts.length ? parts.join(' · ') : '전체';
+  }
+
+  function operationCompletedRows(id) {
+    return completedEducationRowsForPerson(id);
+  }
+
+  function operationEducationMatch(id, title) {
+    const targetNorm = norm(title);
+    if (!targetNorm) return null;
+    const rows = operationCompletedRows(id);
+    let fuzzy = null;
+    for (const row of rows) {
+      const actual = educationDisplayTitle(row);
+      const actualNorm = norm(actual);
+      if (!actualNorm) continue;
+      if (actualNorm === targetNorm || actualNorm.includes(targetNorm) || targetNorm.includes(actualNorm)) return row;
+      if (!fuzzy && overlapScore(title, actual) >= 2) fuzzy = row;
+    }
+    return fuzzy;
+  }
+
+  function parseOperationDate(value) {
+    if (value == null || value === '') return null;
+    const raw = clean(value);
+    if (/^\d{5}(?:\.\d+)?$/.test(raw)) {
+      const serial = Number(raw);
+      if (Number.isFinite(serial)) return new Date((serial - 25569) * 86400 * 1000);
+    }
+    const normalized = raw.replace(/[.\/]/g, '-').replace(/\s.*$/, '');
+    const d = new Date(normalized);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  function operationDateLabel(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '-';
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  }
+
+  function addDays(date, days) {
+    const d = new Date(date.getTime());
+    d.setDate(d.getDate() + Number(days || 0));
+    return d;
+  }
+
+  function operationEducationPool(keys, id) {
+    const completed = new Set(operationCompletedRows(id).map(r => norm(educationDisplayTitle(r))).filter(Boolean));
+    const out = [];
+    const seen = new Set();
+    const add = title => {
+      const t = clean(title); const n = norm(t);
+      if (!t || !n || seen.has(n) || completed.has(n)) return;
+      seen.add(n); out.push(t);
+    };
+    (keys || []).forEach(key => {
+      (S.content || []).map(educationTitle).filter(Boolean).filter(t => educationRelated(t, key)).forEach(add);
+      (INSIGHT[key]?.eduFallback || []).forEach(add);
+    });
+    return out;
+  }
+
+  function buildOperationCohortFromInsights() {
+    const people = new Map();
+    const ensure = (person, sourceLabel, key) => {
+      const id = person?.안경사ID;
+      if (!id) return null;
+      if (!people.has(id)) {
+        people.set(id, {
+          id,
+          name: person.안경사명 || '', storeCode: person.안경원코드 || '', storeName: person.안경원명 || '',
+          region: person.지역 || '', tier: person.Tier || '', channel: person.채널 || '', rep: person.담당영업사원 || '',
+          sourceLabels: [], productKeys: [], gaps: [], candidates: []
+        });
+      }
+      const entry = people.get(id);
+      if (sourceLabel && !entry.sourceLabels.includes(sourceLabel)) entry.sourceLabels.push(sourceLabel);
+      if (key && !entry.productKeys.includes(key)) entry.productKeys.push(key);
+      return entry;
+    };
+
+    (S.insights || []).forEach((item, insightIndex) => {
+      (item.targetPeople || []).forEach(p => ensure(p, item.title, item.key));
+      if (item.gapPlans?.length) {
+        item.gapPlans.forEach((plan, gapIndex) => {
+          (plan.targetPeople || []).forEach(person => {
+            const entry = ensure(person, item.title, item.key);
+            if (!entry) return;
+            if (plan.q && !entry.gaps.includes(plan.q)) entry.gaps.push(plan.q);
+            const title = plan.rec?.title;
+            if (title) entry.candidates.push({ title, key: item.key, gap: plan.q || '', priority: insightIndex * 100 + gapIndex });
+          });
+        });
+      } else {
+        (item.targetPeople || []).forEach(person => {
+          const entry = ensure(person, item.title, item.key);
+          (item.recs || []).forEach((r, recIndex) => {
+            if (r?.title) entry.candidates.push({ title: r.title, key: item.key, gap: '', priority: insightIndex * 100 + 80 + recIndex });
+          });
+        });
+      }
+    });
+
+    return [...people.values()].map(entry => {
+      const seen = new Set();
+      const steps = [];
+      entry.candidates.sort((a, b) => a.priority - b.priority).forEach(c => {
+        const n = norm(c.title);
+        if (!n || seen.has(n) || operationEducationMatch(entry.id, c.title)) return;
+        seen.add(n);
+        steps.push({ title: c.title, productKey: c.key || '', sourceGap: c.gap || '' });
+      });
+      const pool = operationEducationPool(entry.productKeys, entry.id);
+      pool.forEach(title => {
+        if (steps.length >= 2) return;
+        const n = norm(title);
+        if (seen.has(n) || operationEducationMatch(entry.id, title)) return;
+        seen.add(n);
+        steps.push({ title, productKey: entry.productKeys[0] || '', sourceGap: '' });
+      });
+      return {
+        id: entry.id, name: entry.name, storeCode: entry.storeCode, storeName: entry.storeName,
+        region: entry.region, tier: entry.tier, channel: entry.channel, rep: entry.rep,
+        sourceLabels: entry.sourceLabels.slice(0, 4), productKeys: entry.productKeys,
+        gaps: entry.gaps.slice(0, 10), steps: steps.slice(0, 3), addedType: 'semester'
+      };
+    }).filter(x => x.steps.length);
+  }
+
+  function operationJourneyState(entry, cycle) {
+    const cadence = Number(cycle?.cadenceDays || 14);
+    const created = parseOperationDate(cycle?.createdAt) || new Date();
+    const steps = (entry.steps || []).map(step => {
+      const matched = operationEducationMatch(entry.id, step.title);
+      return {
+        ...step,
+        done: !!matched,
+        completedDate: matched ? parseOperationDate(educationDate(matched)) : null
+      };
+    });
+    const doneCount = steps.filter(s => s.done).length;
+    const nextIndex = steps.findIndex(s => !s.done);
+    const status = steps.length && doneCount >= steps.length ? 'complete' : doneCount > 0 ? 'progress' : 'not_started';
+    let dueDate = null;
+    let nextTitle = '';
+    if (nextIndex >= 0) {
+      nextTitle = steps[nextIndex].title;
+      if (nextIndex === 0) dueDate = created;
+      else {
+        const prior = steps[nextIndex - 1];
+        dueDate = prior.completedDate ? addDays(prior.completedDate, cadence) : addDays(created, cadence * nextIndex);
+      }
+    }
+    const now = new Date(); now.setHours(0,0,0,0);
+    if (dueDate) dueDate.setHours(0,0,0,0);
+    const due = status !== 'complete' && !!dueDate && dueDate <= now;
+    return { steps, doneCount, total: steps.length, nextIndex, nextTitle, dueDate, due, status };
+  }
+
+  function operationStatusLabel(state) {
+    if (state.status === 'complete') return 'Journey 완료';
+    if (state.status === 'progress') return '진행중';
+    return '미시작';
+  }
+
+  function operationStatusClass(state) {
+    if (state.status === 'complete') return 'complete';
+    if (state.due) return 'due';
+    if (state.status === 'progress') return 'progress';
+    return 'not-started';
+  }
+
+  function freezeCurrentOperationCycle() {
+    if (!S.master.length) return alert('먼저 통합 엑셀을 업로드해주세요.');
+    if (!S.insightsReady) {
+      S.insightsReady = true;
+      S.insights = generateInsights();
+      renderInsights();
+    }
+    if (!S.insights.length) return alert('현재 조건에서 확정할 교육 Opportunity가 없습니다.');
+
+    ensureOperationCycleOptions();
+    const key = $('operationCycleSelect')?.value || currentOperationCycleKey();
+    const store = loadOperationStore();
+    if (store.cycles?.[key]) {
+      const ok = confirm(`${key} 운영 대상이 이미 저장되어 있습니다. 현재 인사이트 기준으로 다시 확정할까요?`);
+      if (!ok) return;
+    }
+    const cohort = buildOperationCohortFromInsights();
+    if (!cohort.length) return alert('운영 Journey로 확정할 대상이 없습니다.');
+    const now = new Date();
+    store.cycles = store.cycles || {};
+    store.cycles[key] = {
+      key,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      cadenceDays: Number($('operationCadence')?.value || 14),
+      baseMonth: S.baseMonth,
+      filterSummary: commonFilterSummary(),
+      baselineMasterIds: S.master.map(p => p.안경사ID).filter(Boolean),
+      cohort
+    };
+    saveOperationStore(store);
+    S.operationCycle = key;
+    renderOperations(S.filtered?.length ? S.filtered : filtered());
+    toast(`${key} 운영 대상 ${cohort.length}명 확정`);
+  }
+
+  function newPersonOperationPlan(person) {
+    const id = person.안경사ID;
+    const perRows = (S.perById.get(id) || []).filter(p => p.gap);
+    const relevantGaps = perRows.filter(p => ['ast','mf','max'].some(k => questionRelevance(p, k) > 0));
+    const keys = [];
+    const steps = [];
+    const seen = new Set();
+    const addStep = (title, key, gap='') => {
+      const n = norm(title);
+      if (!title || !n || seen.has(n) || operationEducationMatch(id, title)) return;
+      seen.add(n); steps.push({ title, productKey: key || '', sourceGap: gap });
+    };
+
+    relevantGaps.forEach(g => {
+      const key = ['ast','mf','max'].find(k => questionRelevance(g, k) > 0);
+      if (key && !keys.includes(key)) keys.push(key);
+      const rec = findBestEducationForQuestion(g.문항);
+      addStep(rec.title, key, g.문항);
+    });
+
+    if (!keys.length) {
+      ['ast','mf','max'].forEach(key => {
+        const rate = metrics(id).growths[key]?.info?.rate;
+        if (rate != null && rate < 0) keys.push(key);
+      });
+    }
+    operationEducationPool(keys, id).forEach(title => { if (steps.length < 2) addStep(title, keys[0] || '', ''); });
+    return {
+      keys,
+      steps: steps.slice(0, 3),
+      gaps: relevantGaps.map(g => g.문항).slice(0, 8),
+      source: relevantGaps.length ? '2026 인식 Gap 기반' : keys.length ? '소속 ACC 판매 기반' : '자동 배정 근거 부족'
+    };
+  }
+
+  function addRollingPersonToCycle(id) {
+    const person = S.masterById.get(id);
+    const cycle = selectedOperationCycle();
+    if (!person || !cycle) return;
+    const plan = newPersonOperationPlan(person);
+    if (!plan.steps.length) return alert('현재 데이터만으로 자동 배정할 교육 근거가 부족합니다.');
+    const store = loadOperationStore();
+    const key = cycle.key;
+    const target = store.cycles[key];
+    if (!target) return;
+    if ((target.cohort || []).some(x => x.id === id)) return;
+    target.cohort.push({
+      id, name: person.안경사명 || '', storeCode: person.안경원코드 || '', storeName: person.안경원명 || '',
+      region: person.지역 || '', tier: person.Tier || '', channel: person.채널 || '', rep: person.담당영업사원 || '',
+      sourceLabels: [`월별 신규 안경사 · ${plan.source}`], productKeys: plan.keys, gaps: plan.gaps,
+      steps: plan.steps, addedType: 'rolling', addedAt: new Date().toISOString()
+    });
+    target.updatedAt = new Date().toISOString();
+    saveOperationStore(store);
+    renderOperations(S.filtered?.length ? S.filtered : filtered());
+    toast(`${person.안경사명 || id} Journey 추가 완료`);
+  }
+
+  function renderOperations(commonRows) {
+    ensureOperationCycleOptions();
+    const cycle = selectedOperationCycle();
+    const kpiBox = $('operationKpiGrid');
+    const list = $('operationJourneyList');
+    const intake = $('rollingIntakeList');
+    const intakeCount = $('rollingIntakeCount');
+    if (!kpiBox || !list || !intake) return;
+
+    if (!cycle) {
+      if ($('operationCycleNote')) $('operationCycleNote').textContent = `${S.operationCycle || currentOperationCycleKey()} · 아직 운영 대상이 확정되지 않았습니다.`;
+      kpiBox.innerHTML = '';
+      list.innerHTML = emptyState('교육 인사이트를 실행한 뒤 <b>현재 인사이트 운영 대상 확정</b>을 눌러주세요.');
+      intake.innerHTML = emptyState('운영 Cycle을 먼저 확정해주세요.');
+      if (intakeCount) intakeCount.textContent = '';
+      if ($('operationCadence')) $('operationCadence').value = '14';
+      return;
+    }
+
+    if ($('operationCadence')) $('operationCadence').value = String(cycle.cadenceDays || 14);
+    const created = parseOperationDate(cycle.createdAt);
+    if ($('operationCycleNote')) {
+      $('operationCycleNote').innerHTML = `<b>${esc(cycle.key)}</b> · 최초 확정 ${esc(created ? `${created.getFullYear()}.${created.getMonth()+1}.${created.getDate()}` : '-')} · ${cycle.cohort.length}명 · 기준 ${esc(cycle.filterSummary || '전체')}`;
+    }
+
+    const allowedIds = new Set((commonRows || []).map(p => p.안경사ID));
+    const cohortRows = (cycle.cohort || []).filter(x => !commonRows || allowedIds.has(x.id));
+    const stateRows = cohortRows.map(entry => ({ entry, state: operationJourneyState(entry, cycle) }));
+    const notStarted = stateRows.filter(x => x.state.status === 'not_started').length;
+    const progress = stateRows.filter(x => x.state.status === 'progress').length;
+    const complete = stateRows.filter(x => x.state.status === 'complete').length;
+    const due = stateRows.filter(x => x.state.due).length;
+
+    const baseline = new Set(cycle.baselineMasterIds || []);
+    const cohortIds = new Set((cycle.cohort || []).map(x => x.id));
+    const pendingNew = (commonRows || []).filter(p => !baseline.has(p.안경사ID) && !cohortIds.has(p.안경사ID));
+
+    kpiBox.innerHTML = [
+      ['운영 대상', `${stateRows.length}명`, `${new Set(cohortRows.map(x => storeKey(S.masterById.get(x.id) || x)).filter(Boolean)).size} ACC`],
+      ['미시작', `${notStarted}명`, '1차 교육 전달 필요'],
+      ['진행중', `${progress}명`, '다음 교육 대기/진행'],
+      ['Journey 완료', `${complete}명`, `${fmtPct(stateRows.length ? complete / stateRows.length : null)} 완료`],
+      ['다음 전달', `${due}명`, '오늘 기준 전달 시점 도래'],
+      ['신규 안경사', `${pendingNew.length}명`, 'Rolling Intake 대기']
+    ].map(([label,value,sub]) => `<div class="operation-kpi-card"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(sub)}</small></div>`).join('');
+
+    const statusFilter = S.operationStatusFilter || 'all';
+    let visible = stateRows;
+    if (statusFilter === 'not_started') visible = visible.filter(x => x.state.status === 'not_started');
+    if (statusFilter === 'progress') visible = visible.filter(x => x.state.status === 'progress');
+    if (statusFilter === 'complete') visible = visible.filter(x => x.state.status === 'complete');
+    if (statusFilter === 'due') visible = visible.filter(x => x.state.due);
+
+    document.querySelectorAll('[data-op-status]').forEach(btn => btn.classList.toggle('active', btn.dataset.opStatus === statusFilter));
+
+    if (!visible.length) {
+      list.innerHTML = emptyState('현재 조건에 해당하는 Journey 대상이 없습니다.');
+    } else {
+      list.innerHTML = visible.map(({entry,state}) => {
+        const current = S.masterById.get(entry.id) || entry;
+        const statusCls = operationStatusClass(state);
+        const stepHtml = state.steps.map((s, idx) => `
+          <div class="journey-step ${s.done ? 'done' : (idx === state.nextIndex ? 'next' : '')}">
+            <span>${s.done ? '✓' : idx + 1}</span>
+            <div><b>${esc(s.title)}</b><small>${s.done ? `완료${s.completedDate ? ` · ${operationDateLabel(s.completedDate)}` : ''}` : idx === state.nextIndex ? '다음 교육' : '예정'}</small></div>
+          </div>`).join('');
+        const nextText = state.status === 'complete' ? 'Journey 완료' : state.nextTitle || '-';
+        const dueText = state.status === 'complete' ? '완료' : state.due ? `지금 전달 · ${operationDateLabel(state.dueDate)}` : `예정 ${operationDateLabel(state.dueDate)}`;
+        return `<div class="journey-person-card">
+          <div class="journey-person-head">
+            <div><b>${esc(current.안경사명 || entry.name || entry.id)}</b><span>${esc(current.안경원명 || entry.storeName || '')} · ${esc(current.지역 || entry.region || '-')}</span></div>
+            <span class="journey-status ${statusCls}">${esc(operationStatusLabel(state))} · ${state.doneCount}/${state.total}</span>
+          </div>
+          <div class="journey-source">${esc((entry.sourceLabels || []).join(' · ') || '교육 Opportunity')}</div>
+          <div class="journey-steps">${stepHtml}</div>
+          <div class="journey-next">
+            <div><small>다음 Action</small><b>${esc(nextText)}</b></div>
+            <span class="next-due ${state.due ? 'due' : ''}">${esc(dueText)}</span>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    if (intakeCount) intakeCount.textContent = `${pendingNew.length}명`;
+    if (!pendingNew.length) {
+      intake.innerHTML = emptyState('현재 공통 조건에서 새로 추가된 안경사가 없습니다.');
+    } else {
+      intake.innerHTML = pendingNew.map(person => {
+        const plan = newPersonOperationPlan(person);
+        const gapCount = (S.perById.get(person.안경사ID) || []).filter(x => x.gap).length;
+        const eduCount = completedEducationRowsForPerson(person.안경사ID).length;
+        const recText = plan.steps.length ? plan.steps.map(x => x.title).slice(0,2).join(' · ') : '자동 배정 근거 부족';
+        return `<div class="rolling-person-card">
+          <div class="rolling-person-copy">
+            <b>${esc(person.안경사명 || person.안경사ID)}</b>
+            <span>${esc(person.안경원명 || '-')} · ${esc(person.지역 || '-')} · ${esc(person.Tier || '-')}</span>
+            <div class="rolling-tags"><em>인식 Gap ${gapCount}개</em><em>교육 ${eduCount}건</em><em>${esc(plan.source)}</em></div>
+            <small>추천: ${esc(recText)}</small>
+          </div>
+          <button class="button ${plan.steps.length ? 'primary' : 'ghost'}" type="button" data-add-rolling="${esc(person.안경사ID)}" ${plan.steps.length ? '' : 'disabled'}>${plan.steps.length ? 'Journey 추가' : '확인 필요'}</button>
+        </div>`;
+      }).join('');
+      intake.querySelectorAll('[data-add-rolling]').forEach(btn => {
+        btn.onclick = () => addRollingPersonToCycle(btn.dataset.addRolling);
+      });
+    }
+  }
+
+  function downloadOperationList() {
+    if (!window.XLSX) return alert('XLSX 라이브러리가 필요합니다.');
+    const cycle = selectedOperationCycle();
+    if (!cycle) return alert('먼저 운영 대상을 확정해주세요.');
+    const hasFilteredRows = Array.isArray(S.filtered);
+    const allowed = new Set((S.filtered || []).map(p => p.안경사ID));
+    const rows = (cycle.cohort || []).filter(x => !hasFilteredRows || allowed.has(x.id)).map(entry => {
+      const state = operationJourneyState(entry, cycle);
+      const person = S.masterById.get(entry.id) || entry;
+      const row = {
+        운영Cycle: cycle.key,
+        안경사ID: entry.id,
+        안경사명: person.안경사명 || entry.name || '',
+        안경원코드: person.안경원코드 || entry.storeCode || '',
+        안경원명: person.안경원명 || entry.storeName || '',
+        지역: person.지역 || entry.region || '',
+        Tier: person.Tier || entry.tier || '',
+        Journey상태: operationStatusLabel(state),
+        완료수: state.doneCount,
+        총교육수: state.total,
+        다음교육: state.nextTitle || '',
+        다음전달예정: state.dueDate ? `${state.dueDate.getFullYear()}-${String(state.dueDate.getMonth()+1).padStart(2,'0')}-${String(state.dueDate.getDate()).padStart(2,'0')}` : '',
+        전달대상여부: state.due ? 'Y' : 'N',
+        인사이트출처: (entry.sourceLabels || []).join(' | '),
+        관련인식Gap: (entry.gaps || []).join(' | ')
+      };
+      state.steps.forEach((step, i) => {
+        row[`교육${i+1}`] = step.title;
+        row[`교육${i+1}_완료`] = step.done ? 'Y' : 'N';
+        row[`교육${i+1}_완료일`] = step.completedDate ? `${step.completedDate.getFullYear()}-${String(step.completedDate.getMonth()+1).padStart(2,'0')}-${String(step.completedDate.getDate()).padStart(2,'0')}` : '';
+      });
+      return row;
+    });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), '교육운영관리');
+    XLSX.writeFile(wb, `ACUVUE_${cycle.key.replace(/\s/g,'_')}_교육운영관리.xlsx`);
+  }
+
+  function render() {
+    const rows = filtered();
+    S.filtered = rows;
+    const ms = rows.map(r => metrics(r.안경사ID));
+    const eduComplete = ms.filter(m => m.eduRate === 1).length;
+    const reached = ms.filter(m => m.perc.length && m.gaps.length === 0).length;
+    const stores = selectedSalesRows(rows).length;
+    $('kpiGrid').innerHTML = [
+      kpi('관리 안경사', rows.length.toLocaleString('ko-KR'), `${stores.toLocaleString('ko-KR')}개 안경원 · 현재 필터`),
+      kpi('교육 완료 안경사', eduComplete.toLocaleString('ko-KR'), `${fmtPct(rows.length ? eduComplete / rows.length : null)} 완료`),
+      kpi('인식 목표 도달', reached.toLocaleString('ko-KR'), `${fmtPct(rows.length ? reached / rows.length : null)} 도달`),
+      kpiGrowth('ast', rows), kpiGrowth('mf', rows), kpiGrowth('max', rows)
+    ].join('');
+    renderGapCards(rows, ms);
+    renderLinkedGapEducation(rows);
+    const detailRows = rowsForDetail(rows);
+    renderSegment(detailRows, detailRows.map(r => metrics(r.안경사ID)));
+    renderOperations(rows);
+
+    if (!S.query && $('queryExplanation')) {
+      $('queryExplanation').textContent = `공통 분석 조건 · 현재 필터 결과 ${rows.length}명 · 판매 기준 ${S.baseMonth}월 (${S.baseMonthSource}) · 판매는 안경원(ACC) 단위로 중복 제거`;
+    }
+  }
+  window.render = render;
+
+  function gapQuestionsForPerson(id, productKey = null) {
+    return (S.perById.get(id) || []).filter(p => p.gap && (!productKey || questionRelevance(p, productKey) > 0)).sort((a, b) => a.점수 - b.점수);
+  }
+
+  function completedEducationForPerson(id, productKey = null) {
+    return (S.eduById.get(id) || []).filter(eduDone).filter(r => !productKey || educationRelated(Object.values(r).join(' '), productKey)).map(educationTitle).filter(Boolean);
+  }
+
+  function download() {
+    if (!window.XLSX) return;
+    const rows = rowsForDetail(S.filtered || []);
+    const productKey = S.gapFilter?.type === 'sales' ? S.gapFilter.key : null;
+    const output = rows.map(p => {
+      const m = metrics(p.안경사ID);
+      const gaps = gapQuestionsForPerson(p.안경사ID, productKey).slice(0, 3);
+      const recs = gaps.map(g => findBestEducationForQuestion(g.문항));
+      const row = {
+        다운로드기준: gapFilterTitle(), 판매기준월: S.baseMonth, 판매기준월출처: S.baseMonthSource,
+        안경사ID: p.안경사ID, 안경사명: p.안경사명, 안경원코드: p.안경원코드, 안경원명: p.안경원명,
+        지역: p.지역, 연차: p.연차, Tier: p.Tier, 채널: p.채널, 담당영업사원: p.담당영업사원,
+        인식Gap수: m.gaps.length, 교육이수건수: m.eduCompletedCount, 교육완료율: m.eduRate,
+        필요교육: recs.map(r => r.title).join(' | '), 관련이수교육: completedEducationForPerson(p.안경사ID, productKey).join(' | ')
+      };
+      gaps.forEach((g, i) => {
+        row[`이상인식문항${i + 1}`] = g.문항; row[`이상인식문항${i + 1}_점수`] = g.점수; row[`이상인식문항${i + 1}_목표`] = g.목표값;
+      });
+      ['ast', 'mf', 'max'].forEach(key => {
+        const label = FITTING_COLUMNS[key].label;
+        const storeSales = rowsFor(p.안경사ID);
+        const wearer = countGrowthInfo(storeSales, key, 'wearer');
+        const newWearer = countGrowthInfo(storeSales, key, 'new');
+        row[`${label}_연환산팩증감`] = m.growths[key].pack;
+        row[`${label}_성장구분`] = growthLabel(m.growths[key].info);
+        row[`${label}_팩성장률`] = m.growths[key].info.rate;
+        row[`${label}_웨어러성장률`] = wearer.rate;
+        row[`${label}_신규성장률`] = newWearer.rate;
+      });
+      return row;
+    });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(output), '대상목록');
+    XLSX.writeFile(wb, 'ACUVUE_교육대상.xlsx');
+  }
+
+  function resetSmartSearch() {
+    S.query = ''; S.detailTargetIds = null; S.detailTargetLabel = ''; S.gapFilter = null;
+    if ($('smartQuery')) $('smartQuery').value = '';
+    render();
+    if (S.insightsReady) renderInsights();
+  }
+
+  function resetFilters() {
+    ['regionFilter', 'yearsFilter', 'tierFilter', 'channelFilter', 'repFilter'].forEach(id => { if ($(id)) $(id).value = ''; });
+    S.query = ''; S.detailTargetIds = null; S.detailTargetLabel = ''; S.gapFilter = null;
+    if ($('smartQuery')) $('smartQuery').value = '';
+    render();
+    if (S.insightsReady) renderInsights();
+  }
+
+  function view(id) {
+    if (id === 'insight' && S.insightsReady) renderInsights();
+    if (id === 'operations') renderOperations(S.filtered?.length ? S.filtered : filtered());
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === id));
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === id));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function toast(message) {
+    const el = $('toast');
+    el.textContent = message; el.classList.add('show');
+    clearTimeout(toast._timer); toast._timer = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  // alert()는 사용자가 원인을 다시 확인할 수 없고 다른 UI 톤과도 어긋나므로,
+  // 업로드/저장 관련 에러는 상단 상태 배지에 원인을 남기고 토스트로 짧게 알린다.
+  function showUploadError(message) {
+    const el = $('uploadStatus');
+    if (el) { el.textContent = `⚠ ${message}`; el.classList.add('error'); }
+    toast('오류가 발생했습니다 · 상단 안내를 확인해주세요');
+  }
+
+
+  // ============================================================
+  // SECTION: 브라우저 로컬 저장 (IndexedDB) & 업로드/복원
+  // ============================================================
+  const LOCAL_DATA_DB = 'ACUVUE_DASHBOARD_LOCAL_DATA';
+  const LOCAL_DATA_DB_VERSION = 1;
+  const LOCAL_DATA_STORE = 'raw_workbook';
+  const LOCAL_DATA_KEY = 'current';
+
+  function openLocalDataDb() {
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) {
+        reject(new Error('이 브라우저는 IndexedDB를 지원하지 않습니다.'));
+        return;
+      }
+      const req = indexedDB.open(LOCAL_DATA_DB, LOCAL_DATA_DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(LOCAL_DATA_STORE)) {
+          db.createObjectStore(LOCAL_DATA_STORE, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('로컬 데이터베이스를 열 수 없습니다.'));
+    });
+  }
+
+  async function saveRawWorkbookToBrowser(meta, arrayBuffer) {
+    const db = await openLocalDataDb();
+    try {
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(LOCAL_DATA_STORE, 'readwrite');
+        tx.objectStore(LOCAL_DATA_STORE).put({
+          id: LOCAL_DATA_KEY,
+          name: meta.name || 'uploaded.xlsx',
+          type: meta.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          lastModified: Number(meta.lastModified || Date.now()),
+          savedAt: Date.now(),
+          size: Number(meta.size || arrayBuffer.byteLength || 0),
+          buffer: arrayBuffer
+        });
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error || new Error('원본 Excel 저장에 실패했습니다.'));
+        tx.onabort = () => reject(tx.error || new Error('원본 Excel 저장이 중단되었습니다.'));
+      });
+    } finally {
+      db.close();
+    }
+    try {
+      if (navigator.storage?.persist) await navigator.storage.persist();
+    } catch (_) {}
+  }
+
+  async function getSavedRawWorkbook() {
+    const db = await openLocalDataDb();
+    try {
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(LOCAL_DATA_STORE, 'readonly');
+        const req = tx.objectStore(LOCAL_DATA_STORE).get(LOCAL_DATA_KEY);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error || new Error('저장된 Excel을 불러올 수 없습니다.'));
+      });
+    } finally {
+      db.close();
+    }
+  }
+
+  async function deleteSavedRawWorkbook() {
+    const db = await openLocalDataDb();
+    try {
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(LOCAL_DATA_STORE, 'readwrite');
+        tx.objectStore(LOCAL_DATA_STORE).delete(LOCAL_DATA_KEY);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error || new Error('저장 데이터 삭제에 실패했습니다.'));
+      });
+    } finally {
+      db.close();
+    }
+  }
+
+  function savedDataTimeText(value) {
+    if (!value) return '';
+    try {
+      return new Intl.DateTimeFormat('ko-KR', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      }).format(new Date(value));
+    } catch (_) {
+      return '';
+    }
+  }
+
+  async function applyWorkbookBuffer(arrayBuffer, meta = {}, options = {}) {
+    if (!window.XLSX) throw new Error('XLSX 라이브러리가 로드되지 않았습니다.');
+
+    const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: false });
+    validateWorkbookSheets(wb);
+    S.master = normMaster(sheet(wb, aliases.master));
+    S.content = sheet(wb, aliases.content);
+    S.edu = sheet(wb, aliases.edu);
+    S.qm = normQm(sheet(wb, aliases.qm));
+    S.per25 = normPer(sheet(wb, aliases.per25));
+    S.per26 = normPer(sheet(wb, aliases.per26));
+    S.per = S.per26;
+    S.sales = loadFittingSalesSheet(wb);
+    S.rec = sheet(wb, aliases.rec);
+
+    const detected = detectSalesBaseMonth(wb, S.sales);
+    S.baseMonth = detected.month;
+    S.baseMonthSource = detected.source;
+    if ($('salesBaseMonth')) $('salesBaseMonth').value = String(S.baseMonth);
+    updateBaseMonthHint();
+
+    rebuildIndexes();
+    buildFilters();
+
+    S.query = '';
+    S.detailTargetIds = null;
+    S.detailTargetLabel = '';
+    S.gapFilter = null;
+    S.insights = [];
+    S.insightsReady = false;
+
+    render();
+    $('insightCards').innerHTML = emptyState('데이터가 준비되었습니다. <b>교육 Opportunity 분석</b>을 눌러주세요.');
+
+    const fileName = meta.name || '저장된 Excel';
+    const dataSummary = `${S.master.length.toLocaleString('ko-KR')}명 / ${dedupeSalesRows(S.sales).length.toLocaleString('ko-KR')} ACC · 인식25 ${S.per25.length ? 'O' : '-'} / 인식26 ${S.per26.length ? 'O' : '-'}`;
+
+    $('uploadStatus').classList.remove('error');
+    if (options.saveOriginal) {
+      await saveRawWorkbookToBrowser(meta, arrayBuffer);
+      const savedAt = savedDataTimeText(Date.now());
+      $('uploadStatus').textContent = `💾 브라우저 저장 완료 · ${fileName} · ${dataSummary}${savedAt ? ` · ${savedAt}` : ''}`;
+      toast(`업로드 + 로컬 저장 완료 · 판매 기준 ${S.baseMonth}월`);
+    } else {
+      const savedAt = savedDataTimeText(meta.savedAt);
+      $('uploadStatus').textContent = `💾 저장 데이터 자동 로드 · ${fileName} · ${dataSummary}${savedAt ? ` · 저장 ${savedAt}` : ''}`;
+      toast(`저장된 Excel 자동 로드 · 판매 기준 ${S.baseMonth}월`);
+    }
+  }
+
+  async function restoreSavedWorkbook() {
+    if (!('indexedDB' in window)) {
+      $('uploadStatus').textContent = '데이터 없음 · Excel을 업로드해주세요.';
+      return false;
+    }
+    try {
+      const saved = await getSavedRawWorkbook();
+      if (!saved?.buffer) {
+        $('uploadStatus').textContent = '데이터 없음 · Excel을 최초 1회 업로드해주세요.';
+        return false;
+      }
+      $('uploadStatus').textContent = `저장된 Excel 불러오는 중… · ${saved.name || ''}`;
+      await applyWorkbookBuffer(saved.buffer, saved, { saveOriginal: false });
+      return true;
+    } catch (err) {
+      console.error('저장된 Excel 자동 로드 실패:', err);
+      $('uploadStatus').textContent = '저장 데이터 로드 실패 · Excel을 다시 업로드해주세요.';
+      return false;
+    }
+  }
+
+  async function upload(file) {
+    if (!file) return;
+    const arrayBuffer = await file.arrayBuffer();
+    await applyWorkbookBuffer(arrayBuffer, {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified: file.lastModified
+    }, { saveOriginal: true });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.tab').forEach(t => { t.onclick = () => view(t.dataset.view); });
+    $('workbookInput').onchange = e => e.target.files[0] && upload(e.target.files[0]).catch(err => {
+      console.error(err); showUploadError(`업로드 실패 · ${err.message || err}`);
+    });
+    const deleteSavedWorkbookButton = $('deleteSavedWorkbook');
+    if (deleteSavedWorkbookButton) {
+      deleteSavedWorkbookButton.onclick = async () => {
+        const ok = confirm(
+          '이 PC/브라우저에 저장된 원본 Excel을 삭제할까요?\n\n' +
+          'GitHub의 대시보드 파일은 삭제되지 않습니다.\n' +
+          '삭제 후에는 Excel을 다시 업로드해야 합니다.'
+        );
+        if (!ok) return;
+        try {
+          await deleteSavedRawWorkbook();
+          toast('브라우저 저장 데이터 삭제 완료');
+          setTimeout(() => window.location.reload(), 450);
+        } catch (err) {
+          console.error(err);
+          showUploadError(`저장 데이터 삭제 실패 · ${err.message || err}`);
+        }
+      };
+    }
+    $('runQuery').onclick = () => {
+      S.query = $('smartQuery').value || '';
+      S.detailTargetIds = null;
+      S.detailTargetLabel = '';
+      S.gapFilter = null;
+      render();
+      if (S.insightsReady) renderInsights();
+    };
+    $('smartQuery').onkeydown = e => { if (e.key === 'Enter') $('runQuery').click(); };
+    $('clearQuery').onclick = resetSmartSearch;
+    $('resetFilters').onclick = resetFilters;
+    document.querySelectorAll('.examples button').forEach(b => {
+      b.onclick = () => {
+        S.query = clean(b.dataset.query || b.textContent);
+        $('smartQuery').value = S.query;
+        S.detailTargetIds = null;
+        S.detailTargetLabel = '';
+        S.gapFilter = null;
+        render();
+        if (S.insightsReady) renderInsights();
+      };
+    });
+    $('salesBaseMonth').value = String(S.baseMonth);
+    updateBaseMonthHint();
+    $('salesBaseMonth').onchange = () => {
+      S.baseMonth = Number($('salesBaseMonth').value) || S.baseMonth;
+      S.baseMonthSource = '화면에서 직접 선택';
+      S.metricCache = new Map();
+      updateBaseMonthHint();
+      render();
+      if (S.insights.length) renderInsights();
+      toast(`판매 기준월 ${S.baseMonth}월로 변경`);
+    };
+    $('downloadResults').onclick = download;
+    $('closeProfile').onclick = () => { $('profilePanel').hidden = true; };
+    $('refreshInsights').onclick = () => { renderInsights(); toast('교육 Opportunity 분석 완료'); };
+    if ($('freezeOperation')) $('freezeOperation').onclick = freezeCurrentOperationCycle;
+    if ($('downloadOperation')) $('downloadOperation').onclick = downloadOperationList;
+    if ($('operationCycleSelect')) $('operationCycleSelect').onchange = () => { S.operationCycle = $('operationCycleSelect').value; S.operationStatusFilter = 'all'; renderOperations(S.filtered?.length ? S.filtered : filtered()); };
+    if ($('operationCadence')) $('operationCadence').onchange = () => {
+      const cycle = selectedOperationCycle();
+      if (!cycle) return;
+      const store = loadOperationStore();
+      const key = cycle.key;
+      if (store.cycles?.[key]) { store.cycles[key].cadenceDays = Number($('operationCadence').value || 14); store.cycles[key].updatedAt = new Date().toISOString(); saveOperationStore(store); }
+      renderOperations(S.filtered?.length ? S.filtered : filtered());
+    };
+    document.querySelectorAll('[data-op-status]').forEach(btn => { btn.onclick = () => { S.operationStatusFilter = btn.dataset.opStatus || 'all'; renderOperations(S.filtered?.length ? S.filtered : filtered()); }; });
+    ensureOperationCycleOptions();
+    render();
+
+    // 같은 PC/같은 브라우저에서는 최초 1회 업로드한 원본 Excel을 자동 복원합니다.
+    restoreSavedWorkbook();
+  });
+})();
+
+</script>
+</body>
+</html>
