@@ -486,6 +486,56 @@ img,svg,canvas{max-width:100%}
 .gap-years{font-size:11px;color:#5c7084;font-weight:750}
 .no-related-gap{background:#f4faf7;border:1px solid #d9eee3;border-radius:10px;padding:11px;color:#4b6a59;font-size:12px;font-weight:750}
 
+/* ===== 교육 인사이트 v3 (한 줄 리스트 + 클릭시 펼침) ===== */
+.op-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 6px 20px rgba(20,40,70,.05)}
+.op-row{border-bottom:1px solid var(--line)}
+.op-row:last-child{border-bottom:0}
+.op-row-head{display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer}
+.op-row-head:hover{background:#fafbfc}
+.op-sev{flex:0 0 auto;width:5px;align-self:stretch;border-radius:3px;background:var(--red)}
+.op-rank{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:#f1f3f6;color:var(--muted);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center}
+.op-row.top .op-rank{background:var(--red);color:#fff}
+.op-main{flex:1;min-width:0}
+.op-title-line{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.op-title-line b{font-size:15px;letter-spacing:-.01em;color:var(--ink)}
+.op-title-line .track{font-size:11px;color:var(--muted);font-weight:700}
+.op-diag{font-size:12.5px;color:#4a5a6c;margin-top:3px;line-height:1.4}
+.op-count{flex:0 0 auto;text-align:right}
+.op-count strong{display:block;font-size:19px;color:var(--navy);line-height:1}
+.op-count span{font-size:10px;color:var(--muted);font-weight:800}
+.op-caret{flex:0 0 auto;color:var(--muted);font-size:13px;transition:transform .15s}
+.op-row.open .op-caret{transform:rotate(90deg)}
+.op-sevbar-track{height:3px;background:#eef1f4;border-radius:2px;margin-top:8px;overflow:hidden}
+.op-sevbar-fill{height:100%;background:var(--red)}
+.op-detail{display:none;padding:2px 16px 18px 45px}
+.op-row.open .op-detail{display:block}
+.op-evidence{display:flex;gap:18px;padding:10px 12px;background:#f7f9fb;border-radius:9px;margin-bottom:12px;flex-wrap:wrap}
+.op-evidence-item{font-size:11px;color:var(--muted)}
+.op-evidence-item b{display:block;font-size:14px;margin-top:2px}
+.op-evidence-item.negative b{color:var(--red)}
+.op-evidence-item.positive b{color:#0a876f}
+.op-evidence-toggle{cursor:pointer;font-size:11.5px;font-weight:800;color:var(--teal);list-style:none;margin-bottom:8px}
+.op-evidence-toggle::-webkit-details-marker{display:none}
+.gap-heading{font-size:11.5px;font-weight:900;color:var(--navy);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+.gap-list{display:flex;flex-direction:column}
+.gap-item{padding:11px 0;border-top:1px solid #eef1f4}
+.gap-item:first-child{border-top:0}
+.gap-item-top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.gap-q{font-size:13.5px;font-weight:650;color:var(--ink)}
+.gap-score{font-size:12px;color:var(--muted);white-space:nowrap;flex:0 0 auto}
+.gap-score b{color:var(--red)}
+.gap-bottom{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:6px;flex-wrap:wrap}
+.gap-recs{display:flex;gap:14px;flex-wrap:wrap}
+.gap-rec{font-size:12px;color:#33506b}
+.gap-rec small{color:var(--muted);font-weight:800;margin-right:3px}
+.gap-link{border:0;background:none;color:var(--teal);font-weight:800;font-size:12px;cursor:pointer;padding:0;white-space:nowrap}
+.gap-item.salesonly{background:#fbfaf5;border-radius:8px;padding:11px 10px}
+.gap-item.salesonly .gap-q{color:#7a6420}
+.gap-tag{display:inline-block;font-size:10px;font-weight:900;color:#8a7128;background:#f2ecd6;border-radius:5px;padding:2px 6px;margin-left:6px;vertical-align:middle}
+.op-footer{display:flex;justify-content:flex-end;margin-top:14px}
+.op-cta{border:0;background:var(--navy);color:#fff;border-radius:9px;padding:10px 16px;font-size:13px;font-weight:800;cursor:pointer}
+.op-fu-note{font-size:11px;color:var(--muted);margin-top:10px}
+
 .target-chips{display:flex;flex-wrap:wrap;gap:7px}
 .target-chips>span{border:1px solid #dfe8ef;background:#f8fafc;border-radius:999px;padding:7px 10px;font-size:11px;color:#53687c}
 .target-chips b{font-size:12px;color:#253b50;margin-right:2px}
@@ -2314,7 +2364,8 @@ img,svg,canvas{max-width:100%}
             targetPeople: gapPeople,
             targetAccCount: gapAccCount,
             incompleteCount: gapIncompleteCount,
-            rec: gapRecs[0] || { title: driverFallbackEducation(key, affectedDriver?.type), status: 'Driver 기반 추천' }
+            rec: gapRecs[0] || { title: driverFallbackEducation(key, affectedDriver?.type), status: 'Driver 기반 추천' },
+            rec2: gapRecs[1] || null
           };
         });
 
@@ -2442,6 +2493,20 @@ img,svg,canvas{max-width:100%}
     return `<div class="insight-metric ${cls}"><span>${esc(label)}</span><strong>${arrow} ${esc(fmtRate(rate))}</strong></div>`;
   }
 
+  // v3 인사이트 리스트의 "근거 수치 보기" 안에 쓰는 축소형 지표 칩 (insightMetricChip과 데이터는 동일, 마크업만 더 컴팩트)
+  function insightMetricChipInline(label, info) {
+    if (!info || info.status === 'none') {
+      return `<div class="op-evidence-item"><span>${esc(label)}</span><b style="color:var(--muted)">— 데이터 없음</b></div>`;
+    }
+    if (info.status === 'new') {
+      return `<div class="op-evidence-item positive"><span>${esc(label)}</span><b>＋ 신규 발생</b></div>`;
+    }
+    const rate = info.rate;
+    const cls = rate < 0 ? 'negative' : rate > 0 ? 'positive' : '';
+    const arrow = rate < 0 ? '▼' : rate > 0 ? '▲' : '—';
+    return `<div class="op-evidence-item ${cls}"><span>${esc(label)}</span><b>${arrow} ${esc(fmtRate(rate))}</b></div>`;
+  }
+
   function gapYearText(g) {
     if (!g) return '';
     if (g.prev == null || g.seg == null) return '최신 응답 기준';
@@ -2461,86 +2526,53 @@ img,svg,canvas{max-width:100%}
       return;
     }
 
-    box.innerHTML = S.insights.map((item, i) => {
+    const maxPriority = Math.max(...S.insights.map(x => x.priority || 0), 1);
+
+    box.innerHTML = `<div class="op-list">${S.insights.map((item, i) => {
       const product = FITTING_COLUMNS[item.key].label;
       const d = item.driver;
-      const overallText = item.mode === 'under' && item.overallDriver?.pack?.rate != null
-        ? ` · 전체 평균 ${growthLabel(item.overallDriver.pack)}`
-        : '';
+      const sevRatio = Math.max(0.08, Math.min(1, (item.priority || 0) / maxPriority));
 
-      const gapHtml = item.gapPlans?.length
-        ? item.gapPlans.map((g, idx) => `
-          <div class="perception-gap-row gap-plan-card">
-            <div class="gap-bullet">●</div>
-            <div class="gap-copy">
-              <div class="gap-question-line">
-                <b>${esc(g.q)}</b>
-                <span class="gap-number">Gap ${idx + 1}</span>
-              </div>
-              <div class="gap-meta">
-                <span class="gap-score">${g.seg.toFixed(1)} / 목표 ${Number(g.target || 4).toFixed(1)}</span>
-                <span class="gap-years">${esc(gapYearText(g))}</span>
-              </div>
-
-              <div class="gap-execution-row">
-                <div class="gap-target-mini">
-                  <span>👤 <b>${g.targetPeople.length}명</b></span>
-                  <span>🏪 <b>${g.targetAccCount} ACC</b></span>
-                  <span>🎓 미이수/미완료 <b>${g.incompleteCount}명</b></span>
-                </div>
-                <div class="gap-education-mini">
-                  <small>추천 교육</small>
-                  <b>→ ${esc(g.rec.title)}</b>
-                </div>
-              </div>
-
-              <button class="gap-target-link" type="button"
-                data-gap-target="${i}:${idx}">대상 안경사 보기 →</button>
+      const gapRows = (item.gapPlans || []).map((g, idx) => `
+        <div class="gap-item">
+          <div class="gap-item-top">
+            <div class="gap-q">${esc(g.q)}</div>
+            <div class="gap-score"><b>${g.seg.toFixed(1)}</b> / 목표 ${Number(g.target || 4).toFixed(1)} · ${esc(gapYearText(g))}</div>
+          </div>
+          <div class="gap-bottom">
+            <div class="gap-recs">
+              <span class="gap-rec"><small>①</small>${esc(g.rec.title)}</span>
+              ${g.rec2?.title ? `<span class="gap-rec"><small>②</small>${esc(g.rec2.title)}</span>` : ''}
             </div>
-          </div>`).join('')
-        : `<div class="no-related-gap">✓ ${esc(product)} 관련 문항 중 현재 목표 미달 인식 Gap이 없습니다.</div>`;
+            <button class="gap-link" type="button" data-gap-target="${i}:${idx}">대상 안경사 보기 →</button>
+          </div>
+        </div>`).join('');
 
-      // 인식조사 미응답자(판매 데이터로만 판단한 대상) 카드. 문항 기반 정밀진단은 없으므로
-      // 점수/목표 대신 제품군+Driver 기반 일반 추천 교육만 안내한다.
-      const salesOnlyHtml = item.salesOnlyPlan ? `
-          <div class="perception-gap-row gap-plan-card salesonly-plan-card">
-            <div class="gap-bullet">◐</div>
-            <div class="gap-copy">
-              <div class="gap-question-line">
-                <b>인식조사 미참여 대상</b>
-                <span class="gap-number">판매 데이터 기반</span>
-              </div>
-              <div class="gap-meta">
-                <span class="gap-score">${esc(item.driver.label)} · 인식조사 응답 없음</span>
-              </div>
+      const salesOnlyRow = item.salesOnlyPlan ? `
+        <div class="gap-item salesonly">
+          <div class="gap-item-top">
+            <div class="gap-q">인식조사 미참여 대상<span class="gap-tag">판매 데이터 기반</span></div>
+            <div class="gap-score">${item.salesOnlyPlan.targetPeople.length}명</div>
+          </div>
+          <div class="gap-bottom">
+            <div class="gap-recs"><span class="gap-rec"><small>①</small>${esc(item.salesOnlyPlan.rec.title)}</span></div>
+            <button class="gap-link" type="button" data-salesonly-target="${i}">대상 안경사 보기 →</button>
+          </div>
+        </div>` : '';
 
-              <div class="gap-execution-row">
-                <div class="gap-target-mini">
-                  <span>👤 <b>${item.salesOnlyPlan.targetPeople.length}명</b></span>
-                  <span>🏪 <b>${item.salesOnlyPlan.targetAccCount} ACC</b></span>
-                  <span>🎓 미이수/미완료 <b>${item.salesOnlyPlan.incompleteCount}명</b></span>
-                </div>
-                <div class="gap-education-mini">
-                  <small>추천 교육</small>
-                  <b>→ ${esc(item.salesOnlyPlan.rec.title)}</b>
-                </div>
-              </div>
+      // Gap도 판매전용 대상자도 없는데 fallback 추천(item.recs)만 있는 예외 케이스
+      const fallbackRow = (!item.gapPlans?.length && !item.salesOnlyPlan && item.recs?.length) ? `
+        <div class="gap-item salesonly">
+          <div class="gap-item-top">
+            <div class="gap-q">전체 대상 공통 추천<span class="gap-tag">${esc(d.label)} 기반</span></div>
+          </div>
+          <div class="gap-bottom">
+            <div class="gap-recs">${item.recs.map((r, idx) => `<span class="gap-rec"><small>${idx === 0 ? '①' : '②'}</small>${esc(r.title)}</span>`).join('')}</div>
+          </div>
+        </div>` : '';
 
-              <button class="gap-target-link" type="button"
-                data-salesonly-target="${i}">대상 안경사 보기 →</button>
-            </div>
-          </div>` : '';
-
-      const actionHtml = !item.gapPlans?.length
-        ? item.recs.map((r, idx) => `
-          <div class="insight-action-row">
-            <span class="action-index">${idx === 0 ? '①' : '②'}</span>
-            <div>
-              <b>${esc(r.title)}</b>
-              <small>${esc(d.label)} 기반 추천</small>
-            </div>
-          </div>`).join('')
-        : '';
+      const gapHtml = (gapRows + salesOnlyRow + fallbackRow)
+        || `<div class="no-related-gap">✓ ${esc(product)} 관련 문항 중 현재 목표 미달 인식 Gap이 없습니다.</div>`;
 
       const fuMetrics = [
         '인식 재측정',
@@ -2549,66 +2581,48 @@ img,svg,canvas{max-width:100%}
         'PACK'
       ].filter(Boolean).join(' → ');
 
-      return `<article class="insight-card compact-insight">
-        <div class="insight-card-head">
-          <div>
-            <div class="type">EDUCATION OPPORTUNITY <span class="priority-chip">우선순위 ${i + 1}</span></div>
-            <h3>${esc(item.title)}</h3>
+      return `<div class="op-row${i === 0 ? ' top open' : ''}" data-op-row="${i}">
+        <div class="op-row-head" data-op-toggle="${i}">
+          <div class="op-sev" style="opacity:${sevRatio.toFixed(2)}"></div>
+          <div class="op-rank">${i + 1}</div>
+          <div class="op-main">
+            <div class="op-title-line"><b>${esc(product)}</b><span class="track">${esc(item.trackLabel)}</span></div>
+            <div class="op-diag">${esc(d.label)} — ${esc(d.reason)}</div>
+            <div class="op-sevbar-track"><div class="op-sevbar-fill" style="width:${Math.round(sevRatio * 100)}%;opacity:${sevRatio.toFixed(2)}"></div></div>
           </div>
-          <div class="account-badge">${item.affectedAccCount} ACC</div>
+          <div class="op-count"><strong>${item.targetPeople.length}</strong><span>명</span></div>
+          <div class="op-caret">▸</div>
         </div>
 
-        <div class="diagnosis-strip">
-          <span class="diagnosis-icon">⚠</span>
-          <div><small>핵심 진단</small><b>${esc(d.label)}</b><span>${esc(d.reason)}</span></div>
-        </div>
-
-        <div class="insight-metrics">
-          ${insightMetricChip('PACK', d.pack)}
-          ${insightMetricChip('WEARER', d.wearer)}
-          ${insightMetricChip('NEW', d.newWearer)}
-        </div>
-        ${item.mode === 'under' ? `<div class="average-compare">전체 평균 대비 비교${esc(overallText)}</div>` : ''}
-
-        <section class="insight-section cause-section">
-          <div class="section-title">
-            <span>●</span>
-            <b>관련 인식 Gap · Target · 추천 교육</b>
-            <em>${(item.gapPlans?.length || 0) + (item.salesOnlyPlan ? 1 : 0)}개</em>
-          </div>
-          <div class="perception-gap-list">${gapHtml}${salesOnlyHtml}</div>
-        </section>
-
-        <section class="insight-section target-section total-target-section">
-          <div class="section-title"><span>◎</span><b>전체 교육 Opportunity</b></div>
-          <div class="target-chips">
-            <span><b>👤 ${item.targetPeople.length}명</b> 고유 안경사</span>
-            <span><b>🏪 ${item.targetAccCount} ACC</b></span>
-            <span><b>🎓 ${item.incompleteCount}명</b> 교육 미이수/미완료</span>
-          </div>
-          ${item.gapPlans?.length ? '<small class="dedupe-note">※ Gap별 대상자가 중복될 수 있어 전체 수치는 안경사/ACC 중복을 제거한 값입니다.</small>' : ''}
-        </section>
-
-        ${!item.gapPlans?.length ? `
-        <section class="insight-section action-section">
-          <div class="section-title"><span>→</span><b>추천 Action</b></div>
-          <div class="insight-action-list">${actionHtml}</div>
-        </section>` : ''}
-
-        <div class="insight-bottom-row">
-          <details class="insight-followup">
-            <summary>↻ F/U 관리</summary>
-            <div>교육 이수 확인 후 ${esc(fuMetrics)} 재확인</div>
+        <div class="op-detail">
+          <details>
+            <summary class="op-evidence-toggle">근거 수치 보기</summary>
+            <div class="op-evidence">
+              ${insightMetricChipInline('PACK', d.pack)}
+              ${insightMetricChipInline('WEARER', d.wearer)}
+              ${insightMetricChipInline('NEW', d.newWearer)}
+            </div>
           </details>
-          <button class="button primary" type="button" data-insight-target="${i}">교육 대상 안경사 보기</button>
-        </div>
+          ${item.mode === 'under' && item.overallDriver?.pack?.rate != null ? `<div class="average-compare" style="text-align:left;margin:0 0 10px">전체 평균 ${esc(growthLabel(item.overallDriver.pack))}</div>` : ''}
 
-        <div class="coverage-note">※ 판매 기준월 ${S.baseMonth}월 · ${esc(S.baseMonthSource)} · 2025 인식 ${S.per25.length ? '연결됨' : '미연결'} · 2026 인식 ${S.per26.length ? '연결됨' : '미연결'}</div>
-      </article>`;
-    }).join('');
+          <div class="gap-heading">인식 Gap · 추천 교육</div>
+          <div class="gap-list">${gapHtml}</div>
+
+          <div class="op-fu-note">↻ 교육 이수 확인 후 ${esc(fuMetrics)} 재확인</div>
+          <div class="op-footer"><button class="op-cta" type="button" data-insight-target="${i}">전체 보기</button></div>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+
+    box.querySelectorAll('[data-op-toggle]').forEach(head => {
+      head.onclick = () => {
+        head.closest('.op-row')?.classList.toggle('open');
+      };
+    });
 
     box.querySelectorAll('[data-gap-target]').forEach(btn => {
-      btn.onclick = () => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
         const [insightIndex, gapIndex] = String(btn.dataset.gapTarget).split(':').map(Number);
         const item = S.insights[insightIndex];
         const plan = item?.gapPlans?.[gapIndex];
@@ -2623,7 +2637,8 @@ img,svg,canvas{max-width:100%}
     });
 
     box.querySelectorAll('[data-salesonly-target]').forEach(btn => {
-      btn.onclick = () => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
         const item = S.insights[Number(btn.dataset.salesonlyTarget)];
         const plan = item?.salesOnlyPlan;
         if (!item || !plan) return;
@@ -2637,7 +2652,8 @@ img,svg,canvas{max-width:100%}
     });
 
     box.querySelectorAll('[data-insight-target]').forEach(btn => {
-      btn.onclick = () => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
         const item = S.insights[Number(btn.dataset.insightTarget)];
         S.detailTargetIds = new Set(item.targetPeople.map(p => p.안경사ID));
         S.detailTargetLabel = `${item.title} · 전체 교육 Opportunity`;
