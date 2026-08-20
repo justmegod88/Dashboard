@@ -937,6 +937,25 @@ img,svg,canvas{max-width:100%}
 .content-idea-row{font-size:12px;line-height:1.6;color:var(--ink)}
 .content-idea-row+.content-idea-row{margin-top:4px}
 .content-idea-tag{display:inline-block;font-size:10px;font-weight:800;color:#6a4fb0;background:#f1ecfb;border-radius:5px;padding:1px 6px;margin-right:6px;vertical-align:middle}
+
+/* ===== 인식조사 검색 ===== */
+.qsearch-meta{font-size:12px;color:var(--muted);margin:14px 0 10px}
+.qsearch-card{border:1px solid var(--line);border-radius:12px;background:#fff;padding:16px;margin-bottom:12px;box-shadow:0 3px 10px rgba(30,55,80,.035)}
+.qsearch-q{font-size:14px;font-weight:750;color:var(--ink);margin-bottom:8px}
+.qsearch-stats{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:6px}
+.qsearch-stats b{color:var(--navy);margin-left:3px}
+.qsearch-stats .neg b{color:var(--red)}
+.qsearch-yoy{font-size:12px;color:#44586c;margin-bottom:10px}
+.qseg-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding-top:10px;border-top:1px solid #eef1f4}
+.qseg-block{font-size:12px}
+.qseg-block>b{display:block;color:var(--navy);font-size:11px;margin-bottom:5px}
+.qseg-row{display:flex;align-items:center;gap:6px;color:var(--ink);margin-top:3px}
+.qseg-row b{color:var(--navy)}
+.qseg-row small{color:var(--muted)}
+.qseg-tag{font-size:10px;font-weight:800;border-radius:5px;padding:1px 6px}
+.qseg-tag.low{background:#fdeceb;color:var(--red)}
+.qseg-tag.high{background:#e7f7f2;color:#0a876f}
+.qseg-empty{font-size:11px;color:var(--muted);padding-top:8px;border-top:1px solid #eef1f4}
 @media(max-width:900px){.exec-head{grid-template-columns:1fr}.exec-body{grid-template-columns:1fr}.exec-journey{flex-direction:column;align-items:stretch}.exec-kpi{max-width:300px}}
 </style>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -962,6 +981,7 @@ img,svg,canvas{max-width:100%}
   <button class="tab" data-view="insight">교육 추천</button>
   <button class="tab" data-view="operations">교육 운영관리</button>
   <button class="tab" data-view="segment">안경사 상세 분석</button>
+  <button class="tab" data-view="qsearch">인식조사 검색</button>
 </nav>
 
 <main>
@@ -1131,6 +1151,28 @@ img,svg,canvas{max-width:100%}
         <button class="button ghost" id="closeProfile">닫기</button>
       </div>
       <div id="profileContent"></div>
+    </article>
+  </section>
+
+  <section id="qsearch" class="view">
+    <article class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>인식조사 검색</h2>
+          <p>인식조사 문항을 자유 문장으로 검색합니다. 예) "블루라이트 들어간 설문", "블루라이트 인식이 낮은 티어는?", "난시 문항 25/26 비교"</p>
+        </div>
+      </div>
+      <div class="search-row">
+        <input id="qsearchInput" type="text" placeholder="예: 블루라이트 관련 문항, 난시 인식 낮은 지역은?" />
+        <button class="button primary" id="qsearchRun">검색</button>
+        <button class="button" id="qsearchClear">초기화</button>
+      </div>
+      <div class="examples">
+        <button data-qquery="블루라이트">블루라이트 관련 문항</button>
+        <button data-qquery="난시">난시 관련 문항</button>
+        <button data-qquery="멀티포컬">멀티포컬 관련 문항</button>
+      </div>
+      <div id="qsearchResults"></div>
     </article>
   </section>
 </main>
@@ -1692,10 +1734,14 @@ img,svg,canvas{max-width:100%}
   // SECTION: 교육 이수 & 개인별 종합 지표(metrics)
   // ============================================================
   function eduDone(row) {
-    const flag = clean(get(row, ['완료여부', '수료여부', '참여여부', '시청여부'])).toUpperCase();
-    if (['Y', 'YES', 'TRUE', '완료', '수료', 'DONE', 'COMPLETED'].includes(flag)) return true;
-    const progress = num(get(row, ['완료율', '진도율', '진행률']));
-    return progress != null && progress >= 100;
+    const flag = clean(get(row, ['완료여부', '수료여부', '참여여부', '시청여부', '이수여부', '완료상태', '수강여부', '참석여부', '상태', 'Status', 'Completed'])).toUpperCase();
+    if (['Y', 'YES', 'TRUE', '완료', '수료', '이수', '참여', '참석', 'DONE', 'COMPLETED', 'O', '○', '1'].includes(flag)) return true;
+    if (['N', 'NO', 'FALSE', '미완료', '미이수', '미참여', 'X', '×', '0'].includes(flag)) return false;
+    const progress = num(get(row, ['완료율', '진도율', '진행률', 'Progress']));
+    if (progress != null) return progress >= 100;
+    // 완료 여부 컬럼이 아예 없는 시트라면, 이수일/완료일 등 날짜 컬럼이 채워져 있는 것 자체를 완료로 간주
+    const date = clean(get(row, ['교육일', '이수일', '수료일', '완료일', '참여일', '참석일', '날짜', 'Date']));
+    return !!date;
   }
 
   function educationTitle(row) {
@@ -2026,13 +2072,27 @@ img,svg,canvas{max-width:100%}
     return '인식 Gap 보완 교육';
   }
 
-  // 문항 텍스트에서 짧은 주제어 추출 (콘텐츠 타이틀 생성용)
+  // 문항 텍스트에서 실제 차별화된 짧은 주제어를 추출한다.
+  // (이전 버전은 "멀티포컬/난시/블루라이트" 4개 카테고리로만 뭉뚱그려서 같은 제품군 문항은
+  // 전부 똑같은 콘텐츠 문구가 나오는 문제가 있었음 — 문항 원문 자체를 다듬어서 씀)
   function contentTopicFromQuestion(text) {
-    if (/프리즘|한쪽.*난시|구면|수직/i.test(text)) return '난시 프리즘 디자인';
-    if (/난시|토릭|ASD|축|원주/i.test(text)) return '난시 피팅';
-    if (/멀티포컬|다초점|노안|적응|follow|팔로우/i.test(text)) return '멀티포컬 적응 관리';
-    if (/블루라이트|눈건강|자외선|MAX|맥스/i.test(text)) return '블루라이트와 눈건강';
-    return '이 문항';
+    let t = clean(text || '');
+    if (!t) return '이 문항';
+    // "콘택트렌즈의 [눈건강 및 기술]에 대한 인식_8) " 같은 헤더/번호 접두어 제거
+    t = t.replace(/^.*?\]에\s*대한\s*인식_?\d*\)?\s*/, '');
+    t = t.replace(/^.*?_\d+\)\s*/, '');
+    // 흔한 수식어 제거로 핵심 명사구만 남김
+    t = t.replace(/^(정확한|성공적인|평소|고객이|고객에게|일반적으로)\s*/, '');
+    // 서술형 어미 제거 ("~라고 생각한다", "~향상된다" 등)
+    t = t.replace(/(이|가)?\s*(라고|다고)?\s*(생각한다|필요하다|중요하다|향상된다|도움이\s*된다|있다고\s*본다)\.?\s*$/, '');
+    t = t.trim();
+    if (!t) return '이 문항';
+    if (t.length > 20) {
+      const cut = t.slice(0, 20);
+      const lastSpace = cut.lastIndexOf(' ');
+      t = (lastSpace > 8 ? cut.slice(0, lastSpace) : cut) + '…';
+    }
+    return t;
   }
 
   // 인식 Gap 문항 하나를 카드뉴스/인포그래픽 콘텐츠 아이디어(제목)로 변환.
@@ -3228,6 +3288,116 @@ img,svg,canvas{max-width:100%}
     if (S.insightsReady) renderInsights();
   }
 
+  // ============================================================
+  // SECTION: 인식조사 자유 검색
+  // ============================================================
+  // 자유 문장에서 핵심 키워드만 추출 (조사/의도 표현 제거)
+  function extractQuestionSearchKeyword(query) {
+    let q = clean(query);
+    q = q.replace(/(들어간|포함된|관련된?|에\s*대한)\s*/g, ' ');
+    q = q.replace(/(설문\s*조사|설문|문항|질문)(을|를)?\s*(검색|찾아|보여)?(줘|주세요|해줘)?/g, ' ');
+    q = q.replace(/(응답\s*결과|결과|추이|변화|비교)(를|을)?\s*(보여|알려)?(줘|주세요|해줘)?/g, ' ');
+    q = q.replace(/(인식|점수)?\s*(이|가)?\s*낮은\s*(특정)?\s*(티어|연령대|지역|채널|연차|세그먼트)(는|은)?\??/g, ' ');
+    q = q.replace(/(25년|26년|2025|2026)(과|와)?\s*/g, ' ');
+    q = q.replace(/[?？]/g, ' ');
+    q = q.replace(/\s+/g, ' ').trim();
+    return q || clean(query);
+  }
+
+  function searchQuestionsByKeyword(keyword) {
+    const nk = norm(keyword);
+    if (!nk) return [];
+    const seen = new Map();
+    [...S.per26, ...S.per25].forEach(r => {
+      if (!r.문항) return;
+      const matches = norm(r.문항).includes(nk) || norm(r.제품군 || '').includes(nk)
+        || (FITTING_COLUMNS[r.제품군] && norm(FITTING_COLUMNS[r.제품군].label).includes(nk));
+      if (!matches) return;
+      if (!seen.has(r.문항)) seen.set(r.문항, { 문항: r.문항, 제품군: r.제품군, 목표값: r.목표값 });
+    });
+    return [...seen.values()];
+  }
+
+  function questionYearStats(questionText) {
+    const rows26 = S.per26.filter(r => r.문항 === questionText);
+    const rows25 = S.per25.filter(r => r.문항 === questionText);
+    const avg = arr => arr.length ? arr.reduce((s, x) => s + x.점수, 0) / arr.length : null;
+    return {
+      avg26: avg(rows26), avg25: avg(rows25),
+      count26: rows26.length, count25: rows25.length,
+      target: rows26[0]?.목표값 ?? rows25[0]?.목표값 ?? 4,
+      rows26
+    };
+  }
+
+  const QSEARCH_DIMS = [['Tier', 'Tier'], ['채널', '채널'], ['연차', '연차'], ['지역', '지역']];
+
+  function questionSegmentBreakdown(rows26, field) {
+    const groups = new Map();
+    rows26.forEach(r => {
+      const person = S.masterById.get(r.안경사ID);
+      const value = clean(person?.[field]);
+      if (!value) return;
+      if (!groups.has(value)) groups.set(value, []);
+      groups.get(value).push(r.점수);
+    });
+    return [...groups.entries()]
+      .map(([value, scores]) => ({ value, avg: scores.reduce((a, b) => a + b, 0) / scores.length, count: scores.length }))
+      .filter(g => g.count >= 3) // 표본 3명 미만은 노이즈가 커서 제외
+      .sort((a, b) => a.avg - b.avg);
+  }
+
+  function renderQuestionSearch(query) {
+    const box = $('qsearchResults');
+    if (!box) return;
+    if (!query) { box.innerHTML = ''; return; }
+    if (!S.per26.length && !S.per25.length) {
+      box.innerHTML = emptyState('먼저 통합 엑셀을 업로드해주세요.');
+      return;
+    }
+
+    const keyword = extractQuestionSearchKeyword(query);
+    const matched = searchQuestionsByKeyword(keyword);
+
+    if (!matched.length) {
+      box.innerHTML = emptyState(`"${esc(keyword)}"와 관련된 인식조사 문항을 찾지 못했습니다. 다른 키워드로 시도해보세요.`);
+      return;
+    }
+
+    box.innerHTML = `<div class="qsearch-meta">"${esc(keyword)}" 키워드로 문항 ${matched.length}개 검색됨</div>` +
+      matched.slice(0, 8).map(q => {
+        const stats = questionYearStats(q.문항);
+        const gap = stats.avg26 != null ? stats.avg26 - stats.target : null;
+        const yoyText = (stats.avg25 != null && stats.avg26 != null)
+          ? `2025 ${stats.avg25.toFixed(2)}점 → 2026 ${stats.avg26.toFixed(2)}점 (${(stats.avg26 - stats.avg25) >= 0 ? '+' : ''}${(stats.avg26 - stats.avg25).toFixed(2)})`
+          : (stats.avg26 != null ? '2025 데이터 없음 · 2026 기준' : '2026 데이터 없음 · 2025 기준');
+
+        const segHtml = QSEARCH_DIMS.map(([field, label]) => {
+          const rows = questionSegmentBreakdown(stats.rows26, field);
+          if (!rows.length) return '';
+          const lowest = rows[0];
+          const highest = rows[rows.length - 1];
+          return `<div class="qseg-block">
+            <b>${esc(label)}별</b>
+            <div class="qseg-row"><span class="qseg-tag low">가장 낮음</span>${esc(lowest.value)} <b>${lowest.avg.toFixed(2)}점</b> <small>(${lowest.count}명)</small></div>
+            ${rows.length > 1 ? `<div class="qseg-row"><span class="qseg-tag high">가장 높음</span>${esc(highest.value)} <b>${highest.avg.toFixed(2)}점</b> <small>(${highest.count}명)</small></div>` : ''}
+          </div>`;
+        }).filter(Boolean).join('');
+
+        return `<div class="qsearch-card">
+          <div class="qsearch-q">${esc(q.문항)}</div>
+          <div class="qsearch-stats">
+            <span>26년 평균 <b>${stats.avg26 != null ? stats.avg26.toFixed(2) + '점' : '데이터 없음'}</b></span>
+            <span>목표 <b>${Number(q.목표값 || 4).toFixed(1)}점</b></span>
+            <span class="${gap != null && gap < 0 ? 'neg' : ''}">Gap <b>${gap != null ? gap.toFixed(2) : '-'}</b></span>
+            <span>응답 <b>${stats.count26}명</b></span>
+          </div>
+          <div class="qsearch-yoy">${esc(yoyText)}</div>
+          ${segHtml ? `<div class="qseg-wrap">${segHtml}</div>` : '<div class="qseg-empty">세그먼트별 분석은 응답 3명 이상인 그룹만 표시됩니다.</div>'}
+        </div>`;
+      }).join('');
+  }
+
   function view(id) {
     if (id === 'insight' && S.insightsReady) renderInsights();
     if (id === 'operations') renderOperations(S.filtered?.length ? S.filtered : filtered());
@@ -3460,7 +3630,7 @@ img,svg,canvas{max-width:100%}
     $('smartQuery').onkeydown = e => { if (e.key === 'Enter') $('runQuery').click(); };
     $('clearQuery').onclick = resetSmartSearch;
     $('resetFilters').onclick = resetFilters;
-    document.querySelectorAll('.examples button').forEach(b => {
+    document.querySelectorAll('.examples button:not([data-qquery])').forEach(b => {
       b.onclick = () => {
         S.query = clean(b.dataset.query || b.textContent);
         $('smartQuery').value = S.query;
@@ -3469,6 +3639,16 @@ img,svg,canvas{max-width:100%}
         S.gapFilter = null;
         render();
         if (S.insightsReady) renderInsights();
+      };
+    });
+
+    $('qsearchRun').onclick = () => renderQuestionSearch($('qsearchInput').value || '');
+    $('qsearchInput').onkeydown = e => { if (e.key === 'Enter') $('qsearchRun').click(); };
+    $('qsearchClear').onclick = () => { $('qsearchInput').value = ''; renderQuestionSearch(''); };
+    document.querySelectorAll('[data-qquery]').forEach(b => {
+      b.onclick = () => {
+        $('qsearchInput').value = b.dataset.qquery;
+        renderQuestionSearch(b.dataset.qquery);
       };
     });
     $('salesBaseMonth').value = String(S.baseMonth);
