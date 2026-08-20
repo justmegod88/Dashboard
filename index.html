@@ -890,7 +890,54 @@ img,svg,canvas{max-width:100%}
 
 
 /* EDUCATION RECOMMENDATION EXECUTION UI */
-.exec-tabs{display:flex;gap:8px;margin-bottom:14px;overflow:auto}.exec-tab{min-width:140px;padding:11px 18px;border:1px solid var(--line);border-radius:10px;background:#fff;font-weight:850;cursor:pointer}.exec-tab.active{background:var(--navy);color:#fff}.exec-group{border:1px solid var(--line);border-top:4px solid var(--red);border-radius:14px;background:#fff;margin-bottom:14px;overflow:hidden}.exec-group.good{border-top-color:var(--blue)}.exec-head{display:grid;grid-template-columns:1fr auto auto;gap:16px;align-items:center;padding:16px;background:#fbfcfe;border-bottom:1px solid var(--line)}.exec-head h3{margin:0 0 4px}.exec-head p{font-size:12px}.exec-filter{display:flex}.exec-filter button{border:1px solid #cbd8e3;background:#fff;padding:9px 13px;font-size:12px;font-weight:800;cursor:pointer}.exec-filter button.active{background:var(--red);color:#fff}.exec-group.good .exec-filter button.active{background:var(--blue)}.exec-kpi{display:flex;gap:8px}.exec-kpi div{min-width:105px;text-align:center;border:1px solid var(--line);border-radius:9px;padding:8px}.exec-kpi small{display:block;color:var(--muted)}.exec-kpi b{font-size:20px}.exec-body{display:grid;grid-template-columns:1fr 280px;gap:16px;padding:16px}.exec-journey{display:flex;gap:8px;align-items:center}.exec-step{flex:1;border:1px solid var(--line);border-radius:10px;padding:11px;background:#f8fafc}.exec-step b{display:block}.exec-step small{color:var(--muted)}.exec-target{border:0;border-radius:9px;background:var(--red);color:#fff;font-weight:850;padding:12px;cursor:pointer}.exec-group.good .exec-target{background:var(--blue)}.exec-gap{margin:0 16px 16px;border:1px solid var(--line);border-radius:9px;overflow:auto}.exec-gap summary{padding:11px;background:#f7f9fb;font-weight:850;cursor:pointer}.exec-gap table{min-width:800px}.exec-gap button{border:1px solid var(--blue);background:#fff;color:var(--blue);border-radius:6px;padding:6px 8px;cursor:pointer}@media(max-width:900px){.exec-head{grid-template-columns:1fr}.exec-body{grid-template-columns:1fr}.exec-journey{flex-direction:column;align-items:stretch}.exec-kpi{max-width:300px}}
+.exec-tabs{display:flex;gap:8px;margin-bottom:16px;overflow:auto}
+.exec-tab{min-width:130px;padding:11px 20px;border:1px solid var(--line);border-radius:11px;background:#fff;font-weight:800;color:var(--muted);cursor:pointer;transition:.15s}
+.exec-tab:hover{border-color:#b9c9da}
+.exec-tab.active{background:var(--navy);border-color:var(--navy);color:#fff}
+
+.exec-group{border:1px solid var(--line);border-radius:16px;background:#fff;margin-bottom:16px;overflow:hidden;box-shadow:0 4px 16px rgba(20,40,70,.04)}
+.exec-group.low{border-left:4px solid #d99aa0}
+.exec-group.good{border-left:4px solid #8fc4c4}
+
+.exec-head{display:grid;grid-template-columns:1fr auto auto;gap:18px;align-items:center;padding:18px 20px;background:linear-gradient(135deg,#fbfcfe,#f6f9fb);border-bottom:1px solid var(--line)}
+.exec-head h3{margin:0 0 4px;font-size:15px;display:flex;align-items:center;gap:7px}
+.exec-head h3::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%}
+.exec-group.low .exec-head h3::before{background:#c96b73}
+.exec-group.good .exec-head h3::before{background:var(--teal)}
+.exec-head p{font-size:12px;color:var(--muted);margin:0}
+
+.exec-filter{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.exec-filter button{border:0;border-right:1px solid var(--line);background:#fff;color:var(--muted);padding:9px 13px;font-size:12px;font-weight:800;cursor:pointer;transition:.15s}
+.exec-filter button:last-child{border-right:0}
+.exec-filter button.active{background:var(--navy);color:#fff}
+
+.exec-kpi{display:flex;gap:8px}
+.exec-kpi div{min-width:100px;text-align:center;border:1px solid var(--line);border-radius:10px;padding:9px;background:#fff}
+.exec-kpi small{display:block;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.03em}
+.exec-kpi b{font-size:19px;color:var(--navy)}
+
+.exec-body{display:grid;grid-template-columns:1fr 220px;gap:18px;padding:18px 20px}
+.exec-journey{display:flex;gap:10px;align-items:center}
+.exec-step{flex:1;border:1px solid var(--line);border-radius:11px;padding:12px 13px;background:#f8fafc}
+.exec-step b{display:block;font-size:13px;color:var(--ink);line-height:1.35}
+.exec-step small{color:var(--muted);font-size:11px}
+.exec-journey>span{color:var(--muted);font-weight:900}
+
+.exec-target{border:0;border-radius:10px;background:var(--teal);color:#fff;font-weight:800;padding:12px;cursor:pointer;transition:.15s}
+.exec-target:hover{filter:brightness(0.94)}
+
+.exec-gap{margin:0 20px 18px;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.exec-gap summary{padding:12px 14px;background:#f7f9fb;font-weight:800;font-size:13px;color:var(--navy);cursor:pointer}
+.exec-gap table{width:100%;min-width:800px;border-collapse:collapse}
+.exec-gap thead th{text-align:left;font-size:11px;color:var(--muted);font-weight:800;padding:9px 12px;border-bottom:1px solid var(--line);background:#fbfcfe}
+.exec-gap tbody td{padding:10px 12px;font-size:13px;border-bottom:1px solid #eef1f4}
+.exec-gap tbody tr:last-child td{border-bottom:0}
+.exec-gap button{border:1px solid #cfe0dc;background:#f4faf8;color:#0a7a63;border-radius:7px;padding:6px 10px;font-weight:800;font-size:12px;cursor:pointer}
+.exec-gap button:hover{background:#e9f5f1}
+.content-idea-row{font-size:12px;line-height:1.6;color:var(--ink)}
+.content-idea-row+.content-idea-row{margin-top:4px}
+.content-idea-tag{display:inline-block;font-size:10px;font-weight:800;color:#6a4fb0;background:#f1ecfb;border-radius:5px;padding:1px 6px;margin-right:6px;vertical-align:middle}
+@media(max-width:900px){.exec-head{grid-template-columns:1fr}.exec-body{grid-template-columns:1fr}.exec-journey{flex-direction:column;align-items:stretch}.exec-kpi{max-width:300px}}
 </style>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -1979,6 +2026,60 @@ img,svg,canvas{max-width:100%}
     return '인식 Gap 보완 교육';
   }
 
+  // 문항 텍스트에서 짧은 주제어 추출 (콘텐츠 타이틀 생성용)
+  function contentTopicFromQuestion(text) {
+    if (/프리즘|한쪽.*난시|구면|수직/i.test(text)) return '난시 프리즘 디자인';
+    if (/난시|토릭|ASD|축|원주/i.test(text)) return '난시 피팅';
+    if (/멀티포컬|다초점|노안|적응|follow|팔로우/i.test(text)) return '멀티포컬 적응 관리';
+    if (/블루라이트|눈건강|자외선|MAX|맥스/i.test(text)) return '블루라이트와 눈건강';
+    return '이 문항';
+  }
+
+  // 인식 Gap 문항 하나를 카드뉴스/인포그래픽 콘텐츠 아이디어(제목)로 변환.
+  // 교육(강의형)과 별개로, SNS/사내채널에 바로 배포 가능한 짧은 콘텐츠 타이틀을 제안한다.
+  function contentIdeaTitles(questionText) {
+    const topic = contentTopicFromQuestion(questionText);
+    return [
+      { type: '인포그래픽', title: `다른 안경사는 ${topic}을(를) 어떻게 생각할까?` },
+      { type: '카드뉴스', title: `${topic}, 고객에게 이렇게 설명하세요` },
+      { type: '카드뉴스', title: `${topic}, 오해와 진실 3가지` }
+    ];
+  }
+
+  // 권장 Journey 헤더(①②)용 실제 콘텐츠 매칭.
+  // 문항별 Gap 상세(findBestEducationForQuestion)는 이미 실제 매칭이 되고 있었지만,
+  // 카드 상단 Journey 박스는 "MAX 인식 교육"처럼 고정 문구였음 — 실제 업로드 콘텐츠와 매칭되도록 보강.
+  function productEducationContent(key) {
+    const product = FITTING_COLUMNS[key].label;
+    const pool = (S.content || []).map(row => ({ row, title: educationTitle(row) })).filter(x => x.title);
+    const matched = pool.find(x => educationRelated(x.title, key) && ['제품', '소개', '기본', '상담'].some(k => clean(x.title).includes(k)));
+    if (matched) return matched.title;
+    const anyMatched = pool.find(x => educationRelated(x.title, key));
+    if (anyMatched) return anyMatched.title;
+    return `${product} 제품 교육`;
+  }
+
+  function consultTipContent(key) {
+    const product = FITTING_COLUMNS[key].label;
+    const pool = (S.content || []).map(row => ({ row, title: educationTitle(row) })).filter(x => x.title);
+    const matched = pool.find(x => educationRelated(x.title, key) && ['팁', '상담'].some(k => clean(x.title).includes(k)));
+    if (matched) return matched.title;
+    return `${product} 상담 팁`;
+  }
+
+  // 인식 관련 교육(①) — 이 그룹에서 가장 우선순위 높은 Gap 문항 기준으로 실제 매칭, 없으면 일반 매칭으로 대체
+  function perceptionEducationContent(key, topGapQuestion) {
+    if (topGapQuestion) {
+      const r = findBestEducationForQuestion(topGapQuestion);
+      if (r?.title) return r.title;
+    }
+    const product = FITTING_COLUMNS[key].label;
+    const pool = (S.content || []).map(row => ({ row, title: educationTitle(row) })).filter(x => x.title);
+    const matched = pool.find(x => educationRelated(x.title, key) && ['인식', '가치'].some(k => clean(x.title).includes(k)));
+    if (matched) return matched.title;
+    return `${product} 인식 교육`;
+  }
+
   function findBestEducationForQuestion(questionText, excludedTitles = new Set()) {
     const productKey = productKeyFromQuestion(questionText);
     const rows = (S.content || []).map(row => ({ row, title: educationTitle(row) })).filter(x => x.title);
@@ -2514,7 +2615,55 @@ img,svg,canvas{max-width:100%}
   function exGroup(rows,key,type){return rows.filter(p=>type==='low'?personHasLowRelatedPerception(p.안경사ID,key):!personHasLowRelatedPerception(p.안경사ID,key));}
   function exFiltered(rows,key,f){return f==='all'?rows:rows.filter(p=>{const r=metrics(p.안경사ID).growths[key].info.rate;return r!=null&&(f==='low'?r<0:r>=0);});}
   function exAvg(rows,key){const a=rows.map(p=>metrics(p.안경사ID).growths[key].info.rate).filter(v=>v!=null);return a.length?a.reduce((x,y)=>x+y,0)/a.length:null;}
-  function exCard(base,key,type){const product=FITTING_COLUMNS[key].label, sk=`${key}:${type}`, f=S.insightSalesFilters[sk]||'all', rows=exFiltered(exGroup(base,key,type),key,f), low=type==='low', av=exAvg(rows,key);const gaps=low?lowQuestionsForRows(rows,key,999):[];const gapHtml=low?`<details class="exec-gap"><summary>▼ 인식 Gap 상세</summary><table><thead><tr><th>문항명</th><th>평균 점수</th><th>목표 점수</th><th>추천 교육</th><th>대상자 수</th></tr></thead><tbody>${gaps.map((g,i)=>{const t=peopleWithQuestionGap(rows,key,g.q),r=findBestEducationForQuestion(g.q);return `<tr><td>${esc(g.q)}</td><td>${g.seg.toFixed(1)}점</td><td>${Number(g.target||4).toFixed(1)}점</td><td>${esc(r.title)}</td><td><button data-exgap="${key}:${i}">대상자 보기 (${t.length}명)</button></td></tr>`}).join('')}</tbody></table></details>`:`<div style="padding:0 16px 16px;color:var(--muted);font-size:11px">인식 양호군은 교육 실행에 집중하도록 Gap 상세를 최소화했습니다.</div>`;return `<section class="exec-group ${low?'low':'good'}"><div class="exec-head"><div><h3>${product} 관련 인식 ${low?'낮음':'양호군 (설문 미참여 포함)'}</h3><p>${low?'관련 인식이 하나라도 목표 미달인 안경사':'관련 인식이 모두 목표 이상이거나 설문 미참여인 안경사'}</p></div><div class="exec-filter">${[['all','전체'],['low','판매 낮음'],['high','판매 우수']].map(x=>`<button class="${f===x[0]?'active':''}" data-exfilter="${sk}:${x[0]}">${x[1]}</button>`).join('')}</div><div class="exec-kpi"><div><small>대상자 수</small><b>${rows.length}명</b></div><div><small>평균 성장률</small><b class="${dclass(av)}">${av==null?'-':fmtRate(av)}</b></div></div></div><div class="exec-body"><div><b>권장 Journey</b><div class="exec-journey"><div class="exec-step"><b>① ${product} ${low?'인식':'제품'} 교육</b><small>${low?'가치와 필요성 인식 강화':'제품 특징 및 차별점 이해'}</small></div><span>→</span><div class="exec-step"><b>② ${product} ${low?'제품 교육':'상담 Tip'}</b><small>${low?'제품 특징 및 차별점 이해':'상담 스킬 및 고객 응대 강화'}</small></div></div></div><button class="exec-target" data-extarget="${key}:${type}">교육 대상 보기</button></div>${gapHtml}</section>`;}
+  function exCard(base, key, type) {
+    const product = FITTING_COLUMNS[key].label;
+    const sk = `${key}:${type}`;
+    const f = S.insightSalesFilters[sk] || 'all';
+    const rows = exFiltered(exGroup(base, key, type), key, f);
+    const low = type === 'low';
+    const av = exAvg(rows, key);
+    const gaps = low ? lowQuestionsForRows(rows, key, 999) : [];
+
+    // ① ② Journey 헤더: 실제 업로드된 콘텐츠 목록과 매칭된 제목을 사용 (고정 문구 대신)
+    const step1Title = low ? perceptionEducationContent(key, gaps[0]?.q) : productEducationContent(key);
+    const step2Title = low ? productEducationContent(key) : consultTipContent(key);
+
+    const gapHtml = low
+      ? `<details class="exec-gap"><summary>▼ 인식 Gap 상세</summary><table><thead><tr><th>문항명</th><th>평균 점수</th><th>목표 점수</th><th>추천 교육</th><th>콘텐츠 아이디어</th><th>대상자 수</th></tr></thead><tbody>${gaps.map((g, i) => {
+          const t = peopleWithQuestionGap(rows, key, g.q);
+          const r = findBestEducationForQuestion(g.q);
+          const ideas = contentIdeaTitles(g.q);
+          const ideasHtml = ideas.map(idea => `<div class="content-idea-row"><span class="content-idea-tag">${esc(idea.type)}</span>${esc(idea.title)}</div>`).join('');
+          return `<tr><td>${esc(g.q)}</td><td>${g.seg.toFixed(1)}점</td><td>${Number(g.target || 4).toFixed(1)}점</td><td>${esc(r.title)}</td><td>${ideasHtml}</td><td><button data-exgap="${key}:${i}">대상자 보기 (${t.length}명)</button></td></tr>`;
+        }).join('')}</tbody></table></details>`
+      : `<div style="padding:0 16px 16px;color:var(--muted);font-size:11px">인식 양호군은 교육 실행에 집중하도록 Gap 상세를 최소화했습니다.</div>`;
+
+    return `<section class="exec-group ${low ? 'low' : 'good'}">
+      <div class="exec-head">
+        <div>
+          <h3>${product} 관련 인식 ${low ? '낮음' : '양호군 (설문 미참여 포함)'}</h3>
+          <p>${low ? '관련 인식이 하나라도 목표 미달인 안경사' : '관련 인식이 모두 목표 이상이거나 설문 미참여인 안경사'}</p>
+        </div>
+        <div class="exec-filter">${[['all', '전체'], ['low', '판매 낮음'], ['high', '판매 우수']].map(x => `<button class="${f === x[0] ? 'active' : ''}" data-exfilter="${sk}:${x[0]}">${x[1]}</button>`).join('')}</div>
+        <div class="exec-kpi">
+          <div><small>대상자 수</small><b>${rows.length}명</b></div>
+          <div><small>평균 성장률</small><b class="${dclass(av)}">${av == null ? '-' : fmtRate(av)}</b></div>
+        </div>
+      </div>
+      <div class="exec-body">
+        <div>
+          <b>권장 Journey</b>
+          <div class="exec-journey">
+            <div class="exec-step"><b>① ${esc(step1Title)}</b><small>${low ? '가치와 필요성 인식 강화' : '제품 특징 및 차별점 이해'}</small></div>
+            <span>→</span>
+            <div class="exec-step"><b>② ${esc(step2Title)}</b><small>${low ? '제품 특징 및 차별점 이해' : '상담 스킬 및 고객 응대 강화'}</small></div>
+          </div>
+        </div>
+        <button class="exec-target" data-extarget="${key}:${type}">교육 대상 보기</button>
+      </div>
+      ${gapHtml}
+    </section>`;
+  }
   function renderInsights(){S.insightsReady=true;const box=$('insightCards'),base=S.filtered||S.master,key=S.insightProduct||'max';if(!base.length){box.innerHTML=emptyState('Excel 업로드 후 확인할 수 있습니다.');return;}box.innerHTML=`<div class="exec-tabs">${[['max','MAX'],['ast','난시'],['mf','멀티포컬']].map(x=>`<button class="exec-tab ${key===x[0]?'active':''}" data-exproduct="${x[0]}">${x[1]}</button>`).join('')}</div>${exCard(base,key,'low')}${exCard(base,key,'good')}`;box.querySelectorAll('[data-exproduct]').forEach(b=>b.onclick=()=>{S.insightProduct=b.dataset.exproduct;renderInsights()});box.querySelectorAll('[data-exfilter]').forEach(b=>b.onclick=()=>{const a=b.dataset.exfilter.split(':');S.insightSalesFilters[`${a[0]}:${a[1]}`]=a[2];renderInsights()});box.querySelectorAll('[data-extarget]').forEach(b=>b.onclick=()=>{const [k,t]=b.dataset.extarget.split(':'),f=S.insightSalesFilters[`${k}:${t}`]||'all',r=exFiltered(exGroup(base,k,t),k,f);S.detailTargetIds=new Set(r.map(x=>x.안경사ID));S.detailTargetLabel=`${FITTING_COLUMNS[k].label} · ${t==='low'?'인식 낮음':'인식 양호군'} · ${f==='low'?'판매 낮음':f==='high'?'판매 우수':'전체'}`;render();view('segment')});box.querySelectorAll('[data-exgap]').forEach(b=>b.onclick=()=>{const [k,i]=b.dataset.exgap.split(':'),f=S.insightSalesFilters[`${k}:low`]||'all',r=exFiltered(exGroup(base,k,'low'),k,f),g=lowQuestionsForRows(r,k,999)[Number(i)],t=peopleWithQuestionGap(r,k,g.q);S.detailTargetIds=new Set(t.map(x=>x.안경사ID));S.detailTargetLabel=`${FITTING_COLUMNS[k].label} 인식 Gap · ${g.q}`;render();view('segment')});}
   const OP_STORAGE_KEY = 'ACUVUE_EDUCATION_JOURNEY_CYCLES_V1';
 
