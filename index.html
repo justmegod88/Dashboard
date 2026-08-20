@@ -3492,7 +3492,7 @@ img,svg,canvas{max-width:100%}
     }
 
     box.innerHTML = `<div class="qsearch-meta">${metaLabel}</div>` +
-      matched.slice(0, 8).map((q, idx) => {
+      matched.slice(0, intent.type === 'keyword' ? 8 : matched.length).map((q, idx) => {
         const stats = questionYearStats(q.문항);
         const gap = stats.avg26 != null ? stats.avg26 - stats.target : null;
         const yoyText = (stats.avg25 != null && stats.avg26 != null)
