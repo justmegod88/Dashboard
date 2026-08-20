@@ -957,6 +957,15 @@ img,svg,canvas{max-width:100%}
 .qseg-tag.low{background:#fdeceb;color:var(--red)}
 .qseg-tag.high{background:#e7f7f2;color:#0a876f}
 .qseg-empty{font-size:11px;color:var(--muted);padding-top:8px;border-top:1px solid #eef1f4}
+.qsearch-pager{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.qsearch-pager button{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:8px;min-width:32px;height:32px;font-weight:800;font-size:12px;cursor:pointer}
+.qsearch-pager button.active{background:var(--navy);border-color:var(--navy);color:#fff}
+.qseg-rank-list{display:flex;flex-direction:column;gap:8px}
+.qseg-rank-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid #eef1f4}
+.qseg-rank-row:first-child{border-top:0}
+.qseg-rank-value{flex:1;font-weight:750;color:var(--ink);font-size:13px}
+.qseg-rank-avg{font-weight:800;color:var(--navy);font-size:14px}
+.qseg-rank-count{font-size:11px;color:var(--muted);min-width:110px;text-align:right}
 @media(max-width:900px){.exec-head{grid-template-columns:1fr}.exec-body{grid-template-columns:1fr}.exec-journey{flex-direction:column;align-items:stretch}.exec-kpi{max-width:300px}}
 </style>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -1160,7 +1169,7 @@ img,svg,canvas{max-width:100%}
       <div class="panel-head">
         <div>
           <h2>인식조사 검색</h2>
-          <p>인식조사 문항을 자유 문장으로 검색합니다. 예) "블루라이트 들어간 설문", "블루라이트 인식이 낮은 티어는?", "난시 문항 25/26 비교"</p>
+          <p>인식조사 문항을 자유 문장으로 검색합니다. 예) "가장 점수가 낮은 문항", "전년 대비 많이 떨어진 문항", "가장 인식이 낮은 지역은?", "전체 문항 목록"</p>
         </div>
       </div>
       <div class="search-row">
@@ -1169,15 +1178,10 @@ img,svg,canvas{max-width:100%}
         <button class="button" id="qsearchClear">초기화</button>
       </div>
       <div class="examples">
-        <button data-qquery="블루라이트">블루라이트 관련 문항</button>
-        <button data-qquery="난시">난시 관련 문항</button>
-        <button data-qquery="멀티포컬">멀티포컬 관련 문항</button>
         <button data-qquery="가장 점수가 낮은 문항">가장 점수가 낮은 문항</button>
-        <button data-qquery="가장 점수가 높은 문항">가장 점수가 높은 문항</button>
         <button data-qquery="전년 대비 가장 많이 떨어진 문항">전년 대비 많이 떨어진 문항</button>
-        <button data-qquery="목표를 달성한 문항">목표를 달성한 문항</button>
-        <button data-qquery="응답자가 가장 적은 문항">응답자가 가장 적은 문항</button>
-        <button data-qquery="Tier A 인식 수준은?">Tier A 인식 수준은?</button>
+        <button data-qquery="블루라이트 관련 문항">블루라이트 관련 문항</button>
+        <button data-qquery="가장 인식이 낮은 지역은?">가장 인식이 낮은 지역은?</button>
         <button data-qquery="전체 문항 목록">전체 문항 목록</button>
       </div>
       <div id="qsearchResults"></div>
@@ -3325,6 +3329,34 @@ img,svg,canvas{max-width:100%}
     return null;
   }
 
+  // "가장 인식이 낮은 지역은?"처럼 세그먼트(지역/Tier/연차/채널) 자체를 랭킹 대상으로 묻는 질문 판별.
+  // 특정 값을 이미 언급한 경우(예: "Tier A")는 detectSegmentFilter가 처리하므로 여기선 필드명만 언급된 경우만 잡는다.
+  function detectSegmentRankIntent(q) {
+    const fieldPatterns = [['Tier', /tier|티어/i], ['지역', /지역/], ['연차', /연차/], ['채널', /채널/]];
+    for (const [field, re] of fieldPatterns) {
+      if (!re.test(q)) continue;
+      if (/가장.*낮은|최하위|바닥/.test(q)) return { field, dir: 'low' };
+      if (/가장.*높은|최상위/.test(q)) return { field, dir: 'high' };
+    }
+    return null;
+  }
+
+  function rankSegmentValues(field, productKey) {
+    const groups = new Map();
+    S.per26.forEach(r => {
+      if (productKey && r.제품군 !== productKey) return;
+      const person = S.masterById.get(r.안경사ID);
+      const value = clean(person?.[field]);
+      if (!value) return;
+      if (!groups.has(value)) groups.set(value, { scores: [], ids: new Set() });
+      groups.get(value).scores.push(r.점수);
+      groups.get(value).ids.add(r.안경사ID);
+    });
+    return [...groups.entries()]
+      .map(([value, g]) => ({ value, avg: g.scores.reduce((a, b) => a + b, 0) / g.scores.length, count: g.ids.size, responses: g.scores.length }))
+      .filter(g => g.responses >= 3);
+  }
+
   // 자유 문장에서 "랭킹형 의도"를 먼저 판별한다 (키워드 검색보다 우선).
   // 예: "가장 점수가 낮은 문항", "전년 대비 많이 떨어진 문항" 등
   function parseQuestionSearchIntent(query) {
@@ -3336,6 +3368,12 @@ img,svg,canvas{max-width:100%}
 
     const segmentFilter = detectSegmentFilter(q);
     const hasQWord = /(문항|질문)/.test(q);
+
+    // "가장 인식이 낮은 지역은?"처럼 문항이 아니라 세그먼트 자체를 묻는 질문은 최우선으로 분리 처리
+    if (!hasQWord) {
+      const segRank = detectSegmentRankIntent(q);
+      if (segRank) return { type: 'segment_rank', productKey, segmentFilter: null, segmentRank: segRank };
+    }
 
     if (/전체\s*문항|문항\s*(리스트|목록|전체)/.test(q)) return { type: 'all', productKey, segmentFilter };
     if (/응답(자)?.*(적은|부족|가장\s*적)/.test(q)) return { type: 'least_responded', productKey, segmentFilter };
@@ -3459,26 +3497,87 @@ img,svg,canvas{max-width:100%}
       .sort((a, b) => a.avg - b.avg);
   }
 
+  function buildQuestionCard(q, rankIndex, showRank) {
+    const stats = questionYearStats(q.문항);
+    const gap = stats.avg26 != null ? stats.avg26 - stats.target : null;
+    const yoyText = (stats.avg25 != null && stats.avg26 != null)
+      ? `2025 ${stats.avg25.toFixed(2)}점 → 2026 ${stats.avg26.toFixed(2)}점 (${(stats.avg26 - stats.avg25) >= 0 ? '+' : ''}${(stats.avg26 - stats.avg25).toFixed(2)})`
+      : (stats.avg26 != null ? '2025 데이터 없음 · 2026 기준' : '2026 데이터 없음 · 2025 기준');
+
+    const segHtml = QSEARCH_DIMS.map(([field, label]) => {
+      const rows = questionSegmentBreakdown(stats.rows26, field);
+      if (!rows.length) return '';
+      const lowest = rows[0];
+      const highest = rows[rows.length - 1];
+      return `<div class="qseg-block">
+        <b>${esc(label)}별</b>
+        <div class="qseg-row"><span class="qseg-tag low">가장 낮음</span>${esc(lowest.value)} <b>${lowest.avg.toFixed(2)}점</b> <small>(${lowest.count}명)</small></div>
+        ${rows.length > 1 ? `<div class="qseg-row"><span class="qseg-tag high">가장 높음</span>${esc(highest.value)} <b>${highest.avg.toFixed(2)}점</b> <small>(${highest.count}명)</small></div>` : ''}
+      </div>`;
+    }).filter(Boolean).join('');
+
+    return `<div class="qsearch-card">
+      <div class="qsearch-q">${showRank ? `<span class="qsearch-rank">${rankIndex + 1}</span>` : ''}${esc(q.문항)}</div>
+      <div class="qsearch-stats">
+        <span>26년 평균 <b>${stats.avg26 != null ? stats.avg26.toFixed(2) + '점' : '데이터 없음'}</b></span>
+        <span>목표 <b>${Number(q.목표값 || 4).toFixed(1)}점</b></span>
+        <span class="${gap != null && gap < 0 ? 'neg' : ''}">Gap <b>${gap != null ? gap.toFixed(2) : '-'}</b></span>
+        <span>응답 <b>${stats.count26}명</b></span>
+      </div>
+      <div class="qsearch-yoy">${esc(yoyText)}</div>
+      ${segHtml ? `<div class="qseg-wrap">${segHtml}</div>` : '<div class="qseg-empty">세그먼트별 분석은 응답 3명 이상인 그룹만 표시됩니다.</div>'}
+    </div>`;
+  }
+
+  function buildSegmentRankCard(field, dir, productKey) {
+    const rows = rankSegmentValues(field, productKey).sort((a, b) => dir === 'low' ? a.avg - b.avg : b.avg - a.avg);
+    if (!rows.length) return null;
+    const body = rows.slice(0, 8).map((r, i) => `
+      <div class="qseg-rank-row">
+        <span class="qsearch-rank">${i + 1}</span>
+        <span class="qseg-rank-value">${esc(r.value)}</span>
+        <span class="qseg-rank-avg">${r.avg.toFixed(2)}점</span>
+        <span class="qseg-rank-count">${r.count}명 · 응답 ${r.responses}건</span>
+      </div>`).join('');
+    return `<div class="qsearch-card">
+      <div class="qsearch-q">${esc(field)}별 평균 인식 · ${dir === 'low' ? '낮은 순' : '높은 순'}</div>
+      <div class="qseg-rank-list">${body}</div>
+    </div>`;
+  }
+
+  const QSEARCH_PAGE_SIZE = 10;
+
   function renderQuestionSearch(query) {
     const box = $('qsearchResults');
     if (!box) return;
-    if (!query) { box.innerHTML = ''; return; }
+    if (!query) { box.innerHTML = ''; S._qsearchLast = null; return; }
     if (!S.per26.length && !S.per25.length) {
       box.innerHTML = emptyState('먼저 통합 엑셀을 업로드해주세요.');
       return;
     }
 
     const intent = parseQuestionSearchIntent(query);
-    let matched, metaLabel;
 
+    // 세그먼트 자체를 랭킹하는 질문(예: "가장 인식이 낮은 지역은?")은 문항 리스트와 형태가 달라 별도 처리
+    if (intent.type === 'segment_rank') {
+      const card = buildSegmentRankCard(intent.segmentRank.field, intent.segmentRank.dir, intent.productKey);
+      S._qsearchLast = null;
+      box.innerHTML = card
+        ? `<div class="qsearch-meta">${intent.productKey ? FITTING_COLUMNS[intent.productKey].label + ' · ' : ''}${esc(intent.segmentRank.field)}별 평균 인식 (${intent.segmentRank.dir === 'low' ? '낮은' : '높은'} 순)</div>${card}`
+        : emptyState('세그먼트 데이터가 부족해 순위를 계산할 수 없습니다.');
+      return;
+    }
+
+    let matched, metaLabel;
     if (intent.type !== 'keyword') {
-      const topN = intent.type === 'all' ? 20 : 5;
+      const topN = intent.type === 'all' ? 500 : 5;
       matched = rankQuestions(intent.type, intent.productKey, topN, intent.segmentFilter);
       const productLabel = intent.productKey ? `${FITTING_COLUMNS[intent.productKey].label} · ` : '';
       const segLabel = intent.segmentFilter ? `${intent.segmentFilter.field}=${intent.segmentFilter.value} · ` : '';
-      metaLabel = `${segLabel}${productLabel}${QSEARCH_INTENT_LABEL[intent.type]} TOP ${matched.length}`;
+      metaLabel = `${segLabel}${productLabel}${QSEARCH_INTENT_LABEL[intent.type]} (총 ${matched.length}개)`;
       if (!matched.length) {
         box.innerHTML = emptyState('조건에 맞는 문항을 찾지 못했습니다. (표본이 3명 미만이거나 전년 데이터가 없을 수 있습니다)');
+        S._qsearchLast = null;
         return;
       }
     } else {
@@ -3487,42 +3586,36 @@ img,svg,canvas{max-width:100%}
       metaLabel = `"${esc(keyword)}" 키워드로 문항 ${matched.length}개 검색됨`;
       if (!matched.length) {
         box.innerHTML = emptyState(`"${esc(keyword)}"와 관련된 인식조사 문항을 찾지 못했습니다. 다른 키워드로 시도해보세요.`);
+        S._qsearchLast = null;
         return;
       }
     }
 
-    box.innerHTML = `<div class="qsearch-meta">${metaLabel}</div>` +
-      matched.slice(0, intent.type === 'keyword' ? 8 : matched.length).map((q, idx) => {
-        const stats = questionYearStats(q.문항);
-        const gap = stats.avg26 != null ? stats.avg26 - stats.target : null;
-        const yoyText = (stats.avg25 != null && stats.avg26 != null)
-          ? `2025 ${stats.avg25.toFixed(2)}점 → 2026 ${stats.avg26.toFixed(2)}점 (${(stats.avg26 - stats.avg25) >= 0 ? '+' : ''}${(stats.avg26 - stats.avg25).toFixed(2)})`
-          : (stats.avg26 != null ? '2025 데이터 없음 · 2026 기준' : '2026 데이터 없음 · 2025 기준');
+    S._qsearchLast = { matched, intent, metaLabel };
+    renderQuestionSearchPage(0);
+  }
 
-        const segHtml = QSEARCH_DIMS.map(([field, label]) => {
-          const rows = questionSegmentBreakdown(stats.rows26, field);
-          if (!rows.length) return '';
-          const lowest = rows[0];
-          const highest = rows[rows.length - 1];
-          return `<div class="qseg-block">
-            <b>${esc(label)}별</b>
-            <div class="qseg-row"><span class="qseg-tag low">가장 낮음</span>${esc(lowest.value)} <b>${lowest.avg.toFixed(2)}점</b> <small>(${lowest.count}명)</small></div>
-            ${rows.length > 1 ? `<div class="qseg-row"><span class="qseg-tag high">가장 높음</span>${esc(highest.value)} <b>${highest.avg.toFixed(2)}점</b> <small>(${highest.count}명)</small></div>` : ''}
-          </div>`;
-        }).filter(Boolean).join('');
+  function renderQuestionSearchPage(page) {
+    const box = $('qsearchResults');
+    const state = S._qsearchLast;
+    if (!box || !state) return;
+    const { matched, intent, metaLabel } = state;
+    const showRank = intent.type !== 'keyword';
+    const totalPages = Math.max(1, Math.ceil(matched.length / QSEARCH_PAGE_SIZE));
+    page = Math.max(0, Math.min(page, totalPages - 1));
 
-        return `<div class="qsearch-card">
-          <div class="qsearch-q">${intent.type !== 'keyword' ? `<span class="qsearch-rank">${idx + 1}</span>` : ''}${esc(q.문항)}</div>
-          <div class="qsearch-stats">
-            <span>26년 평균 <b>${stats.avg26 != null ? stats.avg26.toFixed(2) + '점' : '데이터 없음'}</b></span>
-            <span>목표 <b>${Number(q.목표값 || 4).toFixed(1)}점</b></span>
-            <span class="${gap != null && gap < 0 ? 'neg' : ''}">Gap <b>${gap != null ? gap.toFixed(2) : '-'}</b></span>
-            <span>응답 <b>${stats.count26}명</b></span>
-          </div>
-          <div class="qsearch-yoy">${esc(yoyText)}</div>
-          ${segHtml ? `<div class="qseg-wrap">${segHtml}</div>` : '<div class="qseg-empty">세그먼트별 분석은 응답 3명 이상인 그룹만 표시됩니다.</div>'}
-        </div>`;
-      }).join('');
+    const pageItems = matched.slice(page * QSEARCH_PAGE_SIZE, page * QSEARCH_PAGE_SIZE + QSEARCH_PAGE_SIZE);
+    const cardsHtml = pageItems.map((q, i) => buildQuestionCard(q, page * QSEARCH_PAGE_SIZE + i, showRank)).join('');
+
+    const pagerHtml = totalPages > 1
+      ? `<div class="qsearch-pager">${Array.from({ length: totalPages }, (_, i) =>
+          `<button class="${i === page ? 'active' : ''}" data-qpage="${i}">${i + 1}</button>`).join('')}</div>`
+      : '';
+
+    box.innerHTML = `<div class="qsearch-meta">${metaLabel}${totalPages > 1 ? ` · ${page + 1}/${totalPages}페이지` : ''}</div>${cardsHtml}${pagerHtml}`;
+    box.querySelectorAll('[data-qpage]').forEach(b => {
+      b.onclick = () => { renderQuestionSearchPage(Number(b.dataset.qpage)); window.scrollTo({ top: box.offsetTop - 20, behavior: 'smooth' }); };
+    });
   }
 
   function view(id) {
