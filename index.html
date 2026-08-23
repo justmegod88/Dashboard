@@ -3339,18 +3339,20 @@ img,svg,canvas{max-width:100%}
       if (matched) filters.push({ field, value: clean(matched), mode: 'exact' });
     });
     // 채널/Tier 등 카테고리 값으로 안 잡히면, 안경원명(매장 체인명)에 포함되는지도 확인 (예: "다비치")
+    // 질문 문장을 공백 단위로 쪼갠 뒤, 그 단어가 매장명 안 어디에든(맨 앞이 아니어도, 예: "(주)다비치안경"
+    // 처럼 앞에 다른 글자가 붙어있어도) 포함되는지 확인한다. 가장 긴 단어가 매칭되면 그걸 채택한다.
     if (!filters.some(f => f.field === '채널')) {
-      const nq = norm(q);
-      const chain = [...new Set(S.master.map(p => p.안경원명))]
-        .filter(name => name && name.length >= 2)
-        .find(name => {
-          // 매장명 전체가 아니라, 매장명 앞부분(체인명)이 질문에 포함되는지 느슨하게 확인
-          const prefix = norm(name).slice(0, Math.min(4, norm(name).length));
-          return prefix.length >= 2 && nq.includes(prefix);
+      const queryTokens = clean(q).split(/\s+/).map(t => norm(t)).filter(t => t.length >= 2);
+      if (queryTokens.length) {
+        const storeNames = [...new Set(S.master.map(p => clean(p.안경원명)).filter(Boolean))];
+        let bestToken = null, bestLen = 0;
+        storeNames.forEach(name => {
+          const nb = norm(name);
+          queryTokens.forEach(tok => {
+            if (nb.includes(tok) && tok.length > bestLen) { bestToken = tok; bestLen = tok.length; }
+          });
         });
-      if (chain) {
-        const prefix = clean(chain).slice(0, Math.min(4, clean(chain).length));
-        filters.push({ field: '안경원명', value: prefix, mode: 'contains' });
+        if (bestToken) filters.push({ field: '안경원명', value: bestToken, mode: 'contains' });
       }
     }
     return filters;
@@ -3614,7 +3616,10 @@ img,svg,canvas{max-width:100%}
         : '';
       metaLabel = `${segLabel}${productLabel}${QSEARCH_INTENT_LABEL[intent.type]} (총 ${matched.length}개)`;
       if (!matched.length) {
-        box.innerHTML = emptyState('조건에 맞는 문항을 찾지 못했습니다. (표본이 3명 미만이거나 전년 데이터가 없을 수 있습니다)');
+        const detected = intent.segmentFilters?.length
+          ? `인식된 조건: ${intent.segmentFilters.map(f => `${f.field}=${f.value}`).join(', ')}${intent.productKey ? `, 제품군=${FITTING_COLUMNS[intent.productKey].label}` : ''}. `
+          : (intent.productKey ? `인식된 조건: 제품군=${FITTING_COLUMNS[intent.productKey].label}. ` : '조건을 하나도 인식하지 못했습니다(매장명/세그먼트 매칭 실패). ');
+        box.innerHTML = emptyState(`${detected}이 조건에서 표본 3명 이상인 문항이 없습니다.`);
         S._qsearchLast = null;
         return;
       }
@@ -3623,7 +3628,7 @@ img,svg,canvas{max-width:100%}
       matched = searchQuestionsByKeyword(keyword);
       metaLabel = `"${esc(keyword)}" 키워드로 문항 ${matched.length}개 검색됨`;
       if (!matched.length) {
-        box.innerHTML = emptyState(`"${esc(keyword)}"와 관련된 인식조사 문항을 찾지 못했습니다. 다른 키워드로 시도해보세요.`);
+        box.innerHTML = emptyState(`"${esc(keyword)}"와 관련된 인식조사 문항/제품군/매장명을 찾지 못했습니다. (매장명이라면 01_안경사마스터의 안경원명 컬럼에 해당 글자가 있는지 확인해주세요)`);
         S._qsearchLast = null;
         return;
       }
