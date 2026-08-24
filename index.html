@@ -949,6 +949,8 @@ img,svg,canvas{max-width:100%}
 .qsearch-yoy{font-size:12px;color:#44586c;margin-bottom:10px}
 .qseg-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding-top:10px;border-top:1px solid #eef1f4}
 .qseg-block{font-size:12px}
+.qseg-block-full{grid-column:1/-1}
+.qseg-block-full .qseg-rank-list{margin-top:6px}
 .qseg-block>b{display:block;color:var(--navy);font-size:11px;margin-bottom:5px}
 .qseg-row{display:flex;align-items:center;gap:6px;color:var(--ink);margin-top:3px}
 .qseg-row b{color:var(--navy)}
@@ -3515,9 +3517,7 @@ img,svg,canvas{max-width:100%}
       // "1년차 vs 5년차", "신규 vs 기존", "다비치랑 김안경 비교"
       const compareIntent = detectCompareIntent(q);
       if (compareIntent) return { type: 'compare_groups', productKey, ...compareIntent };
-      // "다비치는 몇 등이야?", "우리 매장 순위는?"
-      const storeRank = detectStoreRankIntent(q);
-      if (storeRank) return { type: 'store_rank', productKey, storeRank };
+      // "몇 등이야?" 기능은 필요 없다고 하셔서 비활성화 (해당 텍스트는 그냥 키워드 검색으로 넘어감)
       // "난시 vs 멀티포컬", "제품별 평균 비교"
       const productCompare = detectProductCompareIntent(q);
       if (productCompare && !hasQWord) return { type: 'compare_products', productKeys: productCompare, segmentFilters };
@@ -3525,6 +3525,18 @@ img,svg,canvas{max-width:100%}
       if (/편차|엇갈리|갈리는|의견.*(갈리|다양)/.test(q)) return { type: 'variance', productKey, segmentFilters };
       // "목표가 낮은 문항", "역코딩 문항" (목표값이 4가 아닌 특이 문항 찾기 — 데이터 검수용)
       if (/역코딩|목표.*(다른|특이|낮은)\s*문항/.test(q)) return { type: 'target_outlier', productKey, segmentFilters };
+    }
+
+    // "OO질문 낮은 연차별 순서로", "낮은 연차별 순위"처럼 특정 필드를 "순서/순위"로 요청하면
+    // (문항 원문을 그대로 붙여넣어서 "문항"이라는 단어가 없는 경우도 포함) 그 필드는
+    // 가장낮음/가장높음 2줄이 아니라 전체 순위를 펼쳐서 보여준다. 랭킹 판정보다 먼저 처리.
+    if (segmentFieldMentioned && /순서|순위|순으로/.test(q)) {
+      let expandField = null;
+      if (/tier|티어/i.test(q)) expandField = 'Tier';
+      else if (/지역/.test(q)) expandField = '지역';
+      else if (/연차/.test(q)) expandField = '연차';
+      else if (/채널/.test(q)) expandField = '채널';
+      if (expandField) return { type: 'keyword', productKey, segmentFilters, expandField };
     }
 
     // "가장 인식이 낮은 지역은?"처럼 문항이 아니라 세그먼트 자체를 묻는 질문은 최우선으로 분리 처리
@@ -3726,7 +3738,7 @@ img,svg,canvas{max-width:100%}
       .sort((a, b) => a.avg - b.avg);
   }
 
-  function buildQuestionCard(q, rankIndex, showRank, segmentFilters) {
+  function buildQuestionCard(q, rankIndex, showRank, segmentFilters, expandField) {
     const stats = questionYearStats(q.문항, segmentFilters);
     const gap = stats.avg26 != null ? stats.avg26 - stats.target : null;
     const yoyText = (stats.avg25 != null && stats.avg26 != null)
@@ -3736,6 +3748,20 @@ img,svg,canvas{max-width:100%}
     const segHtml = QSEARCH_DIMS.map(([field, label]) => {
       const rows = questionSegmentBreakdown(stats.rows26, field);
       if (!rows.length) return '';
+      // "OO질문 낮은 연차별 순서로"처럼 특정 필드를 지정하면, 가장낮음/높음 2줄이 아니라 전체 순위를 다 보여줌
+      if (expandField === field) {
+        const body = rows.map((r, i) => `
+          <div class="qseg-rank-row">
+            <span class="qsearch-rank">${i + 1}</span>
+            <span class="qseg-rank-value">${esc(r.value)}</span>
+            <span class="qseg-rank-avg">${r.avg.toFixed(2)}점</span>
+            <span class="qseg-rank-count">${r.count}명</span>
+          </div>`).join('');
+        return `<div class="qseg-block qseg-block-full">
+          <b>${esc(label)}별 전체 순위 (낮은 순)</b>
+          <div class="qseg-rank-list">${body}</div>
+        </div>`;
+      }
       const lowest = rows[0];
       const highest = rows[rows.length - 1];
       // 필터로 이미 값이 하나로 좁혀진 경우(예: 채널=다비치만 검색) "가장 낮음" 비교 태그는 의미가 없으니 값만 표시
@@ -3960,7 +3986,7 @@ img,svg,canvas{max-width:100%}
     page = Math.max(0, Math.min(page, totalPages - 1));
 
     const pageItems = matched.slice(page * QSEARCH_PAGE_SIZE, page * QSEARCH_PAGE_SIZE + QSEARCH_PAGE_SIZE);
-    const cardsHtml = pageItems.map((q, i) => buildQuestionCard(q, page * QSEARCH_PAGE_SIZE + i, showRank, intent.segmentFilters)).join('');
+    const cardsHtml = pageItems.map((q, i) => buildQuestionCard(q, page * QSEARCH_PAGE_SIZE + i, showRank, intent.segmentFilters, intent.expandField)).join('');
 
     const pagerHtml = totalPages > 1
       ? `<div class="qsearch-pager">${Array.from({ length: totalPages }, (_, i) =>
