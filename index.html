@@ -1169,7 +1169,7 @@ img,svg,canvas{max-width:100%}
       <div class="panel-head">
         <div>
           <h2>인식조사 검색</h2>
-          <p>인식조사 문항을 자유 문장으로 검색합니다. 예) "가장 점수가 낮은 문항", "전년 대비 많이 떨어진 문항", "가장 인식이 낮은 지역은?", "전체 문항 목록"</p>
+          <p>인식조사 문항을 검색합니다. 예) "OO 문항에 점수가 가장 낮은 채널은?", "가장 점수가 낮은 문항", "전년 대비 많이 떨어진 문항", "전체 문항 목록"</p>
         </div>
       </div>
       <div class="search-row">
@@ -1482,7 +1482,9 @@ img,svg,canvas{max-width:100%}
   }
 
   function normPer(rows) {
-    const meta = ['안경사ID', 'ID', '안경사명', '안경원명', '지역', '연차', 'Tier', 'SEG', 'No', '번호'];
+    // '안경사 안경 취급 비중(%)'처럼 실제로는 % 수치 필드인데 값이 1~5 범위에 걸려
+    // 인식 문항으로 잘못 흡수되던 컬럼을 명시적으로 제외
+    const meta = ['안경사ID', 'ID', '안경사명', '안경원명', '지역', '연차', 'Tier', 'SEG', 'No', '번호', '안경사 안경 취급 비중', '안경사 안경 취급 비중(%)'];
     const out = [];
     rows.forEach(r => {
       const id = clean(get(r, ['안경사ID', '안경사 ID', 'ID']));
@@ -3636,7 +3638,7 @@ img,svg,canvas{max-width:100%}
     };
   }
 
-  const QSEARCH_DIMS = [['Tier', 'Tier'], ['채널', '채널'], ['연차', '연차'], ['지역', '지역'], ['멀티포컬PRO', '멀티포컬PRO']];
+  const QSEARCH_DIMS = [['Tier', 'Tier'], ['채널', '채널'], ['연차', '연차'], ['지역', '지역']];
 
   function questionSegmentBreakdown(rows26, field) {
     const groups = new Map();
@@ -3821,7 +3823,7 @@ img,svg,canvas{max-width:100%}
       }
       const productLabel = intent.productKey ? `${FITTING_COLUMNS[intent.productKey].label} · ` : '';
       box.innerHTML = `<div class="qsearch-meta">${productLabel}${esc(intent.labelA)} vs ${esc(intent.labelB)} · 차이가 큰 문항 순 (총 ${rows.length}개)</div>` +
-        rows.slice(0, 8).map(r => buildCompareCard(r, intent.labelA, intent.labelB)).join('');
+        rows.map(r => buildCompareCard(r, intent.labelA, intent.labelB)).join('');
       return;
     }
 
