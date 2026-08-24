@@ -3361,7 +3361,7 @@ img,svg,canvas{max-width:100%}
   // "가장 인식이 낮은 지역은?"처럼 세그먼트(지역/Tier/연차/채널) 자체를 랭킹 대상으로 묻는 질문 판별.
   // 특정 값을 이미 언급한 경우(예: "Tier A")는 detectSegmentFilters가 처리하므로 여기선 필드명만 언급된 경우만 잡는다.
   function detectSegmentRankIntent(q) {
-    const fieldPatterns = [['Tier', /tier|티어/i], ['지역', /지역/], ['연차', /연차/], ['채널', /채널/]];
+    const fieldPatterns = [['Tier', /tier|티어/i], ['지역', /지역/], ['연차', /연차/], ['채널', /채널/], ['멀티포컬PRO', /멀티포컬\s*pro/i]];
     for (const [field, re] of fieldPatterns) {
       if (!re.test(q)) continue;
       if (/가장.*낮은|최하위|바닥/.test(q)) return { field, dir: 'low' };
@@ -3506,9 +3506,12 @@ img,svg,canvas{max-width:100%}
     return [...seen.values()];
   }
 
-  function questionYearStats(questionText) {
-    const rows26 = S.per26.filter(r => r.문항 === questionText);
-    const rows25 = S.per25.filter(r => r.문항 === questionText);
+  function questionYearStats(questionText, segmentFilters) {
+    const applyFilter = rows => segmentFilters?.length
+      ? rows.filter(r => personMatchesSegmentFilters(S.masterById.get(r.안경사ID), segmentFilters))
+      : rows;
+    const rows26 = applyFilter(S.per26.filter(r => r.문항 === questionText));
+    const rows25 = applyFilter(S.per25.filter(r => r.문항 === questionText));
     const avg = arr => arr.length ? arr.reduce((s, x) => s + x.점수, 0) / arr.length : null;
     return {
       avg26: avg(rows26), avg25: avg(rows25),
@@ -3518,7 +3521,7 @@ img,svg,canvas{max-width:100%}
     };
   }
 
-  const QSEARCH_DIMS = [['Tier', 'Tier'], ['채널', '채널'], ['연차', '연차'], ['지역', '지역']];
+  const QSEARCH_DIMS = [['Tier', 'Tier'], ['채널', '채널'], ['연차', '연차'], ['지역', '지역'], ['멀티포컬PRO', '멀티포컬PRO']];
 
   function questionSegmentBreakdown(rows26, field) {
     const groups = new Map();
@@ -3535,8 +3538,8 @@ img,svg,canvas{max-width:100%}
       .sort((a, b) => a.avg - b.avg);
   }
 
-  function buildQuestionCard(q, rankIndex, showRank) {
-    const stats = questionYearStats(q.문항);
+  function buildQuestionCard(q, rankIndex, showRank, segmentFilters) {
+    const stats = questionYearStats(q.문항, segmentFilters);
     const gap = stats.avg26 != null ? stats.avg26 - stats.target : null;
     const yoyText = (stats.avg25 != null && stats.avg26 != null)
       ? `2025 ${stats.avg25.toFixed(2)}점 → 2026 ${stats.avg26.toFixed(2)}점 (${(stats.avg26 - stats.avg25) >= 0 ? '+' : ''}${(stats.avg26 - stats.avg25).toFixed(2)})`
@@ -3648,7 +3651,7 @@ img,svg,canvas{max-width:100%}
     page = Math.max(0, Math.min(page, totalPages - 1));
 
     const pageItems = matched.slice(page * QSEARCH_PAGE_SIZE, page * QSEARCH_PAGE_SIZE + QSEARCH_PAGE_SIZE);
-    const cardsHtml = pageItems.map((q, i) => buildQuestionCard(q, page * QSEARCH_PAGE_SIZE + i, showRank)).join('');
+    const cardsHtml = pageItems.map((q, i) => buildQuestionCard(q, page * QSEARCH_PAGE_SIZE + i, showRank, intent.segmentFilters)).join('');
 
     const pagerHtml = totalPages > 1
       ? `<div class="qsearch-pager">${Array.from({ length: totalPages }, (_, i) =>
