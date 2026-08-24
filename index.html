@@ -3338,17 +3338,16 @@ img,svg,canvas{max-width:100%}
   function detectSegmentFilters(q) {
     const filters = [];
     QSEARCH_DIMS.forEach(([field]) => {
-      const nq = norm(q);
       const matched = uniqueValues(field).find(v => {
         const rawV = clean(v);
         const nv = norm(rawV);
         if (!nv || ['-', '없음', '미분류', '미정'].includes(rawV.toLowerCase())) return false;
-        if (nv.length === 1) {
-          const escaped = rawV.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const tokenRe = new RegExp(`(^|[\\s,;/|()])${escaped}(?=$|[\\s,;/|()])`, 'i');
-          return tokenRe.test(q);
-        }
-        return nq.includes(nv);
+        // 값 길이와 무관하게 항상 "독립된 단어"로 등장하는지 확인한다.
+        // (문항 원문처럼 긴 문장 안에서 "서울", "I/O" 같은 짧은 값이 우연히 부분 일치되어
+        // 엉뚱한 필터가 걸리는 것을 방지 — 예전엔 2글자 이상 값은 경계 체크 없이 그냥 포함 여부만 봤음)
+        const escaped = rawV.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const tokenRe = new RegExp(`(^|[\\s,;/|()])${escaped}(?=$|[\\s,;/|()])`, 'i');
+        return tokenRe.test(q);
       });
       if (matched) filters.push({ field, value: clean(matched), mode: 'exact' });
     });
@@ -3432,17 +3431,13 @@ img,svg,canvas{max-width:100%}
 
   // 하나의 필드에서 서로 다른 값이 2개 이상 언급됐는지 확인 ("1년차 3년차", "다비치 안경진정성")
   function detectMultipleSegmentValues(q) {
-    const nq = norm(q);
     for (const [field] of QSEARCH_DIMS) {
       const matchedValues = uniqueValues(field).filter(v => {
         const rawV = clean(v);
         const nv = norm(rawV);
         if (!nv || ['-', '없음', '미분류', '미정'].includes(rawV.toLowerCase())) return false;
-        if (nv.length === 1) {
-          const escaped = rawV.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          return new RegExp(`(^|[\\s,;/|()])${escaped}(?=$|[\\s,;/|()])`, 'i').test(q);
-        }
-        return nq.includes(nv);
+        const escaped = rawV.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`(^|[\\s,;/|()])${escaped}(?=$|[\\s,;/|()])`, 'i').test(q);
       });
       const uniqueMatched = [...new Set(matchedValues.map(v => clean(v)))];
       if (uniqueMatched.length >= 2) return { field, valueA: uniqueMatched[0], valueB: uniqueMatched[1] };
@@ -3527,16 +3522,27 @@ img,svg,canvas{max-width:100%}
       if (/역코딩|목표.*(다른|특이|낮은)\s*문항/.test(q)) return { type: 'target_outlier', productKey, segmentFilters };
     }
 
-    // "OO질문 낮은 연차별 순서로", "낮은 연차별 순위"처럼 특정 필드를 "순서/순위"로 요청하면
-    // (문항 원문을 그대로 붙여넣어서 "문항"이라는 단어가 없는 경우도 포함) 그 필드는
-    // 가장낮음/가장높음 2줄이 아니라 전체 순위를 펼쳐서 보여준다. 랭킹 판정보다 먼저 처리.
+    // "OO질문 낮은 연차별 순서로"(특정 문항 하나) vs "난시 점수 낮은 지역 순서"(제품군 전체) 구분.
+    // 제품명/필드명/순서 관련 단어를 다 뺀 나머지가 충분히 남아야 "특정 문항"으로 보고 그 문항을 찾고,
+    // 안 남으면 특정 문항 지칭이 없는 것이므로 제품군 전체 기준 세그먼트 랭킹으로 처리한다.
     if (segmentFieldMentioned && /순서|순위|순으로/.test(q)) {
       let expandField = null;
       if (/tier|티어/i.test(q)) expandField = 'Tier';
       else if (/지역/.test(q)) expandField = '지역';
       else if (/연차/.test(q)) expandField = '연차';
       else if (/채널/.test(q)) expandField = '채널';
-      if (expandField) return { type: 'keyword', productKey, segmentFilters, expandField };
+      if (expandField) {
+        const residual = q
+          .replace(/난시|멀티포컬|다초점|맥스|블루라이트|max/gi, ' ')
+          .replace(/tier|티어|지역|연차|채널|멀티포컬\s*pro/gi, ' ')
+          .replace(/순서|순위|순으로|점수|가장|낮은|높은|은|는|이|가/g, ' ')
+          .replace(/\s+/g, '').trim();
+        if (residual.length >= 6) {
+          return { type: 'keyword', productKey, segmentFilters, expandField };
+        }
+        const dir = /낮은|최하위|바닥/.test(q) ? 'low' : (/높은|최상위/.test(q) ? 'high' : 'low');
+        return { type: 'segment_rank', productKey, segmentFilters: [], segmentRank: { field: expandField, dir } };
+      }
     }
 
     // "가장 인식이 낮은 지역은?"처럼 문항이 아니라 세그먼트 자체를 묻는 질문은 최우선으로 분리 처리
