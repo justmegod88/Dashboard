@@ -3408,11 +3408,53 @@ img,svg,canvas{max-width:100%}
       };
     }
     const m = q.match(/^(.+?)\s*(?:vs\.?|VS\.?|대|랑|하고|와|과)\s*(.+?)\s*(비교|차이|어디가|더\s*낮|더\s*높)?[?？]?$/i);
-    if (!m) return null;
-    const a = matchSingleSegmentValue(m[1]);
-    const b = matchSingleSegmentValue(m[2]);
-    if (a && b && a.field === b.field && a.value !== b.value) {
-      return { groupA: a, labelA: a.value, groupB: b, labelB: b.value };
+    if (m) {
+      const a = matchSingleSegmentValue(m[1]);
+      const b = matchSingleSegmentValue(m[2]);
+      if (a && b && a.field === b.field && a.value !== b.value) {
+        return { groupA: a, labelA: a.value, groupB: b, labelB: b.value };
+      }
+    }
+    // "vs"/"비교" 같은 연결어 없이 "1년차 3년차", "다비치 안경진정성"처럼 값 두 개만 나열한 경우도
+    // 같은 필드에서 서로 다른 값이 2개 감지되면 비교 의도로 인정한다.
+    const multi = detectMultipleSegmentValues(q);
+    if (multi) {
+      const mode = multi.mode || 'exact';
+      return {
+        groupA: { field: multi.field, value: multi.valueA, mode }, labelA: multi.valueA,
+        groupB: { field: multi.field, value: multi.valueB, mode }, labelB: multi.valueB
+      };
+    }
+    return null;
+  }
+
+  // 하나의 필드에서 서로 다른 값이 2개 이상 언급됐는지 확인 ("1년차 3년차", "다비치 안경진정성")
+  function detectMultipleSegmentValues(q) {
+    const nq = norm(q);
+    for (const [field] of QSEARCH_DIMS) {
+      const matchedValues = uniqueValues(field).filter(v => {
+        const rawV = clean(v);
+        const nv = norm(rawV);
+        if (!nv || ['-', '없음', '미분류', '미정'].includes(rawV.toLowerCase())) return false;
+        if (nv.length === 1) {
+          const escaped = rawV.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          return new RegExp(`(^|[\\s,;/|()])${escaped}(?=$|[\\s,;/|()])`, 'i').test(q);
+        }
+        return nq.includes(nv);
+      });
+      const uniqueMatched = [...new Set(matchedValues.map(v => clean(v)))];
+      if (uniqueMatched.length >= 2) return { field, valueA: uniqueMatched[0], valueB: uniqueMatched[1] };
+    }
+    // 안경원명(매장) 두 개가 동시에 언급된 경우
+    const queryTokens = clean(q).split(/\s+/).map(t => norm(t)).filter(t => t.length >= 2);
+    const storeNames = [...new Set(S.master.map(p => clean(p.안경원명)).filter(Boolean))];
+    const matchedTokens = [];
+    queryTokens.forEach(tok => {
+      if (matchedTokens.includes(tok)) return;
+      if (storeNames.some(name => norm(name).includes(tok))) matchedTokens.push(tok);
+    });
+    if (matchedTokens.length >= 2) {
+      return { field: '안경원명', valueA: matchedTokens[0], valueB: matchedTokens[1], mode: 'contains' };
     }
     return null;
   }
@@ -3463,24 +3505,30 @@ img,svg,canvas{max-width:100%}
     const hasQWord = /(문항|질문|설문)/.test(q);
     // 필드명 자체(연차/지역/Tier/채널/멀티포컬PRO)가 언급됐는지 — "1년차"처럼 구체적 값이 아니라 "연차"라는 단어 자체
     const segmentFieldMentioned = /tier|티어|지역|연차|채널|멀티포컬\s*pro/i.test(q);
+    // 문항 원문을 통째로 붙여넣은 긴 문장인지 판별. 짧은 명령형 질문(예: "1년차 vs 5년차")과
+    // 실제 설문 문항 문장(보통 20자 이상)을 구분해서, 긴 문장에서는 아래 비교/순위류 기능이
+    // 우연히 발동하지 않도록 한다. (예: 문항 안에 매장명과 우연히 겹치는 단어가 있는 경우 등)
+    const isLikelyFullSentence = q.length > 20;
 
-    // ===== 새 질문 유형들 — 다른 판별보다 먼저 체크 =====
-    // "1년차 vs 5년차", "신규 vs 기존", "다비치랑 김안경 비교"
-    const compareIntent = detectCompareIntent(q);
-    if (compareIntent) return { type: 'compare_groups', productKey, ...compareIntent };
-    // "다비치는 몇 등이야?", "우리 매장 순위는?"
-    const storeRank = detectStoreRankIntent(q);
-    if (storeRank) return { type: 'store_rank', productKey, storeRank };
-    // "난시 vs 멀티포컬", "제품별 평균 비교"
-    const productCompare = detectProductCompareIntent(q);
-    if (productCompare && !hasQWord) return { type: 'compare_products', productKeys: productCompare, segmentFilters };
-    // "응답이 가장 엇갈리는 문항", "편차가 큰 문항"
-    if (/편차|엇갈리|갈리는|의견.*(갈리|다양)/.test(q)) return { type: 'variance', productKey, segmentFilters };
-    // "목표가 낮은 문항", "역코딩 문항" (목표값이 4가 아닌 특이 문항 찾기 — 데이터 검수용)
-    if (/역코딩|목표.*(다른|특이|낮은)\s*문항/.test(q)) return { type: 'target_outlier', productKey, segmentFilters };
+    // ===== 새 질문 유형들 — 다른 판별보다 먼저 체크 (짧은 명령형 질문에서만 동작) =====
+    if (!isLikelyFullSentence) {
+      // "1년차 vs 5년차", "신규 vs 기존", "다비치랑 김안경 비교"
+      const compareIntent = detectCompareIntent(q);
+      if (compareIntent) return { type: 'compare_groups', productKey, ...compareIntent };
+      // "다비치는 몇 등이야?", "우리 매장 순위는?"
+      const storeRank = detectStoreRankIntent(q);
+      if (storeRank) return { type: 'store_rank', productKey, storeRank };
+      // "난시 vs 멀티포컬", "제품별 평균 비교"
+      const productCompare = detectProductCompareIntent(q);
+      if (productCompare && !hasQWord) return { type: 'compare_products', productKeys: productCompare, segmentFilters };
+      // "응답이 가장 엇갈리는 문항", "편차가 큰 문항"
+      if (/편차|엇갈리|갈리는|의견.*(갈리|다양)/.test(q)) return { type: 'variance', productKey, segmentFilters };
+      // "목표가 낮은 문항", "역코딩 문항" (목표값이 4가 아닌 특이 문항 찾기 — 데이터 검수용)
+      if (/역코딩|목표.*(다른|특이|낮은)\s*문항/.test(q)) return { type: 'target_outlier', productKey, segmentFilters };
+    }
 
     // "가장 인식이 낮은 지역은?"처럼 문항이 아니라 세그먼트 자체를 묻는 질문은 최우선으로 분리 처리
-    if (!hasQWord) {
+    if (!hasQWord && !isLikelyFullSentence) {
       const segRank = detectSegmentRankIntent(q);
       if (segRank) return { type: 'segment_rank', productKey, segmentFilters: [], segmentRank: segRank };
     }
@@ -3609,16 +3657,39 @@ img,svg,canvas{max-width:100%}
     return q || clean(query);
   }
 
-  function searchQuestionsByKeyword(keyword) {
-    const nk = norm(keyword);
-    if (!nk) return [];
+  function searchQuestionsByKeyword(keyword, rawQuery) {
+    const tryMatch = kw => {
+      const nk = norm(kw);
+      if (!nk) return [];
+      const seen = new Map();
+      [...S.per26, ...S.per25].forEach(r => {
+        if (!r.문항) return;
+        const matches = norm(r.문항).includes(nk) || norm(r.제품군 || '').includes(nk)
+          || (FITTING_COLUMNS[r.제품군] && norm(FITTING_COLUMNS[r.제품군].label).includes(nk));
+        if (!matches) return;
+        if (!seen.has(r.문항)) seen.set(r.문항, { 문항: r.문항, 제품군: r.제품군, 목표값: r.목표값 });
+      });
+      return [...seen.values()];
+    };
+    // 문항 원문을 그대로(또는 거의 그대로) 붙여넣은 경우, 정제 과정에서 중간 단어("에 대한" 등)가
+    // 빠지면서 연속된 문자열이 아니게 되어 매칭이 실패할 수 있다. 가공 전 원문으로 먼저 시도하고,
+    // 실패할 때만 정제된 키워드로 재시도한다.
+    if (rawQuery) {
+      const rawResults = tryMatch(rawQuery);
+      if (rawResults.length) return rawResults;
+    }
+    const processedResults = tryMatch(keyword);
+    if (processedResults.length) return processedResults;
+
+    // 3단계: 부분 문장을 붙여넣거나 표현이 살짝 달라 연속 문자열 매칭이 실패한 경우를 대비한
+    // 느슨한 매칭. 문항 원문과 검색어 사이에 겹치는 단어(2글자 이상)가 4개 이상이면 후보로 인정.
+    const fuzzyTarget = rawQuery || keyword;
     const seen = new Map();
     [...S.per26, ...S.per25].forEach(r => {
-      if (!r.문항) return;
-      const matches = norm(r.문항).includes(nk) || norm(r.제품군 || '').includes(nk)
-        || (FITTING_COLUMNS[r.제품군] && norm(FITTING_COLUMNS[r.제품군].label).includes(nk));
-      if (!matches) return;
-      if (!seen.has(r.문항)) seen.set(r.문항, { 문항: r.문항, 제품군: r.제품군, 목표값: r.목표값 });
+      if (!r.문항 || seen.has(r.문항)) return;
+      if (overlapScore(fuzzyTarget, r.문항) >= 4) {
+        seen.set(r.문항, { 문항: r.문항, 제품군: r.제품군, 목표값: r.목표값 });
+      }
     });
     return [...seen.values()];
   }
@@ -3866,7 +3937,7 @@ img,svg,canvas{max-width:100%}
       }
     } else {
       const keyword = extractQuestionSearchKeyword(query, intent.segmentFilters);
-      matched = searchQuestionsByKeyword(keyword);
+      matched = searchQuestionsByKeyword(keyword, query);
       metaLabel = `"${esc(keyword)}" 키워드로 문항 ${matched.length}개 검색됨`;
       if (!matched.length) {
         box.innerHTML = emptyState(`"${esc(keyword)}"와 관련된 인식조사 문항/제품군/매장명을 찾지 못했습니다. (매장명이라면 01_안경사마스터의 안경원명 컬럼에 해당 글자가 있는지 확인해주세요)`);
