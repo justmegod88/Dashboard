@@ -1286,6 +1286,10 @@ img,svg,canvas{max-width:100%}
     return idx >= 0 && idx < keys.length ? row[keys[idx]] : '';
   }
 
+  // 교육이력 시트의 안경사ID가 다른 시트와 대소문자/공백 표기가 다를 수 있어(예: "a001" vs "A001")
+  // 조인 키로 쓸 때는 대소문자를 통일하고 공백을 제거해 매칭 누락을 방지한다.
+  const eduKey = v => clean(v).toUpperCase().replace(/\s+/g, '');
+
   function get(row, names) {
     if (!row) return '';
     const map = {};
@@ -1553,7 +1557,7 @@ img,svg,canvas{max-width:100%}
       }
     });
     S.edu.forEach(r => {
-      const id = clean(get(r, ['안경사ID', '안경사 ID', 'ID']));
+      const id = eduKey(get(r, ['안경사ID', '안경사 ID', 'ID']));
       if (!id) return;
       if (!S.eduById.has(id)) S.eduById.set(id, []);
       S.eduById.get(id).push(r);
@@ -1757,12 +1761,16 @@ img,svg,canvas{max-width:100%}
   // SECTION: 교육 이수 & 개인별 종합 지표(metrics)
   // ============================================================
   function eduDone(row) {
-    const flag = clean(get(row, ['완료여부', '수료여부', '참여여부', '시청여부', '이수여부', '완료상태', '수강여부', '참석여부', '상태', 'Status', 'Completed'])).toUpperCase();
-    if (['Y', 'YES', 'TRUE', '완료', '수료', '이수', '참여', '참석', 'DONE', 'COMPLETED', 'O', '○', '1'].includes(flag)) return true;
-    if (['N', 'NO', 'FALSE', '미완료', '미이수', '미참여', 'X', '×', '0'].includes(flag)) return false;
+    const raw = clean(get(row, ['완료여부', '수료여부', '참여여부', '시청여부', '이수여부', '완료상태', '수강여부', '참석여부', '상태', 'Status', 'Completed']));
+    const flag = raw.toUpperCase();
+    // "미완료/미이수/미참여"처럼 부정 표현은 "완료"를 포함하고 있어도 먼저 걸러서 false로 판정
+    if (/^(N|NO|FALSE|X|×|0)$/.test(flag) || /^미(완료|이수|참여|수료|시청)/.test(raw)) return false;
+    if (['Y', 'YES', 'TRUE', 'O', '○', '1'].includes(flag)) return true;
+    // 정확히 "완료"가 아니라 "참여완료", "이수 완료" 등 복합 표현도 잡히도록 포함 여부로 판정
+    if (/(완료|수료|이수|참여|참석|done|completed)/i.test(raw)) return true;
     const progress = num(get(row, ['완료율', '진도율', '진행률', 'Progress']));
     if (progress != null) return progress >= 100;
-    // 완료 여부 컬럼이 아예 없는 시트라면, 이수일/완료일 등 날짜 컬럼이 채워져 있는 것 자체를 완료로 간주
+    // 완료 여부 컬럼 자체가 비어있다면, 참여일/이수일 등 날짜 컬럼이 채워져 있는 것 자체를 완료로 간주
     const date = clean(get(row, ['교육일', '이수일', '수료일', '완료일', '참여일', '참석일', '날짜', 'Date']));
     return !!date;
   }
@@ -1788,7 +1796,7 @@ img,svg,canvas{max-width:100%}
   }
 
   function completedEducationRowsForPerson(id) {
-    return (S.eduById.get(id) || []).filter(eduDone);
+    return (S.eduById.get(eduKey(id)) || []).filter(eduDone);
   }
 
   function questionRelevance(q, key) {
@@ -1809,7 +1817,7 @@ img,svg,canvas{max-width:100%}
     const sales = rowsFor(id);
     const perc = S.perEffectiveById.get(id) || [];
     const gaps = perc.filter(x => x.gap);
-    const edu = S.eduById.get(id) || [];
+    const edu = S.eduById.get(eduKey(id)) || [];
     const completedEdu = edu.filter(eduDone);
     const eduCompletedCount = completedEdu.length;
     const eduTotalCount = edu.length;
@@ -2450,7 +2458,7 @@ img,svg,canvas{max-width:100%}
   }
 
   function personHasIncompleteRelatedEducation(id, key) {
-    const rows = S.eduById.get(id) || [];
+    const rows = S.eduById.get(eduKey(id)) || [];
     if (!rows.length) return true;
     const related = rows.filter(r => educationRelated(Object.values(r).join(' '), key));
     const base = related.length ? related : rows;
@@ -3262,7 +3270,7 @@ img,svg,canvas{max-width:100%}
   }
 
   function completedEducationForPerson(id, productKey = null) {
-    return (S.eduById.get(id) || []).filter(eduDone).filter(r => !productKey || educationRelated(Object.values(r).join(' '), productKey)).map(educationTitle).filter(Boolean);
+    return (S.eduById.get(eduKey(id)) || []).filter(eduDone).filter(r => !productKey || educationRelated(Object.values(r).join(' '), productKey)).map(educationTitle).filter(Boolean);
   }
 
   function download() {
@@ -3405,11 +3413,21 @@ img,svg,canvas{max-width:100%}
 
     const segmentFilters = detectSegmentFilters(q);
     const hasQWord = /(문항|질문|설문)/.test(q);
+    // 필드명 자체(연차/지역/Tier/채널/멀티포컬PRO)가 언급됐는지 — "1년차"처럼 구체적 값이 아니라 "연차"라는 단어 자체
+    const segmentFieldMentioned = /tier|티어|지역|연차|채널|멀티포컬\s*pro/i.test(q);
 
     // "가장 인식이 낮은 지역은?"처럼 문항이 아니라 세그먼트 자체를 묻는 질문은 최우선으로 분리 처리
     if (!hasQWord) {
       const segRank = detectSegmentRankIntent(q);
       if (segRank) return { type: 'segment_rank', productKey, segmentFilters: [], segmentRank: segRank };
+    }
+
+    // "OOO질문에 답변이 가장 낮은 연차", "OOO질문에 연차별 답변"처럼 특정 문항을 언급하면서
+    // 동시에 세그먼트 필드명을 물어보는 경우 — 이건 "문항 랭킹"이 아니라 "그 문항 하나를 찾아서
+    // 세그먼트별로 쪼개 보여달라"는 의미이므로, 문항 랭킹 판정보다 먼저 키워드 검색으로 처리한다.
+    // (키워드 검색 결과 카드에는 이미 Tier/채널/연차/지역/멀티포컬PRO별 분포가 함께 표시됨)
+    if (hasQWord && segmentFieldMentioned && !segmentFilters.length) {
+      return { type: 'keyword', productKey, segmentFilters };
     }
 
     if (/전체\s*문항|문항\s*(리스트|목록|전체)/.test(q)) return { type: 'all', productKey, segmentFilters };
@@ -3487,6 +3505,14 @@ img,svg,canvas{max-width:100%}
     q = q.replace(/(응답\s*결과|결과|추이|변화|비교)(를|을)?\s*(보여|알려)?(줘|주세요|해줘)?/g, ' ');
     q = q.replace(/(인식|점수)?\s*(이|가)?\s*낮은\s*(특정)?\s*(티어|연령대|지역|채널|연차|세그먼트)(는|은)?\??/g, ' ');
     q = q.replace(/(25년|26년|2025|2026)(과|와)?\s*/g, ' ');
+    // "질문에", "문항에"처럼 명사 제거 후 남는 조사 "에", 그리고 "답변이/응답은/가장" 같은 잔여 표현 정리
+    q = q.replace(/\s+에\s+/g, ' ');
+    q = q.replace(/(답변|응답)(이|은|을|를|별)?\s*/g, ' ');
+    q = q.replace(/가장\s*/g, ' ');
+    q = q.replace(/(낮은|높은|최하위|최상위|바닥|꼴찌|1위)\s*/g, ' ');
+    q = q.replace(/(티어|tier|지역|연차|채널|멀티포컬\s*pro)(별|는|은)?\s*/gi, ' ');
+    // 어디에 붙어있든 남을 수 있는 요청형 어미 정리
+    q = q.replace(/(보여|알려|찾아|검색해)?(줘|주세요|해줘)\s*/g, ' ');
     q = q.replace(/[?？]/g, ' ');
     q = q.replace(/\s+/g, ' ').trim();
     return q || clean(query);
@@ -3550,9 +3576,11 @@ img,svg,canvas{max-width:100%}
       if (!rows.length) return '';
       const lowest = rows[0];
       const highest = rows[rows.length - 1];
+      // 필터로 이미 값이 하나로 좁혀진 경우(예: 채널=다비치만 검색) "가장 낮음" 비교 태그는 의미가 없으니 값만 표시
+      const singleGroup = rows.length === 1;
       return `<div class="qseg-block">
         <b>${esc(label)}별</b>
-        <div class="qseg-row"><span class="qseg-tag low">가장 낮음</span>${esc(lowest.value)} <b>${lowest.avg.toFixed(2)}점</b> <small>(${lowest.count}명)</small></div>
+        <div class="qseg-row">${singleGroup ? '' : '<span class="qseg-tag low">가장 낮음</span>'}${esc(lowest.value)} <b>${lowest.avg.toFixed(2)}점</b> <small>(${lowest.count}명)</small></div>
         ${rows.length > 1 ? `<div class="qseg-row"><span class="qseg-tag high">가장 높음</span>${esc(highest.value)} <b>${highest.avg.toFixed(2)}점</b> <small>(${highest.count}명)</small></div>` : ''}
       </div>`;
     }).filter(Boolean).join('');
