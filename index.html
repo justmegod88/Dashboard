@@ -1169,7 +1169,7 @@ img,svg,canvas{max-width:100%}
       <div class="panel-head">
         <div>
           <h2>인식조사 검색</h2>
-          <p>인식조사 문항을 검색합니다. 예) "OO 문항에 점수가 가장 낮은 채널은?", "가장 점수가 낮은 문항", "전년 대비 많이 떨어진 문항", "전체 문항 목록"</p>
+          <p>인식조사 문항을 자유 문장으로 검색합니다. 예) "가장 점수가 낮은 문항", "전년 대비 많이 떨어진 문항", "가장 인식이 낮은 지역은?", "전체 문항 목록"</p>
         </div>
       </div>
       <div class="search-row">
@@ -3244,7 +3244,10 @@ img,svg,canvas{max-width:100%}
     const rows = filtered();
     S.filtered = rows;
     const ms = rows.map(r => metrics(r.안경사ID));
-    const eduComplete = ms.filter(m => m.eduRate === 1).length;
+    // "교육 완료 안경사" = 배정된 저니(예: ①인식교육→②제품교육) 전부를 100% 끝낸 사람이 아니라,
+    // 지금까지 교육을 1건이라도 이수한 사람 수. (전체 완주 기준으로 하면 저니 중간 단계인 사람이
+    // 다 빠져서 실제 이수자가 있어도 0으로 보이는 문제가 있었음)
+    const eduComplete = ms.filter(m => m.eduCompletedCount >= 1).length;
     const reached = ms.filter(m => m.perc.length && m.gaps.length === 0).length;
     const stores = selectedSalesRows(rows).length;
     $('kpiGrid').innerHTML = [
@@ -3430,6 +3433,19 @@ img,svg,canvas{max-width:100%}
       return { type: 'keyword', productKey, segmentFilters };
     }
 
+    // 세그먼트 값(예: "3년차")은 잡혔는데 "문항/질문" 단어 없이 문항 원문 일부를 그대로 붙여 검색한 경우
+    // (예: "블루라이트 차단율이... 3년차") — 세그먼트/제품 키워드를 뺀 나머지가 충분히 길면
+    // 랭킹이 아니라 "그 문항을 찾아서 세그먼트별로 보여달라"는 의도로 보고 키워드 검색을 우선한다.
+    if (segmentFilters.length && !hasQWord) {
+      let residual = q;
+      segmentFilters.forEach(f => {
+        const escVal = f.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        residual = residual.replace(new RegExp(escVal, 'gi'), ' ');
+      });
+      residual = residual.replace(/\+/g, ' ').replace(/난시|멀티포컬|다초점|맥스|블루라이트|max/gi, '').trim();
+      if (residual.length >= 4) return { type: 'keyword', productKey, segmentFilters };
+    }
+
     if (/전체\s*문항|문항\s*(리스트|목록|전체)/.test(q)) return { type: 'all', productKey, segmentFilters };
     if (/응답(자)?.*(적은|부족|가장\s*적)/.test(q)) return { type: 'least_responded', productKey, segmentFilters };
     // "가장 낮은"뿐 아니라 "인식낮은"처럼 "가장" 없이 붙여 쓴 표현도 낮음/높음으로 인식
@@ -3498,8 +3514,16 @@ img,svg,canvas{max-width:100%}
   };
 
   // 자유 문장에서 핵심 키워드만 추출 (조사/의도 표현 제거)
-  function extractQuestionSearchKeyword(query) {
+  function extractQuestionSearchKeyword(query, segmentFilters) {
     let q = clean(query);
+    // "3년차"처럼 이미 세그먼트 값으로 인식된 구체적 단어는 문항 검색에 방해되지 않도록 먼저 제거
+    if (segmentFilters?.length) {
+      segmentFilters.forEach(f => {
+        const escVal = f.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        q = q.replace(new RegExp(escVal, 'gi'), ' ');
+      });
+    }
+    q = q.replace(/\+/g, ' ');
     q = q.replace(/(들어간|포함된|관련된?|에\s*대한)\s*/g, ' ');
     q = q.replace(/(설문\s*조사|설문|문항|질문)(을|를)?\s*(검색|찾아|보여)?(줘|주세요|해줘)?/g, ' ');
     q = q.replace(/(응답\s*결과|결과|추이|변화|비교)(를|을)?\s*(보여|알려)?(줘|주세요|해줘)?/g, ' ');
@@ -3655,7 +3679,7 @@ img,svg,canvas{max-width:100%}
         return;
       }
     } else {
-      const keyword = extractQuestionSearchKeyword(query);
+      const keyword = extractQuestionSearchKeyword(query, intent.segmentFilters);
       matched = searchQuestionsByKeyword(keyword);
       metaLabel = `"${esc(keyword)}" 키워드로 문항 ${matched.length}개 검색됨`;
       if (!matched.length) {
