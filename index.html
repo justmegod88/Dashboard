@@ -937,6 +937,8 @@ img,svg,canvas{max-width:100%}
 .content-idea-row{font-size:12px;line-height:1.6;color:var(--ink)}
 .content-idea-row+.content-idea-row{margin-top:4px}
 .content-idea-tag{display:inline-block;font-size:10px;font-weight:800;color:#6a4fb0;background:#f1ecfb;border-radius:5px;padding:1px 6px;margin-right:6px;vertical-align:middle}
+.content-idea-tag.q{color:#0a7a63;background:#e6f5f0}
+.content-idea-tag.e{color:#a06a1a;background:#fbf1de}
 
 /* ===== 인식조사 검색 ===== */
 .qsearch-meta{font-size:12px;color:var(--muted);margin:14px 0 10px}
@@ -2134,14 +2136,86 @@ img,svg,canvas{max-width:100%}
     return t;
   }
 
-  // 인식 Gap 문항 하나를 카드뉴스/인포그래픽 콘텐츠 아이디어(제목)로 변환.
-  // 교육(강의형)과 별개로, SNS/사내채널에 바로 배포 가능한 짧은 콘텐츠 타이틀을 제안한다.
+  // 문항이 "~는 필요하다/중요하다/도움이 된다"류의 긍정 진술문일 때, 낮은 점수를 준 사람은
+  // 그 반대(=부정)로 생각하고 있을 가능성이 높다. 원문의 서술어 패턴을 보고 그 "반대 믿음"을
+  // 짧은 문구로 만든다 (OX퀴즈/썸네일용). 패턴이 안 맞으면 안전하게 "잘 모르고 있는"으로 대체.
+  function contentBeliefPhrase(questionText, topic) {
+    const t = clean(questionText || '');
+    if (/필요(하다|하다고|가\s*있다)/.test(t)) return `${topic}이(가) 필요 없다고 생각한`;
+    if (/중요(하다|하다고)/.test(t)) return `${topic}이(가) 중요하지 않다고 생각한`;
+    if (/도움(이|가)\s*된다/.test(t)) return `${topic}이(가) 도움이 안 된다고 생각한`;
+    if (/향상된다|좋아진다|개선된다|높인다/.test(t)) return `${topic}과(와) 상관없다고 생각한`;
+    return `${topic}, 잘 모르고 있던`;
+  }
+
+  // 문항 하나에 대해 "가장 낮은 세그먼트"와 "목표 달성률(%)"을 계산.
+  // OX퀴즈 제목을 실제 데이터 기반으로 만들 때 사용 (예: "3년차만 유독 틀리는 문제").
+  function contentDataContext(questionText) {
+    const rows = S.per26.filter(r => r.문항 === questionText);
+    if (!rows.length) return null;
+    const target = Number(rows[0]?.목표값) || 4;
+    const achievedCount = rows.filter(r => r.점수 >= target).length;
+    const achievedPct = Math.round((achievedCount / rows.length) * 100);
+
+    const worstByField = field => {
+      const groups = new Map();
+      rows.forEach(r => {
+        const person = S.masterById.get(r.안경사ID);
+        const v = clean(person?.[field]);
+        if (!v) return;
+        if (!groups.has(v)) groups.set(v, []);
+        groups.get(v).push(r.점수);
+      });
+      return [...groups.entries()]
+        .map(([value, scores]) => ({ value, avg: scores.reduce((a, b) => a + b, 0) / scores.length, count: scores.length }))
+        .filter(g => g.count >= 3)
+        .sort((a, b) => a.avg - b.avg)[0] || null;
+    };
+    // 연차 → Tier → 채널 순으로 표본이 있는 첫 번째 세그먼트를 "가장 취약한 그룹"으로 채택
+    const worstSegment = worstByField('연차') || worstByField('Tier') || worstByField('채널') || null;
+    return { achievedPct, worstSegment };
+  }
+
+  // 문항 원문에서 헤더/번호("~에 대한 인식_8)" 등)만 걷어낸 "질문 그 자체" 텍스트
+  function bareQuestionText(questionText) {
+    let t = clean(questionText || '');
+    t = t.replace(/^.*?\]에\s*대한\s*인식_?\d*\)?\s*/, '');
+    t = t.replace(/^.*?_\d+\)\s*/, '');
+    return t;
+  }
+
+  // 인식 Gap 문항 하나를 OX퀴즈/카드뉴스 콘텐츠 패키지(제목 후보 + 질문 + 해설 자리)로 변환.
+  // 해설은 실제 근거(왜 그런지)가 필요한 영역이라 자동으로 지어내지 않고, 콘텐츠 담당자가 채울
+  // 자리만 표시한다 (사실관계를 임의로 생성하면 위험하므로).
+  function contentIdeaPack(questionText) {
+    const topic = contentTopicFromQuestion(questionText);
+    const belief = contentBeliefPhrase(questionText, topic);
+    const ctx = contentDataContext(questionText);
+
+    const titles = [];
+    if (ctx?.worstSegment) titles.push(`${ctx.worstSegment.value} 선생님만 유독 틀리는 문제`);
+    titles.push(`${belief} 선생님을 위한 5초 퀴즈`);
+    if (ctx) titles.push(`${ctx.achievedPct}% 선생님들은 알고 있는 ${topic} 관련 퀴즈`);
+    if (!titles.length) titles.push(`${topic}, 5초 안에 답해보세요`);
+
+    return {
+      titles,
+      question: `${bareQuestionText(questionText)} (O/X)`,
+      explanation: '[정답 근거 한 줄 — 콘텐츠 담당자 작성]'
+    };
+  }
+
+  // 기존 카드뉴스/인포그래픽 아이디어(문항 상세 카드에서 사용 중)는 그대로 유지
   function contentIdeaTitles(questionText) {
     const topic = contentTopicFromQuestion(questionText);
+    const belief = contentBeliefPhrase(questionText, topic);
     return [
       { type: '인포그래픽', title: `다른 안경사는 ${topic}을(를) 어떻게 생각할까?` },
       { type: '카드뉴스', title: `${topic}, 고객에게 이렇게 설명하세요` },
-      { type: '카드뉴스', title: `${topic}, 오해와 진실 3가지` }
+      { type: '카드뉴스', title: `${topic}, 오해와 진실 3가지` },
+      { type: 'OX퀴즈', title: `${belief} 당신을 위한 OX퀴즈` },
+      { type: '썸네일', title: `5초면 아는 ${topic} 상식` },
+      { type: '지식 한줄', title: `[콘택트렌즈 기초상식] ${topic}` }
     ];
   }
 
@@ -2731,8 +2805,12 @@ img,svg,canvas{max-width:100%}
       ? `<details class="exec-gap"><summary>▼ 인식 Gap 상세</summary><table><thead><tr><th>문항명</th><th>평균 점수</th><th>목표 점수</th><th>추천 교육</th><th>콘텐츠 아이디어</th><th>대상자 수</th></tr></thead><tbody>${gaps.map((g, i) => {
           const t = peopleWithQuestionGap(rows, key, g.q);
           const r = findBestEducationForQuestion(g.q);
-          const ideas = contentIdeaTitles(g.q);
-          const ideasHtml = ideas.map(idea => `<div class="content-idea-row"><span class="content-idea-tag">${esc(idea.type)}</span>${esc(idea.title)}</div>`).join('');
+          const pack = contentIdeaPack(g.q);
+          const ideasHtml = `
+            ${pack.titles.map(t => `<div class="content-idea-row"><span class="content-idea-tag">제목</span>${esc(t)}</div>`).join('')}
+            <div class="content-idea-row"><span class="content-idea-tag q">질문</span>${esc(pack.question)}</div>
+            <div class="content-idea-row"><span class="content-idea-tag e">해설</span>${esc(pack.explanation)}</div>
+          `;
           return `<tr><td>${esc(g.q)}</td><td>${g.seg.toFixed(1)}점</td><td>${Number(g.target || 4).toFixed(1)}점</td><td>${esc(r.title)}</td><td>${ideasHtml}</td><td><button data-exgap="${key}:${i}">대상자 보기 (${t.length}명)</button></td></tr>`;
         }).join('')}</tbody></table></details>`
       : `<div style="padding:0 16px 16px;color:var(--muted);font-size:11px">인식 양호군은 교육 실행에 집중하도록 Gap 상세를 최소화했습니다.</div>`;
