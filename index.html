@@ -4344,9 +4344,32 @@ th{background:#eef4fb;color:#4c6780;font-weight:700}tbody tr:hover{background:#f
     }
   }
 
+  async function readLocalExcel(file) {
+    // Newer browsers expose Blob.arrayBuffer(); older iOS WebKit may need FileReader.
+    if (typeof file.arrayBuffer === 'function') {
+      try { return await file.arrayBuffer(); } catch (error) {
+        console.warn('Blob.arrayBuffer failed; using FileReader fallback.', error);
+      }
+    }
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => reader.result instanceof ArrayBuffer
+        ? resolve(reader.result)
+        : reject(new Error('선택한 파일을 읽지 못했습니다. 다시 선택해 주세요.'));
+      reader.onerror = () => reject(reader.error || new Error('파일 읽기 권한을 확인해 주세요.'));
+      reader.onabort = () => reject(new Error('파일 읽기가 취소되었습니다.'));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
   async function upload(file) {
     if (!file) return;
-    const arrayBuffer = await file.arrayBuffer();
+    if (!/\.(xlsx|xlsm)$/i.test(file.name || '')) {
+      throw new Error('Excel .xlsx 또는 .xlsm 파일을 선택해 주세요.');
+    }
+    $('uploadStatus').classList.remove('error');
+    $('uploadStatus').textContent = `Excel 파일 읽는 중… · ${file.name}`;
+    const arrayBuffer = await readLocalExcel(file);
     await applyWorkbookBuffer(arrayBuffer, {
       name: file.name,
       type: file.type,
@@ -4609,7 +4632,7 @@ th{background:#eef4fb;color:#4c6780;font-weight:700}tbody tr:hover{background:#f
     document.querySelectorAll('.tab').forEach(t => { t.onclick = () => view(t.dataset.view); });
     $('workbookInput').onchange = e => e.target.files[0] && upload(e.target.files[0]).catch(err => {
       console.error(err); showUploadError(`업로드 실패 · ${err.message || err}`);
-    });
+    }).finally(() => { e.target.value = ''; });
     const deleteSavedWorkbookButton = $('deleteSavedWorkbook');
     if (deleteSavedWorkbookButton) {
       deleteSavedWorkbookButton.onclick = async () => {
