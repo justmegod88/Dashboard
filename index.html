@@ -1037,7 +1037,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(!s)return[];if(s._objects)return s._objects;
     if(options.header===1)return s._rows||[];
     const rows=s._rows||[];if(!rows.length)return[];
-    const counts={};const headers=rows[0].map((h,i)=>{let key=String(h??'__EMPTY_'+i);const n=counts[key]||0;counts[key]=n+1;return n?key+'_'+n:key;});
+    const counts={};const headers=Array.from({length:rows[0].length},(_,i)=>{const h=rows[0][i];let key=String(h??'__EMPTY_'+i);const n=counts[key]||0;counts[key]=n+1;return n?key+'_'+n:key;});
     return rows.slice(1).map(a=>Object.fromEntries(headers.map((h,i)=>[h,a[i]??options.defval??''])));
   }
   async function writeFile(wb,name){
